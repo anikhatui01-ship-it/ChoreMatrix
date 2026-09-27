@@ -1,6 +1,7 @@
 node_modules/
 dist/
 build/
+/optimizer.bundle.js
 coverage/
 .env
 .env.*

@@ -4,13 +4,27 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>ChoreMatrix — Household Workload Optimizer (Phase 0 Prototype)</title>
+<script>
+  (function() {
+    try {
+      var setting = localStorage.getItem('chorematrix_theme') || 'system';
+      var isDark = setting === 'dark' || (setting === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme-setting', setting);
+    } catch (e) {}
+  })();
+</script>
 <style>
-  :root {
+  :root, html[data-theme="light"] {
     --bg: #f8fafc;
     --panel: #ffffff;
+    --panel-subtle: #f8fafc;
+    --card: #fafbfd;
+    --card-hover: #f1f5f9;
     --ink: #0f172a;
     --muted: #64748b;
     --line: #e2e8f0;
+    --line-subtle: #cbd5e1;
     --accent: #0f766e;
     --accent-hover: #115e59;
     --accent-soft: #f0fdfa;
@@ -20,7 +34,155 @@
     --bad: #dc2626;
     --radius: 14px;
     --shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06);
+
+    --btn-bg: #ffffff;
+    --btn-text: #0f172a;
+    --btn-border: #e2e8f0;
+    --btn-hover: #f1f5f9;
+    --btn-dark-bg: #0f172a;
+    --btn-dark-text: #ffffff;
+
+    --input-bg: #ffffff;
+    --input-border: #e2e8f0;
+    --input-text: #0f172a;
+
+    --badge-bg: #e2e8f0;
+    --badge-text: #334155;
+    --badge-teal-bg: #ccfbf1;
+    --badge-teal-text: #0f766e;
+    --badge-amber-bg: #fef3c7;
+    --badge-amber-text: #b45309;
+    --badge-red-bg: #fee2e2;
+    --badge-red-text: #b91c1c;
+
+    --bar-track: #e2e8f0;
+    --bar-fill: linear-gradient(90deg, #0f766e, #2563eb);
+
+    --cal-col-bg: #f8fafc;
+    --cal-card-bg: #ffffff;
+    --cal-card-border: #cbd5e1;
+
+    --diff-bg: #ecfeff;
+    --diff-border: #a5f3fc;
+    --diff-text: #0e7490;
+
+    --alert-bg: #fef2f2;
+    --alert-border: #fecaca;
+    --alert-text: #991b1b;
   }
+
+  html[data-theme="dark"] {
+    --bg: #090e1a;
+    --panel: #111827;
+    --panel-subtle: #0d1524;
+    --card: #152033;
+    --card-hover: #1b2940;
+    --ink: #f1f5f9;
+    --muted: #94a3b8;
+    --line: #1e2c44;
+    --line-subtle: #293d5c;
+    --accent: #14b8a6;
+    --accent-hover: #2dd4bf;
+    --accent-soft: rgba(20, 184, 166, 0.16);
+    --primary: #3b82f6;
+    --good: #22c55e;
+    --warn: #f59e0b;
+    --bad: #f87171;
+    --shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.45);
+
+    --btn-bg: #152033;
+    --btn-text: #f1f5f9;
+    --btn-border: #23354f;
+    --btn-hover: #1c2a42;
+    --btn-dark-bg: #23354f;
+    --btn-dark-text: #f1f5f9;
+
+    --input-bg: #0d1524;
+    --input-border: #23354f;
+    --input-text: #f1f5f9;
+
+    --badge-bg: #1e2c44;
+    --badge-text: #cbd5e1;
+    --badge-teal-bg: rgba(20, 184, 166, 0.18);
+    --badge-teal-text: #5eead4;
+    --badge-amber-bg: rgba(245, 158, 11, 0.18);
+    --badge-amber-text: #fcd34d;
+    --badge-red-bg: rgba(248, 113, 113, 0.18);
+    --badge-red-text: #fca5a5;
+
+    --bar-track: #1e2c44;
+    --bar-fill: linear-gradient(90deg, #14b8a6, #3b82f6);
+
+    --cal-col-bg: #0d1524;
+    --cal-card-bg: #141f32;
+    --cal-card-border: #23354f;
+
+    --diff-bg: #08283c;
+    --diff-border: #0e4c6c;
+    --diff-text: #7dd3fc;
+
+    --alert-bg: #2d0e12;
+    --alert-border: #5c1820;
+    --alert-text: #fca5a5;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    html:not([data-theme="light"]) {
+      --bg: #090e1a;
+      --panel: #111827;
+      --panel-subtle: #0d1524;
+      --card: #152033;
+      --card-hover: #1b2940;
+      --ink: #f1f5f9;
+      --muted: #94a3b8;
+      --line: #1e2c44;
+      --line-subtle: #293d5c;
+      --accent: #14b8a6;
+      --accent-hover: #2dd4bf;
+      --accent-soft: rgba(20, 184, 166, 0.16);
+      --primary: #3b82f6;
+      --good: #22c55e;
+      --warn: #f59e0b;
+      --bad: #f87171;
+      --shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.45);
+
+      --btn-bg: #152033;
+      --btn-text: #f1f5f9;
+      --btn-border: #23354f;
+      --btn-hover: #1c2a42;
+      --btn-dark-bg: #23354f;
+      --btn-dark-text: #f1f5f9;
+
+      --input-bg: #0d1524;
+      --input-border: #23354f;
+      --input-text: #f1f5f9;
+
+      --badge-bg: #1e2c44;
+      --badge-text: #cbd5e1;
+      --badge-teal-bg: rgba(20, 184, 166, 0.18);
+      --badge-teal-text: #5eead4;
+      --badge-amber-bg: rgba(245, 158, 11, 0.18);
+      --badge-amber-text: #fcd34d;
+      --badge-red-bg: rgba(248, 113, 113, 0.18);
+      --badge-red-text: #fca5a5;
+
+      --bar-track: #1e2c44;
+      --bar-fill: linear-gradient(90deg, #14b8a6, #3b82f6);
+
+      --cal-col-bg: #0d1524;
+      --cal-card-bg: #141f32;
+      --cal-card-border: #23354f;
+
+      --diff-bg: #08283c;
+      --diff-border: #0e4c6c;
+      --diff-text: #7dd3fc;
+
+      --alert-bg: #2d0e12;
+      --alert-border: #5c1820;
+      --alert-text: #fca5a5;
+    }
+  }
+
   * { box-sizing: border-box; }
   body {
     margin: 0;
@@ -29,6 +191,18 @@
     color: var(--ink);
     line-height: 1.5;
   }
+
+  body, .panel, .item-card, .btn, .field input, .field select, .cal-col, .cal-task-card, .metric-card, .tab-btn, .theme-switch, .theme-btn {
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      transition: none !important;
+      animation: none !important;
+    }
+  }
+
   button, input, select { font: inherit; }
   button { cursor: pointer; }
   .shell { max-width: 1360px; margin: 0 auto; padding: 24px 20px 80px; }
@@ -56,14 +230,47 @@
     font-size: 16px;
     letter-spacing: -0.02em;
   }
-  .brand h1 { font-size: 18px; margin: 0; font-weight: 800; letter-spacing: -0.01em; }
+  .brand h1 { font-size: 18px; margin: 0; font-weight: 800; letter-spacing: -0.01em; color: var(--ink); }
   .brand span { font-size: 12px; color: var(--muted); font-weight: 600; }
   .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
   
-  .btn {
+  /* Theme Switcher */
+  .theme-switch {
+    display: inline-flex;
+    align-items: center;
+    background: var(--panel-subtle);
     border: 1px solid var(--line);
-    background: #fff;
+    border-radius: 9px;
+    padding: 2px;
+    gap: 2px;
+  }
+  .theme-btn {
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    padding: 4px 8px;
+    border-radius: 7px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    transition: all 0.15s ease;
+  }
+  .theme-btn:hover {
     color: var(--ink);
+  }
+  .theme-btn.active {
+    background: var(--btn-dark-bg);
+    color: var(--btn-dark-text);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  }
+
+  .btn {
+    border: 1px solid var(--btn-border);
+    background: var(--btn-bg);
+    color: var(--btn-text);
     padding: 8px 13px;
     border-radius: 10px;
     font-weight: 600;
@@ -73,11 +280,12 @@
     gap: 6px;
     transition: all 0.15s ease;
   }
-  .btn:hover { background: #f1f5f9; border-color: #cbd5e1; }
+  .btn:hover { background: var(--btn-hover); border-color: var(--line-subtle); }
   .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .btn.primary:hover { background: var(--accent-hover); }
-  .btn.dark { background: #0f172a; border-color: #0f172a; color: #fff; }
+  .btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+  .btn.dark { background: var(--btn-dark-bg); border-color: var(--btn-dark-bg); color: var(--btn-dark-text); }
   .btn.small { padding: 6px 10px; font-size: 12px; border-radius: 8px; }
+  .btn.active-view { background: var(--btn-dark-bg); border-color: var(--btn-dark-bg); color: var(--btn-dark-text); }
   
   /* Main Grid */
   .grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 24px; align-items: start; }
@@ -97,19 +305,19 @@
     margin-bottom: 14px;
     gap: 12px;
   }
-  .panel-head h2 { font-size: 16px; font-weight: 700; margin: 0; }
+  .panel-head h2 { font-size: 16px; font-weight: 700; margin: 0; color: var(--ink); }
   .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
   
   /* Presets & Controls */
   .preset-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
   .preset-btn {
     border: 1px solid var(--line);
-    background: #fff;
+    background: var(--btn-bg);
     padding: 6px 11px;
     border-radius: 8px;
     font-weight: 600;
     font-size: 12px;
-    color: #475569;
+    color: var(--muted);
   }
   .preset-btn.active {
     background: var(--accent-soft);
@@ -119,19 +327,23 @@
   
   .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
   .field { display: flex; flex-direction: column; gap: 5px; }
-  .field label { font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.03em; }
+  .field label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
   .field input, .field select {
     padding: 7px 10px;
-    border: 1px solid var(--line);
+    border: 1px solid var(--input-border);
     border-radius: 8px;
-    background: #fff;
-    color: var(--ink);
+    background: var(--input-bg);
+    color: var(--input-text);
     font-size: 13px;
+  }
+  select option, .field select option {
+    background: var(--panel);
+    color: var(--ink);
   }
   .field input:focus, .field select:focus {
     outline: none;
     border-color: var(--accent);
-    box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.12);
+    box-shadow: 0 0 0 2px var(--accent-soft);
   }
   
   /* Card Lists */
@@ -140,41 +352,53 @@
     border: 1px solid var(--line);
     border-radius: 10px;
     padding: 12px;
-    background: #fafbfd;
+    background: var(--card);
     display: grid;
     gap: 10px;
   }
-  .item-card:hover { border-color: #cbd5e1; }
+  .item-card:hover { border-color: var(--line-subtle); }
   .item-card-head {
     display: flex;
     justify-content: space-between;
     align-items: center;
     gap: 8px;
   }
-  .item-title { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+  .item-title { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; color: var(--ink); }
+  .item-title input {
+    font-weight: 700;
+    padding: 3px 6px;
+    border-radius: 6px;
+    border: 1px solid var(--input-border);
+    background: var(--input-bg);
+    color: var(--input-text);
+  }
+  .item-title input:focus {
+    outline: none;
+    border-color: var(--accent);
+  }
   .badge {
     display: inline-block;
     padding: 2px 7px;
     border-radius: 6px;
     font-size: 11px;
     font-weight: 600;
-    background: #e2e8f0;
-    color: #334155;
+    background: var(--badge-bg);
+    color: var(--badge-text);
   }
-  .badge.teal { background: #ccfbf1; color: #0f766e; }
-  .badge.amber { background: #fef3c7; color: #b45309; }
-  .badge.red { background: #fee2e2; color: #b91c1c; }
+  .badge.teal { background: var(--badge-teal-bg); color: var(--badge-teal-text); }
+  .badge.amber { background: var(--badge-amber-bg); color: var(--badge-amber-text); }
+  .badge.red { background: var(--badge-red-bg); color: var(--badge-red-text); }
   
   .del-btn {
     border: none;
     background: transparent;
-    color: #94a3b8;
+    color: var(--muted);
     cursor: pointer;
     padding: 4px;
     font-size: 14px;
     border-radius: 4px;
   }
-  .del-btn:hover { color: var(--bad); background: #fee2e2; }
+  .del-btn:hover { color: var(--bad); background: var(--alert-bg); }
   
   /* Day checkboxes */
   .day-checks { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
@@ -187,7 +411,8 @@
     border-radius: 6px;
     font-size: 11px;
     font-weight: 600;
-    background: #fff;
+    background: var(--panel-subtle);
+    color: var(--ink);
     cursor: pointer;
   }
   .day-check-label input { margin: 0; accent-color: var(--accent); }
@@ -203,7 +428,8 @@
     border-radius: 6px;
     font-size: 11px;
     font-weight: 600;
-    background: #fff;
+    background: var(--panel-subtle);
+    color: var(--ink);
     cursor: pointer;
   }
   .member-check-label input { margin: 0; accent-color: var(--accent); }
@@ -226,55 +452,57 @@
     margin: 14px 0;
   }
   .metric-card {
-    background: #f8fafc;
+    background: var(--panel-subtle);
     border: 1px solid var(--line);
     border-radius: 10px;
     padding: 10px 12px;
   }
   .metric-card label { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; }
-  .metric-card div { font-size: 17px; font-weight: 800; margin-top: 2px; }
+  .metric-card div { font-size: 17px; font-weight: 800; margin-top: 2px; color: var(--ink); }
   
   /* Diff notification banner */
   .diff-banner {
-    background: #ecfeff;
-    border: 1px solid #a5f3fc;
+    background: var(--diff-bg);
+    border: 1px solid var(--diff-border);
+    color: var(--diff-text);
     border-radius: 10px;
     padding: 12px;
     margin-bottom: 16px;
     font-size: 12px;
   }
-  .diff-banner h4 { margin: 0 0 6px; color: #0e7490; font-size: 13px; font-weight: 700; }
+  .diff-banner h4 { margin: 0 0 6px; color: var(--diff-text); font-size: 13px; font-weight: 700; }
   .diff-banner ul { margin: 0; padding-left: 18px; }
   
   /* Unassigned alerts */
   .alert-box {
-    background: #fef2f2;
-    border: 1px solid #fecaca;
+    background: var(--alert-bg);
+    border: 1px solid var(--alert-border);
     border-radius: 10px;
     padding: 12px;
     margin-bottom: 16px;
-    color: #991b1b;
+    color: var(--alert-text);
     font-size: 12px;
   }
-  .alert-box h4 { margin: 0 0 6px; font-size: 13px; font-weight: 700; }
+  .alert-box h4 { margin: 0 0 6px; font-size: 13px; font-weight: 700; color: var(--alert-text); }
   
   /* Member utilization bars */
   .member-bar-row { margin-bottom: 12px; }
-  .member-bar-meta { display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; margin-bottom: 4px; }
-  .bar-track { height: 9px; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
-  .bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #0f766e, #2563eb); }
+  .member-bar-meta { display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; margin-bottom: 4px; color: var(--ink); }
+  .bar-track { height: 9px; background: var(--bar-track); border-radius: 99px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 99px; background: var(--bar-fill); }
   
   /* Week Tabs */
   .tab-strip { display: flex; gap: 6px; margin: 16px 0 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
   .tab-btn {
     border: 1px solid var(--line);
-    background: #fff;
+    background: var(--btn-bg);
+    color: var(--muted);
     padding: 6px 12px;
     border-radius: 8px;
     font-size: 12px;
     font-weight: 600;
   }
-  .tab-btn.active { background: #0f172a; color: #fff; border-color: #0f172a; }
+  .tab-btn.active { background: var(--btn-dark-bg); color: var(--btn-dark-text); border-color: var(--btn-dark-bg); }
   
   /* Calendar schedule matrix */
   .calendar-grid {
@@ -284,7 +512,7 @@
     margin-top: 10px;
   }
   .cal-col {
-    background: #f8fafc;
+    background: var(--cal-col-bg);
     border: 1px solid var(--line);
     border-radius: 8px;
     padding: 6px;
@@ -294,21 +522,21 @@
     font-size: 11px;
     font-weight: 800;
     text-transform: uppercase;
-    color: #475569;
+    color: var(--muted);
     text-align: center;
     padding-bottom: 6px;
     border-bottom: 1px solid var(--line);
     margin-bottom: 6px;
   }
   .cal-task-card {
-    background: #fff;
-    border: 1px solid #cbd5e1;
+    background: var(--cal-card-bg);
+    border: 1px solid var(--cal-card-border);
     border-radius: 6px;
     padding: 5px 6px;
     margin-bottom: 5px;
     font-size: 11px;
   }
-  .cal-task-name { font-weight: 700; color: #0f172a; line-height: 1.2; margin-bottom: 2px; }
+  .cal-task-name { font-weight: 700; color: var(--ink); line-height: 1.2; margin-bottom: 2px; }
   .cal-task-owner { color: var(--accent); font-weight: 700; font-size: 10px; }
   .cal-task-time { color: var(--muted); font-size: 10px; }
   
@@ -316,6 +544,7 @@
   table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
   th, td { padding: 8px 6px; border-bottom: 1px solid var(--line); text-align: left; }
   th { font-size: 10px; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+  td { color: var(--ink); }
   
   @media (max-width: 1024px) {
     .grid { grid-template-columns: 1fr; }
@@ -325,6 +554,7 @@
     .calendar-grid { grid-template-columns: 1fr 1fr; }
     .metrics-strip { grid-template-columns: 1fr; }
     .form-row { grid-template-columns: 1fr; }
+    .actions { width: 100%; justify-content: flex-start; }
   }
 </style>
 </head>
@@ -341,11 +571,27 @@
       </div>
     </div>
     <div class="actions">
-      <button class="btn small" id="btnPresetFamily">Preset: Family</button>
-      <button class="btn small" id="btnPresetCouple">Preset: Couple</button>
-      <button class="btn small" id="btnPresetRoommates">Preset: Roommates</button>
-      <button class="btn small" id="btnRebalance" title="Re-optimize with minimum changes to settled tasks">Rebalance</button>
-      <button class="btn small primary" id="btnOptimize">Calculate Plan</button>
+      <!-- Theme Switcher (Light / Dark / System) -->
+      <div class="theme-switch" role="group" aria-label="Theme mode">
+        <button type="button" class="theme-btn" data-theme-choice="light" title="Light theme">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+          <span>Light</span>
+        </button>
+        <button type="button" class="theme-btn" data-theme-choice="dark" title="Dark theme">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <span>Dark</span>
+        </button>
+        <button type="button" class="theme-btn" data-theme-choice="system" title="Follow system theme">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          <span>System</span>
+        </button>
+      </div>
+      <span id="calcIndicator" style="font-size:12px; color:var(--good); font-weight:700; opacity:0; transition:opacity 0.25s ease;">✓ Calculated</span>
+      <button type="button" class="btn small" id="btnPresetFamily">Preset: Family</button>
+      <button type="button" class="btn small" id="btnPresetCouple">Preset: Couple</button>
+      <button type="button" class="btn small" id="btnPresetRoommates">Preset: Roommates</button>
+      <button type="button" class="btn small" id="btnRebalance" title="Re-optimize with minimum changes to settled tasks">Rebalance</button>
+      <button type="button" class="btn small primary" id="btnOptimize">Calculate Plan</button>
     </div>
   </header>
 
@@ -469,8 +715,8 @@
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
           <span style="font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase;">View Layout</span>
           <div style="display:flex; gap:6px;">
-            <button class="btn small" id="btnViewCalendar" style="background:#0f172a; color:#fff;">Calendar</button>
-            <button class="btn small" id="btnViewTable">Table</button>
+            <button type="button" class="btn small active-view" id="btnViewCalendar">Calendar</button>
+            <button type="button" class="btn small" id="btnViewTable">Table</button>
           </div>
         </div>
 
@@ -502,7 +748,7 @@
 
 <!-- Embedded Deterministic Optimizer Engine (Self-Contained Browser Runtime) -->
 <script type="module">
-import { runOptimization, rebalanceHousehold, DAYS_OF_WEEK, EFFORT_MULTIPLIERS } from './src/optimizer.bundle.js';
+import { runOptimization, rebalanceHousehold, DAYS_OF_WEEK, EFFORT_MULTIPLIERS } from './optimizer.bundle.js';
 
 // Pre-defined prototype state fixtures
 const PRESETS = {
@@ -561,7 +807,56 @@ let activeView = 'calendar'; // 'calendar' | 'table'
 // Helper: safe DOM query
 const $ = s => document.querySelector(s);
 
+const THEME_STORAGE_KEY = 'chorematrix_theme';
+
+function initTheme() {
+  const saved = localStorage.getItem(THEME_STORAGE_KEY) || 'system';
+  applyTheme(saved);
+
+  document.querySelectorAll('.theme-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      setTheme(btn.dataset.themeChoice);
+    });
+  });
+
+  try {
+    const mql = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSchemeChange = () => {
+      const current = localStorage.getItem(THEME_STORAGE_KEY) || 'system';
+      if (current === 'system') {
+        applyTheme('system');
+      }
+    };
+    if (mql.addEventListener) {
+      mql.addEventListener('change', handleSchemeChange);
+    } else if (mql.addListener) {
+      mql.addListener(handleSchemeChange);
+    }
+  } catch (e) {}
+}
+
+function applyTheme(choice) {
+  const isDark = choice === 'dark' || (choice === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme-setting', choice);
+
+  document.querySelectorAll('.theme-btn').forEach(btn => {
+    const active = btn.dataset.themeChoice === choice;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+}
+
+function setTheme(choice) {
+  try {
+    localStorage.setItem(THEME_STORAGE_KEY, choice);
+  } catch (e) {}
+  applyTheme(choice);
+}
+
 function init() {
+  initTheme();
   attachListeners();
   loadPreset('family');
 }
@@ -609,7 +904,7 @@ function renderMembers() {
           </div>
         </div>
         <div>
-          <label style="font-size:11px; font-weight:700; color:#475569; text-transform:uppercase;">Unavailable Days (Hard Limit)</label>
+          <label style="font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase;">Unavailable Days (Hard Limit)</label>
           <div class="day-checks">
             ${DAYS_OF_WEEK.map(d => `
               <label class="day-check-label">
@@ -666,7 +961,7 @@ function renderTasks() {
           </div>
         </div>
         <div>
-          <label style="font-size:11px; font-weight:700; color:#475569; text-transform:uppercase;">Eligible Members</label>
+          <label style="font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase;">Eligible Members</label>
           <div class="member-checks">
             ${members.map(m => `
               <label class="member-check-label">
@@ -681,23 +976,113 @@ function renderTasks() {
   }).join('');
 }
 
+function syncDOMToState() {
+  // 1. Household level settings
+  const modeEl = $('#selMode');
+  if (modeEl) currentRequest.household.mode = modeEl.value;
+  const weeksEl = $('#selWeeks');
+  if (weeksEl) currentRequest.household.planningHorizonWeeks = Number(weeksEl.value) || 1;
+
+  // 2. Members
+  const memberCards = document.querySelectorAll('#memberListContainer .item-card');
+  memberCards.forEach((card, i) => {
+    if (!currentRequest.members[i]) return;
+    const nameInput = card.querySelector('input[data-field="name"]');
+    if (nameInput) {
+      currentRequest.members[i].name = nameInput.value.trim() || `Person ${i + 1}`;
+    }
+
+    const roleSelect = card.querySelector('select[data-field="role"]');
+    if (roleSelect) {
+      currentRequest.members[i].role = roleSelect.value;
+    }
+
+    const capInput = card.querySelector('input[data-field="weeklyCapacityMinutes"]');
+    if (capInput) {
+      currentRequest.members[i].weeklyCapacityMinutes = Math.max(1, Number(capInput.value) || 1);
+    }
+
+    const unavChecks = card.querySelectorAll('input[data-unav-day]');
+    const unavDays = [];
+    unavChecks.forEach(chk => {
+      if (chk.checked && chk.dataset.unavDay) unavDays.push(chk.dataset.unavDay);
+    });
+    currentRequest.members[i].unavailableDays = unavDays;
+  });
+
+  // 3. Tasks
+  const taskCards = document.querySelectorAll('#taskListContainer .item-card');
+  taskCards.forEach((card, i) => {
+    if (!currentRequest.tasks[i]) return;
+    const nameInput = card.querySelector('input[data-field="name"]');
+    if (nameInput) {
+      currentRequest.tasks[i].name = nameInput.value.trim() || `Task ${i + 1}`;
+    }
+
+    const freqInput = card.querySelector('input[data-field="frequencyPerWeek"]');
+    if (freqInput) {
+      currentRequest.tasks[i].frequencyPerWeek = Math.max(1, Math.min(14, Number(freqInput.value) || 1));
+    }
+
+    const durInput = card.querySelector('input[data-field="durationMinutes"]');
+    if (durInput) {
+      currentRequest.tasks[i].durationMinutes = Math.max(1, Number(durInput.value) || 1);
+    }
+
+    const effortSelect = card.querySelector('select[data-field="effortLevel"]');
+    if (effortSelect) {
+      currentRequest.tasks[i].effortLevel = Number(effortSelect.value) || 1;
+    }
+
+    const fixedSelect = card.querySelector('select[data-field="fixedDay"]');
+    if (fixedSelect) {
+      currentRequest.tasks[i].fixedDays = fixedSelect.value ? [fixedSelect.value] : [];
+    }
+
+    const eligChecks = card.querySelectorAll('input[data-elig-member]');
+    const eligMembers = [];
+    eligChecks.forEach(chk => {
+      if (chk.checked && chk.dataset.eligMember) eligMembers.push(chk.dataset.eligMember);
+    });
+    currentRequest.tasks[i].eligibleMemberIds = eligMembers;
+  });
+}
+
+function flashCalculateStatus() {
+  const el = $('#calcIndicator');
+  if (el) {
+    el.style.opacity = '1';
+    clearTimeout(window._calcTimeout);
+    window._calcTimeout = setTimeout(() => {
+      el.style.opacity = '0';
+    }, 1500);
+  }
+}
+
 function executeOptimization() {
-  currentRequest.household.mode = $('#selMode').value;
-  currentRequest.household.planningHorizonWeeks = Number($('#selWeeks').value);
+  syncDOMToState();
   currentResult = runOptimization(currentRequest);
+  if (currentResult) {
+    activeWeek = Math.max(0, Math.min(activeWeek, currentResult.weeks - 1));
+  }
   renderResults();
+  flashCalculateStatus();
 }
 
 function executeRebalance() {
+  syncDOMToState();
   if (!currentResult || !currentResult.assignments.length) {
-    executeOptimization();
-    return;
+    currentResult = runOptimization(currentRequest);
+  } else {
+    currentResult = rebalanceHousehold(currentRequest, currentResult.assignments);
   }
-  currentRequest.household.mode = $('#selMode').value;
-  currentRequest.household.planningHorizonWeeks = Number($('#selWeeks').value);
-  currentResult = rebalanceHousehold(currentRequest, currentResult.assignments);
+  if (currentResult) {
+    activeWeek = Math.max(0, Math.min(activeWeek, currentResult.weeks - 1));
+  }
   renderResults();
+  flashCalculateStatus();
 }
+
 
 function renderResults() {
   if (!currentResult) return;
@@ -783,6 +1168,7 @@ function renderSchedule() {
       return `
         <div class="cal-col">
           <div class="cal-col-head">${d.toUpperCase()}</div>
+          ${dayTasks.length === 0 ? `<div style="text-align:center; padding:18px 4px; color:var(--muted); font-size:11px; font-style:italic;">No tasks</div>` : ''}
           ${dayTasks.map(a => `
             <div class="cal-task-card">
               <div class="cal-task-name">${escapeHtml(a.taskName)}</div>
@@ -799,7 +1185,7 @@ function renderSchedule() {
     $('#tableView').style.display = 'block';
 
     const tBody = $('#tableBodyContainer');
-    tBody.innerHTML = weekAssignments.map(a => `
+    tBody.innerHTML = weekAssignments.length ? weekAssignments.map(a => `
       <tr>
         <td><strong>${a.dayOfWeek.toUpperCase()}</strong></td>
         <td>${escapeHtml(a.taskName)} <span class="badge">${escapeHtml(a.category)}</span></td>
@@ -808,21 +1194,43 @@ function renderSchedule() {
         <td>Level ${a.effortLevel}</td>
         <td>${(a.reasonCodes || []).map(r => `<span class="badge" style="margin-right:2px;">${r.replace(/_/g, ' ')}</span>`).join('')}</td>
       </tr>
-    `).join('');
+    `).join('') : `
+      <tr>
+        <td colspan="6" style="text-align:center; padding:24px; color:var(--muted); font-style:italic;">No chore assignments for this week.</td>
+      </tr>
+    `;
   }
 }
 
 function attachListeners() {
-  $('#btnPresetFamily').addEventListener('click', () => loadPreset('family'));
-  $('#btnPresetCouple').addEventListener('click', () => loadPreset('couple'));
-  $('#btnPresetRoommates').addEventListener('click', () => loadPreset('roommates'));
-  $('#btnOptimize').addEventListener('click', executeOptimization);
-  $('#btnRebalance').addEventListener('click', executeRebalance);
+  $('#btnPresetFamily').addEventListener('click', (e) => { e.preventDefault(); loadPreset('family'); });
+  $('#btnPresetCouple').addEventListener('click', (e) => { e.preventDefault(); loadPreset('couple'); });
+  $('#btnPresetRoommates').addEventListener('click', (e) => { e.preventDefault(); loadPreset('roommates'); });
+  
+  const optBtn = $('#btnOptimize');
+  if (optBtn) {
+    optBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      executeOptimization();
+    });
+  }
 
-  $('#selMode').addEventListener('change', executeOptimization);
-  $('#selWeeks').addEventListener('change', executeOptimization);
+  const rebBtn = $('#btnRebalance');
+  if (rebBtn) {
+    rebBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      executeRebalance();
+    });
+  }
 
-  $('#btnAddMember').addEventListener('click', () => {
+  $('#selMode').addEventListener('change', () => executeOptimization());
+  $('#selWeeks').addEventListener('change', () => executeOptimization());
+
+  $('#btnAddMember').addEventListener('click', (e) => {
+    e.preventDefault();
+    syncDOMToState();
     const newId = `m_${Date.now()}`;
     currentRequest.members.push({
       id: newId,
@@ -839,7 +1247,9 @@ function attachListeners() {
     executeOptimization();
   });
 
-  $('#btnAddTask').addEventListener('click', () => {
+  $('#btnAddTask').addEventListener('click', (e) => {
+    e.preventDefault();
+    syncDOMToState();
     const newId = `t_${Date.now()}`;
     currentRequest.tasks.push({
       id: newId,
@@ -863,91 +1273,110 @@ function attachListeners() {
     }
   });
 
-  $('#btnViewCalendar').addEventListener('click', () => {
+  $('#btnViewCalendar').addEventListener('click', (e) => {
+    e.preventDefault();
     activeView = 'calendar';
-    $('#btnViewCalendar').style.background = '#0f172a';
-    $('#btnViewCalendar').style.color = '#fff';
-    $('#btnViewTable').style.background = '#fff';
-    $('#btnViewTable').style.color = 'var(--ink)';
+    $('#btnViewCalendar').classList.add('active-view');
+    $('#btnViewTable').classList.remove('active-view');
     renderSchedule();
   });
 
-  $('#btnViewTable').addEventListener('click', () => {
+  $('#btnViewTable').addEventListener('click', (e) => {
+    e.preventDefault();
     activeView = 'table';
-    $('#btnViewTable').style.background = '#0f172a';
-    $('#btnViewTable').style.color = '#fff';
-    $('#btnViewCalendar').style.background = '#fff';
-    $('#btnViewCalendar').style.color = 'var(--ink)';
+    $('#btnViewTable').classList.add('active-view');
+    $('#btnViewCalendar').classList.remove('active-view');
     renderSchedule();
   });
 
-  // Delegated events for member updates
+  // Delegated events for member updates to keep state synced as user types
   document.addEventListener('input', e => {
     const t = e.target;
     if (t.matches('[data-member-idx]')) {
       const idx = Number(t.dataset.memberIdx);
       const field = t.dataset.field;
-      currentRequest.members[idx][field] = field === 'weeklyCapacityMinutes' ? Number(t.value) || 1 : t.value;
-      if (field === 'weeklyCapacityMinutes') executeOptimization();
+      if (currentRequest.members[idx]) {
+        currentRequest.members[idx][field] = field === 'weeklyCapacityMinutes' ? Number(t.value) || 1 : t.value;
+      }
     }
     if (t.matches('[data-task-idx]')) {
       const idx = Number(t.dataset.taskIdx);
       const field = t.dataset.field;
-      if (['frequencyPerWeek', 'durationMinutes', 'effortLevel'].includes(field)) {
-        currentRequest.tasks[idx][field] = Number(t.value) || 1;
-      } else {
-        currentRequest.tasks[idx][field] = t.value;
+      if (currentRequest.tasks[idx]) {
+        if (['frequencyPerWeek', 'durationMinutes', 'effortLevel'].includes(field)) {
+          currentRequest.tasks[idx][field] = Number(t.value) || 1;
+        } else {
+          currentRequest.tasks[idx][field] = t.value;
+        }
       }
-      executeOptimization();
     }
   });
 
   document.addEventListener('change', e => {
     const t = e.target;
+    if (t.matches('[data-member-idx]')) {
+      const idx = Number(t.dataset.memberIdx);
+      const field = t.dataset.field;
+      if (currentRequest.members[idx]) {
+        currentRequest.members[idx][field] = field === 'weeklyCapacityMinutes' ? Number(t.value) || 1 : t.value;
+      }
+    }
+    if (t.matches('[data-task-idx]')) {
+      const idx = Number(t.dataset.taskIdx);
+      const field = t.dataset.field;
+      if (currentRequest.tasks[idx]) {
+        if (['frequencyPerWeek', 'durationMinutes', 'effortLevel'].includes(field)) {
+          currentRequest.tasks[idx][field] = Number(t.value) || 1;
+        } else if (field === 'fixedDay') {
+          currentRequest.tasks[idx].fixedDays = t.value ? [t.value] : [];
+        } else {
+          currentRequest.tasks[idx][field] = t.value;
+        }
+      }
+    }
     if (t.matches('[data-unav-day]')) {
       const idx = Number(t.dataset.memberIdx);
       const day = t.dataset.unavDay;
       const member = currentRequest.members[idx];
-      const set = new Set(member.unavailableDays || []);
-      if (t.checked) set.add(day); else set.delete(day);
-      member.unavailableDays = Array.from(set);
-      executeOptimization();
+      if (member) {
+        const set = new Set(member.unavailableDays || []);
+        if (t.checked) set.add(day); else set.delete(day);
+        member.unavailableDays = Array.from(set);
+      }
     }
     if (t.matches('[data-elig-member]')) {
       const idx = Number(t.dataset.taskIdx);
       const mId = t.dataset.eligMember;
       const task = currentRequest.tasks[idx];
-      const set = new Set(task.eligibleMemberIds || []);
-      if (t.checked) set.add(mId); else set.delete(mId);
-      task.eligibleMemberIds = Array.from(set);
-      executeOptimization();
-    }
-    if (t.matches('[data-field="fixedDay"]')) {
-      const idx = Number(t.dataset.taskIdx);
-      const day = t.value;
-      currentRequest.tasks[idx].fixedDays = day ? [day] : [];
-      executeOptimization();
-    }
-    if (t.matches('[data-field="name"]')) {
-      executeOptimization();
+      if (task) {
+        const set = new Set(task.eligibleMemberIds || []);
+        if (t.checked) set.add(mId); else set.delete(mId);
+        task.eligibleMemberIds = Array.from(set);
+      }
     }
   });
 
   document.addEventListener('click', e => {
     const delMember = e.target.closest('[data-del-member]');
     if (delMember) {
+      e.preventDefault();
+      syncDOMToState();
       const idx = Number(delMember.dataset.delMember);
-      const mId = currentRequest.members[idx].id;
-      currentRequest.members.splice(idx, 1);
-      currentRequest.tasks.forEach(task => {
-        task.eligibleMemberIds = task.eligibleMemberIds.filter(id => id !== mId);
-      });
-      renderInputs();
-      executeOptimization();
+      const mId = currentRequest.members[idx]?.id;
+      if (mId) {
+        currentRequest.members.splice(idx, 1);
+        currentRequest.tasks.forEach(task => {
+          task.eligibleMemberIds = task.eligibleMemberIds.filter(id => id !== mId);
+        });
+        renderInputs();
+        executeOptimization();
+      }
       return;
     }
     const delTask = e.target.closest('[data-del-task]');
     if (delTask) {
+      e.preventDefault();
+      syncDOMToState();
       const idx = Number(delTask.dataset.delTask);
       currentRequest.tasks.splice(idx, 1);
       renderInputs();
