@@ -1,0 +1,19 @@
+{
+  "name": "chorematrix",
+  "version": "0.1.0",
+  "description": "Deterministic household workload optimizer and prototype",
+  "type": "module",
+  "scripts": {
+    "build": "npx esbuild src/optimizer/index.ts --bundle --format=esm --outfile=src/optimizer.bundle.js",
+    "test": "node --experimental-strip-types --test tests/optimizer/engine.test.ts tests/optimizer/rebalance.test.ts"
+  },
+  "keywords": [
+    "optimizer",
+    "chores",
+    "workload",
+    "household",
+    "fairness"
+  ],
+  "author": "",
+  "license": "ISC"
+}

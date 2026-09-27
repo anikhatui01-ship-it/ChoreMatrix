@@ -1,0 +1,970 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ChoreMatrix — Household Workload Optimizer (Phase 0 Prototype)</title>
+<style>
+  :root {
+    --bg: #f8fafc;
+    --panel: #ffffff;
+    --ink: #0f172a;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --accent: #0f766e;
+    --accent-hover: #115e59;
+    --accent-soft: #f0fdfa;
+    --primary: #2563eb;
+    --good: #16a34a;
+    --warn: #d97706;
+    --bad: #dc2626;
+    --radius: 14px;
+    --shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.06);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.5;
+  }
+  button, input, select { font: inherit; }
+  button { cursor: pointer; }
+  .shell { max-width: 1360px; margin: 0 auto; padding: 24px 20px 80px; }
+  
+  /* Topbar */
+  .topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding-bottom: 18px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: center; gap: 12px; }
+  .brandmark {
+    width: 38px; height: 38px;
+    border-radius: 10px;
+    background: var(--accent);
+    color: #fff;
+    display: grid;
+    place-items: center;
+    font-weight: 800;
+    font-size: 16px;
+    letter-spacing: -0.02em;
+  }
+  .brand h1 { font-size: 18px; margin: 0; font-weight: 800; letter-spacing: -0.01em; }
+  .brand span { font-size: 12px; color: var(--muted); font-weight: 600; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  
+  .btn {
+    border: 1px solid var(--line);
+    background: #fff;
+    color: var(--ink);
+    padding: 8px 13px;
+    border-radius: 10px;
+    font-weight: 600;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+  }
+  .btn:hover { background: #f1f5f9; border-color: #cbd5e1; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { background: var(--accent-hover); }
+  .btn.dark { background: #0f172a; border-color: #0f172a; color: #fff; }
+  .btn.small { padding: 6px 10px; font-size: 12px; border-radius: 8px; }
+  
+  /* Main Grid */
+  .grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 24px; align-items: start; }
+  .stack { display: grid; gap: 20px; }
+  
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 20px;
+  }
+  .panel-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 14px;
+    gap: 12px;
+  }
+  .panel-head h2 { font-size: 16px; font-weight: 700; margin: 0; }
+  .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
+  
+  /* Presets & Controls */
+  .preset-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+  .preset-btn {
+    border: 1px solid var(--line);
+    background: #fff;
+    padding: 6px 11px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 12px;
+    color: #475569;
+  }
+  .preset-btn.active {
+    background: var(--accent-soft);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .field { display: flex; flex-direction: column; gap: 5px; }
+  .field label { font-size: 11px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.03em; }
+  .field input, .field select {
+    padding: 7px 10px;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    background: #fff;
+    color: var(--ink);
+    font-size: 13px;
+  }
+  .field input:focus, .field select:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(15, 118, 110, 0.12);
+  }
+  
+  /* Card Lists */
+  .card-list { display: grid; gap: 12px; }
+  .item-card {
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px;
+    background: #fafbfd;
+    display: grid;
+    gap: 10px;
+  }
+  .item-card:hover { border-color: #cbd5e1; }
+  .item-card-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+  .item-title { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; }
+  .badge {
+    display: inline-block;
+    padding: 2px 7px;
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    background: #e2e8f0;
+    color: #334155;
+  }
+  .badge.teal { background: #ccfbf1; color: #0f766e; }
+  .badge.amber { background: #fef3c7; color: #b45309; }
+  .badge.red { background: #fee2e2; color: #b91c1c; }
+  
+  .del-btn {
+    border: none;
+    background: transparent;
+    color: #94a3b8;
+    cursor: pointer;
+    padding: 4px;
+    font-size: 14px;
+    border-radius: 4px;
+  }
+  .del-btn:hover { color: var(--bad); background: #fee2e2; }
+  
+  /* Day checkboxes */
+  .day-checks { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+  .day-check-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    padding: 3px 6px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    background: #fff;
+    cursor: pointer;
+  }
+  .day-check-label input { margin: 0; accent-color: var(--accent); }
+  
+  /* Member eligibility tags */
+  .member-checks { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 4px; }
+  .member-check-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    background: #fff;
+    cursor: pointer;
+  }
+  .member-check-label input { margin: 0; accent-color: var(--accent); }
+  
+  /* Results Header & Summary */
+  .score-badge {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+    font-size: 28px;
+    font-weight: 800;
+    color: var(--accent);
+  }
+  .score-badge small { font-size: 12px; color: var(--muted); font-weight: 600; }
+  
+  .metrics-strip {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin: 14px 0;
+  }
+  .metric-card {
+    background: #f8fafc;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 10px 12px;
+  }
+  .metric-card label { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; }
+  .metric-card div { font-size: 17px; font-weight: 800; margin-top: 2px; }
+  
+  /* Diff notification banner */
+  .diff-banner {
+    background: #ecfeff;
+    border: 1px solid #a5f3fc;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 16px;
+    font-size: 12px;
+  }
+  .diff-banner h4 { margin: 0 0 6px; color: #0e7490; font-size: 13px; font-weight: 700; }
+  .diff-banner ul { margin: 0; padding-left: 18px; }
+  
+  /* Unassigned alerts */
+  .alert-box {
+    background: #fef2f2;
+    border: 1px solid #fecaca;
+    border-radius: 10px;
+    padding: 12px;
+    margin-bottom: 16px;
+    color: #991b1b;
+    font-size: 12px;
+  }
+  .alert-box h4 { margin: 0 0 6px; font-size: 13px; font-weight: 700; }
+  
+  /* Member utilization bars */
+  .member-bar-row { margin-bottom: 12px; }
+  .member-bar-meta { display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; margin-bottom: 4px; }
+  .bar-track { height: 9px; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg, #0f766e, #2563eb); }
+  
+  /* Week Tabs */
+  .tab-strip { display: flex; gap: 6px; margin: 16px 0 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+  .tab-btn {
+    border: 1px solid var(--line);
+    background: #fff;
+    padding: 6px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+  }
+  .tab-btn.active { background: #0f172a; color: #fff; border-color: #0f172a; }
+  
+  /* Calendar schedule matrix */
+  .calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .cal-col {
+    background: #f8fafc;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 6px;
+    min-height: 120px;
+  }
+  .cal-col-head {
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: #475569;
+    text-align: center;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 6px;
+  }
+  .cal-task-card {
+    background: #fff;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 5px 6px;
+    margin-bottom: 5px;
+    font-size: 11px;
+  }
+  .cal-task-name { font-weight: 700; color: #0f172a; line-height: 1.2; margin-bottom: 2px; }
+  .cal-task-owner { color: var(--accent); font-weight: 700; font-size: 10px; }
+  .cal-task-time { color: var(--muted); font-size: 10px; }
+  
+  /* Table View */
+  table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
+  th, td { padding: 8px 6px; border-bottom: 1px solid var(--line); text-align: left; }
+  th { font-size: 10px; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+  
+  @media (max-width: 1024px) {
+    .grid { grid-template-columns: 1fr; }
+    .calendar-grid { grid-template-columns: repeat(4, 1fr); }
+  }
+  @media (max-width: 640px) {
+    .calendar-grid { grid-template-columns: 1fr 1fr; }
+    .metrics-strip { grid-template-columns: 1fr; }
+    .form-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <!-- Top Navigation & Brand -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brandmark">CM</div>
+      <div>
+        <h1>ChoreMatrix</h1>
+        <span>Deterministic Household Optimizer · Phase 0 Prototype</span>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn small" id="btnPresetFamily">Preset: Family</button>
+      <button class="btn small" id="btnPresetCouple">Preset: Couple</button>
+      <button class="btn small" id="btnPresetRoommates">Preset: Roommates</button>
+      <button class="btn small" id="btnRebalance" title="Re-optimize with minimum changes to settled tasks">Rebalance</button>
+      <button class="btn small primary" id="btnOptimize">Calculate Plan</button>
+    </div>
+  </header>
+
+  <!-- Main 2-Column Work Area -->
+  <main class="grid">
+    <!-- LEFT COLUMN: INPUTS -->
+    <section class="stack">
+      <!-- Household & Optimizer Settings -->
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>1. Household & Objective Setup</h2>
+            <div class="sub">Choose how the deterministic solver distributes workload.</div>
+          </div>
+        </div>
+        
+        <div class="form-row">
+          <div class="field">
+            <label>Optimization Mode</label>
+            <select id="selMode">
+              <option value="capacity_aware" selected>Capacity-Aware (Proportional share)</option>
+              <option value="balanced">Equal Workload (Flatten minutes)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Planning Horizon</label>
+            <select id="selWeeks">
+              <option value="1">1 Week</option>
+              <option value="2">2 Weeks</option>
+              <option value="3">3 Weeks</option>
+              <option value="4" selected>4-Week Rotation</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Household Members -->
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>2. Household Members</h2>
+            <div class="sub">Specify realistic weekly household capacity & unavailable days.</div>
+          </div>
+          <button class="btn small" id="btnAddMember">+ Add Member</button>
+        </div>
+        <div class="card-list" id="memberListContainer"></div>
+      </div>
+
+      <!-- Tasks & Responsibilities -->
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>3. Household Work & Constraints</h2>
+            <div class="sub">Frequency, duration, effort level (1–5), fixed day, and eligibility.</div>
+          </div>
+          <button class="btn small" id="btnAddTask">+ Add Task</button>
+        </div>
+        <div class="card-list" id="taskListContainer"></div>
+      </div>
+    </section>
+
+    <!-- RIGHT COLUMN: RESULTS & DIAGNOSTICS -->
+    <section class="stack">
+      <!-- Summary & Diagnostics -->
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Optimizer Results & Diagnostics</h2>
+            <div class="sub">Evaluation metrics and fairness breakdown.</div>
+          </div>
+          <div class="score-badge" id="balanceScoreVal">
+            --<small>fairness index</small>
+          </div>
+        </div>
+
+        <!-- Rebalance Diff Notice -->
+        <div id="diffBannerContainer" class="diff-banner" style="display:none;"></div>
+
+        <!-- Unassigned Alerts -->
+        <div id="alertContainer" class="alert-box" style="display:none;"></div>
+
+        <!-- Metric Cards -->
+        <div class="metrics-strip">
+          <div class="metric-card">
+            <label>Total Capacity</label>
+            <div id="metricTotalCap">0 min</div>
+          </div>
+          <div class="metric-card">
+            <label>Total Work</label>
+            <div id="metricTotalWork">0 min</div>
+          </div>
+          <div class="metric-card">
+            <label>Weighted Load</label>
+            <div id="metricWeightedWork">0 pts</div>
+          </div>
+        </div>
+
+        <!-- Member Utilization Bars -->
+        <h3 style="font-size:13px; font-weight:700; margin:16px 0 8px;">Member Capacity Utilization</h3>
+        <div id="memberBarsContainer"></div>
+      </div>
+
+      <!-- Calendar Schedule & Assignments -->
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Weekly Schedule & Assignments</h2>
+            <div class="sub">Calendar day slotting, effort weights, and explainability tags.</div>
+          </div>
+        </div>
+
+        <!-- Week Selection Tabs -->
+        <div class="tab-strip" id="weekTabsContainer">
+          <button class="tab-btn active" data-week="0">Week 1</button>
+          <button class="tab-btn" data-week="1">Week 2</button>
+          <button class="tab-btn" data-week="2">Week 3</button>
+          <button class="tab-btn" data-week="3">Week 4</button>
+        </div>
+
+        <!-- Schedule View Toggle -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+          <span style="font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase;">View Layout</span>
+          <div style="display:flex; gap:6px;">
+            <button class="btn small" id="btnViewCalendar" style="background:#0f172a; color:#fff;">Calendar</button>
+            <button class="btn small" id="btnViewTable">Table</button>
+          </div>
+        </div>
+
+        <!-- Calendar Matrix Container -->
+        <div id="calendarView">
+          <div class="calendar-grid" id="calendarGridContainer"></div>
+        </div>
+
+        <!-- Table View Container -->
+        <div id="tableView" style="display:none;">
+          <table>
+            <thead>
+              <tr>
+                <th>Day</th>
+                <th>Task</th>
+                <th>Owner</th>
+                <th>Duration</th>
+                <th>Effort</th>
+                <th>Reason</th>
+              </tr>
+            </thead>
+            <tbody id="tableBodyContainer"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- Embedded Deterministic Optimizer Engine (Self-Contained Browser Runtime) -->
+<script type="module">
+import { runOptimization, rebalanceHousehold, DAYS_OF_WEEK, EFFORT_MULTIPLIERS } from './src/optimizer.bundle.js';
+
+// Pre-defined prototype state fixtures
+const PRESETS = {
+  family: {
+    household: { id: 'h_fam', name: 'Family Home', type: 'family', mode: 'capacity_aware', planningHorizonWeeks: 4 },
+    members: [
+      { id: 'm1', name: 'Maya', role: 'Adult', weeklyCapacityMinutes: 300, unavailableDays: [], preferredTaskIds: ['t_cook'], avoidedTaskIds: [] },
+      { id: 'm2', name: 'Arjun', role: 'Adult', weeklyCapacityMinutes: 240, unavailableDays: ['thu'], preferredTaskIds: [], avoidedTaskIds: ['t_dishes'] },
+      { id: 'm3', name: 'Riya', role: 'Teen', weeklyCapacityMinutes: 120, unavailableDays: [], preferredTaskIds: ['t_vacuum'], avoidedTaskIds: [] },
+      { id: 'm4', name: 'Kabir', role: 'Child', weeklyCapacityMinutes: 60, unavailableDays: [], preferredTaskIds: [], avoidedTaskIds: [] }
+    ],
+    tasks: [
+      { id: 't_cook', name: 'Dinner Cooking', category: 'Food', frequencyPerWeek: 7, durationMinutes: 30, effortLevel: 3, eligibleMemberIds: ['m1', 'm2'] },
+      { id: 't_dishes', name: 'Kitchen Reset & Dishes', category: 'Kitchen', frequencyPerWeek: 7, durationMinutes: 15, effortLevel: 2, eligibleMemberIds: ['m1', 'm2', 'm3'] },
+      { id: 't_trash', name: 'Trash & Recycling', category: 'Errands', frequencyPerWeek: 3, durationMinutes: 10, effortLevel: 1, eligibleMemberIds: ['m1', 'm2', 'm3', 'm4'] },
+      { id: 't_bath', name: 'Bathroom Deep Clean', category: 'Cleaning', frequencyPerWeek: 1, durationMinutes: 45, effortLevel: 5, eligibleMemberIds: ['m1', 'm2'], fixedDays: ['sat'] },
+      { id: 't_vacuum', name: 'Vacuum Floors', category: 'Cleaning', frequencyPerWeek: 2, durationMinutes: 30, effortLevel: 2, eligibleMemberIds: ['m1', 'm2', 'm3'] },
+      { id: 't_groceries', name: 'Grocery Run', category: 'Errands', frequencyPerWeek: 1, durationMinutes: 60, effortLevel: 3, eligibleMemberIds: ['m1', 'm2'], fixedDays: ['sun'] }
+    ]
+  },
+  couple: {
+    household: { id: 'h_cpl', name: 'Couple Apartment', type: 'couple', mode: 'capacity_aware', planningHorizonWeeks: 4 },
+    members: [
+      { id: 'm1', name: 'Alex', role: 'Adult', weeklyCapacityMinutes: 240, unavailableDays: ['wed'], preferredTaskIds: ['t_cook'], avoidedTaskIds: ['t_bath'] },
+      { id: 'm2', name: 'Sam', role: 'Adult', weeklyCapacityMinutes: 240, unavailableDays: [], preferredTaskIds: ['t_dishes'], avoidedTaskIds: [] }
+    ],
+    tasks: [
+      { id: 't_cook', name: 'Dinner Cooking', category: 'Food', frequencyPerWeek: 7, durationMinutes: 30, effortLevel: 3, eligibleMemberIds: ['m1', 'm2'] },
+      { id: 't_dishes', name: 'Kitchen Reset', category: 'Kitchen', frequencyPerWeek: 7, durationMinutes: 15, effortLevel: 2, eligibleMemberIds: ['m1', 'm2'] },
+      { id: 't_bath', name: 'Bathroom Clean', category: 'Cleaning', frequencyPerWeek: 1, durationMinutes: 45, effortLevel: 4, eligibleMemberIds: ['m1', 'm2'] },
+      { id: 't_laundry', name: 'Laundry', category: 'Laundry', frequencyPerWeek: 2, durationMinutes: 35, effortLevel: 3, eligibleMemberIds: ['m1', 'm2'] },
+      { id: 't_groceries', name: 'Groceries', category: 'Errands', frequencyPerWeek: 1, durationMinutes: 60, effortLevel: 3, eligibleMemberIds: ['m1', 'm2'] }
+    ]
+  },
+  roommates: {
+    household: { id: 'h_rm', name: 'Shared House', type: 'roommates', mode: 'balanced', planningHorizonWeeks: 4 },
+    members: [
+      { id: 'm1', name: 'Ari', role: 'Roommate', weeklyCapacityMinutes: 180, unavailableDays: [], preferredTaskIds: [], avoidedTaskIds: [] },
+      { id: 'm2', name: 'Noah', role: 'Roommate', weeklyCapacityMinutes: 180, unavailableDays: [], preferredTaskIds: [], avoidedTaskIds: [] },
+      { id: 'm3', name: 'Jo', role: 'Roommate', weeklyCapacityMinutes: 180, unavailableDays: ['fri', 'sat'], preferredTaskIds: [], avoidedTaskIds: [] }
+    ],
+    tasks: [
+      { id: 't_kitchen', name: 'Kitchen Common Reset', category: 'Kitchen', frequencyPerWeek: 7, durationMinutes: 15, effortLevel: 2, eligibleMemberIds: ['m1', 'm2', 'm3'] },
+      { id: 't_bath', name: 'Bathroom Clean', category: 'Cleaning', frequencyPerWeek: 1, durationMinutes: 45, effortLevel: 4, eligibleMemberIds: ['m1', 'm2', 'm3'] },
+      { id: 't_trash', name: 'Trash & Recycling', category: 'Errands', frequencyPerWeek: 3, durationMinutes: 10, effortLevel: 1, eligibleMemberIds: ['m1', 'm2', 'm3'] },
+      { id: 't_supplies', name: 'Restock Essentials', category: 'Errands', frequencyPerWeek: 1, durationMinutes: 30, effortLevel: 2, eligibleMemberIds: ['m1', 'm2', 'm3'] }
+    ]
+  }
+};
+
+let currentRequest = JSON.parse(JSON.stringify(PRESETS.family));
+let currentResult = null;
+let activeWeek = 0;
+let activeView = 'calendar'; // 'calendar' | 'table'
+
+// Helper: safe DOM query
+const $ = s => document.querySelector(s);
+
+function init() {
+  attachListeners();
+  loadPreset('family');
+}
+
+function loadPreset(key) {
+  currentRequest = JSON.parse(JSON.stringify(PRESETS[key]));
+  $('#selMode').value = currentRequest.household.mode;
+  $('#selWeeks').value = currentRequest.household.planningHorizonWeeks;
+  renderInputs();
+  executeOptimization();
+}
+
+function renderInputs() {
+  renderMembers();
+  renderTasks();
+}
+
+function renderMembers() {
+  const container = $('#memberListContainer');
+  container.innerHTML = currentRequest.members.map((m, i) => {
+    const unavSet = new Set(m.unavailableDays || []);
+    return `
+      <div class="item-card">
+        <div class="item-card-head">
+          <div class="item-title">
+            <input style="font-weight:700; width:120px; padding:3px 6px;" value="${escapeHtml(m.name)}" data-member-idx="${i}" data-field="name">
+            <span class="badge teal">${escapeHtml(m.role)}</span>
+          </div>
+          ${currentRequest.members.length > 1 ? `<button class="del-btn" data-del-member="${i}" title="Remove member">✕</button>` : ''}
+        </div>
+        <div class="form-row">
+          <div class="field">
+            <label>Role</label>
+            <select data-member-idx="${i}" data-field="role">
+              <option ${m.role === 'Adult' ? 'selected' : ''}>Adult</option>
+              <option ${m.role === 'Teen' ? 'selected' : ''}>Teen</option>
+              <option ${m.role === 'Child' ? 'selected' : ''}>Child</option>
+              <option ${m.role === 'Roommate' ? 'selected' : ''}>Roommate</option>
+              <option ${m.role === 'Older adult' ? 'selected' : ''}>Older adult</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Weekly Capacity (Minutes)</label>
+            <input type="number" min="15" step="15" value="${m.weeklyCapacityMinutes}" data-member-idx="${i}" data-field="weeklyCapacityMinutes">
+          </div>
+        </div>
+        <div>
+          <label style="font-size:11px; font-weight:700; color:#475569; text-transform:uppercase;">Unavailable Days (Hard Limit)</label>
+          <div class="day-checks">
+            ${DAYS_OF_WEEK.map(d => `
+              <label class="day-check-label">
+                <input type="checkbox" data-member-idx="${i}" data-unav-day="${d}" ${unavSet.has(d) ? 'checked' : ''}>
+                ${d.toUpperCase()}
+              </label>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function renderTasks() {
+  const container = $('#taskListContainer');
+  const members = currentRequest.members;
+  container.innerHTML = currentRequest.tasks.map((t, i) => {
+    const eligSet = new Set(t.eligibleMemberIds || []);
+    return `
+      <div class="item-card">
+        <div class="item-card-head">
+          <div class="item-title">
+            <input style="font-weight:700; width:150px; padding:3px 6px;" value="${escapeHtml(t.name)}" data-task-idx="${i}" data-field="name">
+            <span class="badge">${escapeHtml(t.category)}</span>
+          </div>
+          ${currentRequest.tasks.length > 1 ? `<button class="del-btn" data-del-task="${i}" title="Remove task">✕</button>` : ''}
+        </div>
+        <div class="form-row" style="grid-template-columns: repeat(4, 1fr);">
+          <div class="field">
+            <label>Times/Wk</label>
+            <input type="number" min="1" max="14" value="${t.frequencyPerWeek}" data-task-idx="${i}" data-field="frequencyPerWeek">
+          </div>
+          <div class="field">
+            <label>Minutes</label>
+            <input type="number" min="5" step="5" value="${t.durationMinutes}" data-task-idx="${i}" data-field="durationMinutes">
+          </div>
+          <div class="field">
+            <label>Effort (1-5)</label>
+            <select data-task-idx="${i}" data-field="effortLevel">
+              <option value="1" ${t.effortLevel === 1 ? 'selected' : ''}>1 (Light)</option>
+              <option value="2" ${t.effortLevel === 2 ? 'selected' : ''}>2 (Moderate)</option>
+              <option value="3" ${t.effortLevel === 3 ? 'selected' : ''}>3 (Demanding)</option>
+              <option value="4" ${t.effortLevel === 4 ? 'selected' : ''}>4 (Heavy)</option>
+              <option value="5" ${t.effortLevel === 5 ? 'selected' : ''}>5 (Grueling)</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>Fixed Day</label>
+            <select data-task-idx="${i}" data-field="fixedDay">
+              <option value="">Flexible</option>
+              ${DAYS_OF_WEEK.map(d => `<option value="${d}" ${(t.fixedDays && t.fixedDays[0] === d) ? 'selected' : ''}>${d.toUpperCase()}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div>
+          <label style="font-size:11px; font-weight:700; color:#475569; text-transform:uppercase;">Eligible Members</label>
+          <div class="member-checks">
+            ${members.map(m => `
+              <label class="member-check-label">
+                <input type="checkbox" data-task-idx="${i}" data-elig-member="${m.id}" ${eligSet.has(m.id) ? 'checked' : ''}>
+                ${escapeHtml(m.name)}
+              </label>
+            `).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function executeOptimization() {
+  currentRequest.household.mode = $('#selMode').value;
+  currentRequest.household.planningHorizonWeeks = Number($('#selWeeks').value);
+  currentResult = runOptimization(currentRequest);
+  renderResults();
+}
+
+function executeRebalance() {
+  if (!currentResult || !currentResult.assignments.length) {
+    executeOptimization();
+    return;
+  }
+  currentRequest.household.mode = $('#selMode').value;
+  currentRequest.household.planningHorizonWeeks = Number($('#selWeeks').value);
+  currentResult = rebalanceHousehold(currentRequest, currentResult.assignments);
+  renderResults();
+}
+
+function renderResults() {
+  if (!currentResult) return;
+  const diag = currentResult.diagnostics;
+
+  // Balance Score
+  $('#balanceScoreVal').innerHTML = `${diag.balanceScore}%<small>fairness index</small>`;
+
+  // Metrics
+  $('#metricTotalCap').textContent = `${diag.totalHouseholdCapacityMinutes} min`;
+  $('#metricTotalWork').textContent = `${diag.totalHouseholdWorkMinutes} min`;
+  $('#metricWeightedWork').textContent = `${Math.round(diag.totalHouseholdWeightedWork)} pts`;
+
+  // Diff Banner
+  const diffBox = $('#diffBannerContainer');
+  if (currentResult.diffSummary && currentResult.diffSummary.length) {
+    diffBox.style.display = 'block';
+    diffBox.innerHTML = `
+      <h4>What Changed (Differential Rebalance)</h4>
+      <ul>
+        ${currentResult.diffSummary.map(s => `<li>${escapeHtml(s)}</li>`).join('')}
+      </ul>
+    `;
+  } else {
+    diffBox.style.display = 'none';
+  }
+
+  // Unassigned Alert Box
+  const alertBox = $('#alertContainer');
+  if (currentResult.unassignedTasks.length) {
+    alertBox.style.display = 'block';
+    alertBox.innerHTML = `
+      <h4>⚠️ ${currentResult.unassignedTasks.length} Task Occurrence(s) Could Not Be Assigned</h4>
+      <ul style="margin:0; padding-left:18px;">
+        ${currentResult.unassignedTasks.map(u => `
+          <li><strong>${escapeHtml(u.taskName)}</strong> (${u.diagnosticCode}): ${escapeHtml(u.remediation)}</li>
+        `).join('')}
+      </ul>
+    `;
+  } else {
+    alertBox.style.display = 'none';
+  }
+
+  // Member Utilization Progress Bars
+  const barsContainer = $('#memberBarsContainer');
+  barsContainer.innerHTML = currentResult.memberSummaries.map(m => {
+    const pct = Math.round(m.utilizationRatio * 100);
+    const barWidth = Math.min(100, Math.max(2, pct));
+    return `
+      <div class="member-bar-row">
+        <div class="member-bar-meta">
+          <span>${escapeHtml(m.memberName)} (${m.role})</span>
+          <span>${m.assignedMinutes} min · ${pct}% capacity</span>
+        </div>
+        <div class="bar-track">
+          <div class="bar-fill" style="width: ${barWidth}%;"></div>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  // Update tabs
+  const tabStrip = $('#weekTabsContainer');
+  const horizon = currentResult.weeks;
+  tabStrip.innerHTML = Array.from({ length: horizon }).map((_, w) => `
+    <button class="tab-btn ${w === activeWeek ? 'active' : ''}" data-week="${w}">Week ${w + 1}</button>
+  `).join('');
+
+  renderSchedule();
+}
+
+function renderSchedule() {
+  if (!currentResult) return;
+  const weekAssignments = currentResult.assignments.filter(a => a.weekIndex === activeWeek);
+
+  if (activeView === 'calendar') {
+    $('#calendarView').style.display = 'block';
+    $('#tableView').style.display = 'none';
+
+    const calGrid = $('#calendarGridContainer');
+    calGrid.innerHTML = DAYS_OF_WEEK.map(d => {
+      const dayTasks = weekAssignments.filter(a => a.dayOfWeek === d);
+      return `
+        <div class="cal-col">
+          <div class="cal-col-head">${d.toUpperCase()}</div>
+          ${dayTasks.map(a => `
+            <div class="cal-task-card">
+              <div class="cal-task-name">${escapeHtml(a.taskName)}</div>
+              <div class="cal-task-owner">👤 ${escapeHtml(a.memberName)}</div>
+              <div class="cal-task-time">⏱️ ${a.durationMinutes}m (E${a.effortLevel})</div>
+              ${a.reasonCodes && a.reasonCodes.length ? `<span class="badge" style="font-size:9px; padding:1px 4px; margin-top:3px;">${a.reasonCodes[0].replace(/_/g, ' ')}</span>` : ''}
+            </div>
+          `).join('')}
+        </div>
+      `;
+    }).join('');
+  } else {
+    $('#calendarView').style.display = 'none';
+    $('#tableView').style.display = 'block';
+
+    const tBody = $('#tableBodyContainer');
+    tBody.innerHTML = weekAssignments.map(a => `
+      <tr>
+        <td><strong>${a.dayOfWeek.toUpperCase()}</strong></td>
+        <td>${escapeHtml(a.taskName)} <span class="badge">${escapeHtml(a.category)}</span></td>
+        <td style="font-weight:700; color:var(--accent);">${escapeHtml(a.memberName)}</td>
+        <td>${a.durationMinutes} min</td>
+        <td>Level ${a.effortLevel}</td>
+        <td>${(a.reasonCodes || []).map(r => `<span class="badge" style="margin-right:2px;">${r.replace(/_/g, ' ')}</span>`).join('')}</td>
+      </tr>
+    `).join('');
+  }
+}
+
+function attachListeners() {
+  $('#btnPresetFamily').addEventListener('click', () => loadPreset('family'));
+  $('#btnPresetCouple').addEventListener('click', () => loadPreset('couple'));
+  $('#btnPresetRoommates').addEventListener('click', () => loadPreset('roommates'));
+  $('#btnOptimize').addEventListener('click', executeOptimization);
+  $('#btnRebalance').addEventListener('click', executeRebalance);
+
+  $('#selMode').addEventListener('change', executeOptimization);
+  $('#selWeeks').addEventListener('change', executeOptimization);
+
+  $('#btnAddMember').addEventListener('click', () => {
+    const newId = `m_${Date.now()}`;
+    currentRequest.members.push({
+      id: newId,
+      name: `Person ${currentRequest.members.length + 1}`,
+      role: 'Adult',
+      weeklyCapacityMinutes: 180,
+      unavailableDays: [],
+      preferredTaskIds: [],
+      avoidedTaskIds: []
+    });
+    // Add to all tasks
+    currentRequest.tasks.forEach(t => t.eligibleMemberIds.push(newId));
+    renderInputs();
+    executeOptimization();
+  });
+
+  $('#btnAddTask').addEventListener('click', () => {
+    const newId = `t_${Date.now()}`;
+    currentRequest.tasks.push({
+      id: newId,
+      name: 'New Household Chore',
+      category: 'General',
+      frequencyPerWeek: 1,
+      durationMinutes: 30,
+      effortLevel: 2,
+      eligibleMemberIds: currentRequest.members.map(m => m.id)
+    });
+    renderInputs();
+    executeOptimization();
+  });
+
+  $('#weekTabsContainer').addEventListener('click', e => {
+    const btn = e.target.closest('[data-week]');
+    if (btn) {
+      activeWeek = Number(btn.dataset.week);
+      document.querySelectorAll('#weekTabsContainer .tab-btn').forEach(b => b.classList.toggle('active', b === btn));
+      renderSchedule();
+    }
+  });
+
+  $('#btnViewCalendar').addEventListener('click', () => {
+    activeView = 'calendar';
+    $('#btnViewCalendar').style.background = '#0f172a';
+    $('#btnViewCalendar').style.color = '#fff';
+    $('#btnViewTable').style.background = '#fff';
+    $('#btnViewTable').style.color = 'var(--ink)';
+    renderSchedule();
+  });
+
+  $('#btnViewTable').addEventListener('click', () => {
+    activeView = 'table';
+    $('#btnViewTable').style.background = '#0f172a';
+    $('#btnViewTable').style.color = '#fff';
+    $('#btnViewCalendar').style.background = '#fff';
+    $('#btnViewCalendar').style.color = 'var(--ink)';
+    renderSchedule();
+  });
+
+  // Delegated events for member updates
+  document.addEventListener('input', e => {
+    const t = e.target;
+    if (t.matches('[data-member-idx]')) {
+      const idx = Number(t.dataset.memberIdx);
+      const field = t.dataset.field;
+      currentRequest.members[idx][field] = field === 'weeklyCapacityMinutes' ? Number(t.value) || 1 : t.value;
+      if (field === 'weeklyCapacityMinutes') executeOptimization();
+    }
+    if (t.matches('[data-task-idx]')) {
+      const idx = Number(t.dataset.taskIdx);
+      const field = t.dataset.field;
+      if (['frequencyPerWeek', 'durationMinutes', 'effortLevel'].includes(field)) {
+        currentRequest.tasks[idx][field] = Number(t.value) || 1;
+      } else {
+        currentRequest.tasks[idx][field] = t.value;
+      }
+      executeOptimization();
+    }
+  });
+
+  document.addEventListener('change', e => {
+    const t = e.target;
+    if (t.matches('[data-unav-day]')) {
+      const idx = Number(t.dataset.memberIdx);
+      const day = t.dataset.unavDay;
+      const member = currentRequest.members[idx];
+      const set = new Set(member.unavailableDays || []);
+      if (t.checked) set.add(day); else set.delete(day);
+      member.unavailableDays = Array.from(set);
+      executeOptimization();
+    }
+    if (t.matches('[data-elig-member]')) {
+      const idx = Number(t.dataset.taskIdx);
+      const mId = t.dataset.eligMember;
+      const task = currentRequest.tasks[idx];
+      const set = new Set(task.eligibleMemberIds || []);
+      if (t.checked) set.add(mId); else set.delete(mId);
+      task.eligibleMemberIds = Array.from(set);
+      executeOptimization();
+    }
+    if (t.matches('[data-field="fixedDay"]')) {
+      const idx = Number(t.dataset.taskIdx);
+      const day = t.value;
+      currentRequest.tasks[idx].fixedDays = day ? [day] : [];
+      executeOptimization();
+    }
+    if (t.matches('[data-field="name"]')) {
+      executeOptimization();
+    }
+  });
+
+  document.addEventListener('click', e => {
+    const delMember = e.target.closest('[data-del-member]');
+    if (delMember) {
+      const idx = Number(delMember.dataset.delMember);
+      const mId = currentRequest.members[idx].id;
+      currentRequest.members.splice(idx, 1);
+      currentRequest.tasks.forEach(task => {
+        task.eligibleMemberIds = task.eligibleMemberIds.filter(id => id !== mId);
+      });
+      renderInputs();
+      executeOptimization();
+      return;
+    }
+    const delTask = e.target.closest('[data-del-task]');
+    if (delTask) {
+      const idx = Number(delTask.dataset.delTask);
+      currentRequest.tasks.splice(idx, 1);
+      renderInputs();
+      executeOptimization();
+      return;
+    }
+  });
+}
+
+function escapeHtml(v = '') {
+  return String(v).replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+
+// Start prototype
+init();
+</script>
+</body>
+</html>
