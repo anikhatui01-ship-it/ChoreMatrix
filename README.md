@@ -317,3 +317,11 @@ Minimum targets:
 The intended feeling is:
 
 > **Calm input → serious calculation → clear answer.**
+
+## Deployment Checkpoint
+Phase 0 production build prepared for Vercel deployment.
+
+
+## Deployment Checkpoint
+Phase 0 production build prepared for Vercel deployment.
+
