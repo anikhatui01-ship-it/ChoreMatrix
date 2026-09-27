@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Data Rights & Export — ChoreMatrix</title>
+<meta name="description" content="Exercise your personal data rights on ChoreMatrix. Immediate JSON export, household deletion, and correction mechanisms." />
+<script>
+  (function() {
+    try {
+      var s = localStorage.getItem('chorematrix_theme') || 'system';
+      var d = s === 'dark' || (s === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.setAttribute('data-theme', d ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme-setting', s);
+    } catch(e){}
+  })();
+</script>
+<link rel="stylesheet" href="/src/styles/common.css" />
+</head>
+<body>
+
+<div id="globalNavbar"></div>
+
+<main class="main-content">
+  <div class="shell" style="max-width:800px;">
+    <div style="margin-bottom:28px;">
+      <span class="badge teal" style="margin-bottom:8px;">User Control</span>
+      <h1 style="font-size:32px; font-weight:800; margin:0 0 8px; color:var(--ink);">Data Rights & Export</h1>
+      <div style="font-size:13px; color:var(--muted);">
+        Understand and exercise your data access, portability, and deletion rights.
+      </div>
+    </div>
+
+    <div class="panel" style="display:grid; gap:24px; line-height:1.6; font-size:14px;">
+      <section>
+        <h2 style="font-size:18px; margin:0 0 8px; color:var(--ink);">1. Summary of Your Rights</h2>
+        <p style="margin:0 0 12px; color:var(--muted);">
+          Depending on your location and applicable law, you may have rights regarding your personal information:
+        </p>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:14px;">
+          <div style="padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--panel-subtle);">
+            <strong>Right to Access & Portability</strong>
+            <p style="margin:4px 0 0; font-size:12px; color:var(--muted);">Download a complete copy of your household configurations, members, tasks, and plans in standardized JSON format.</p>
+          </div>
+          <div style="padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--panel-subtle);">
+            <strong>Right to Rectification</strong>
+            <p style="margin:4px 0 0; font-size:12px; color:var(--muted);">Modify or correct any household member details, available hours, or chore parameters directly inside the optimizer.</p>
+          </div>
+          <div style="padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--panel-subtle);">
+            <strong>Right to Erasure (Deletion)</strong>
+            <p style="margin:4px 0 0; font-size:12px; color:var(--muted);">Permanently delete all your household records, members, plans, and account credentials with immediate effect.</p>
+          </div>
+          <div style="padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--panel-subtle);">
+            <strong>Right to Withdraw Consent</strong>
+            <p style="margin:4px 0 0; font-size:12px; color:var(--muted);">Revoke consent for optional preference storage at any time via cookie preferences.</p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 style="font-size:18px; margin:0 0 8px; color:var(--ink);">2. Direct Data Portability Export</h2>
+        <p style="margin:0 0 14px; color:var(--muted);">
+          If you are signed in, you can download a complete structured JSON archive of all your saved household data right now.
+        </p>
+        <div id="exportActionContainer">
+          <button type="button" class="btn primary" id="btnDownloadExport">Export My Data (JSON)</button>
+          <div id="exportStatus" style="font-size:12px; margin-top:8px; color:var(--muted);"></div>
+        </div>
+      </section>
+
+      <section>
+        <h2 style="font-size:18px; margin:0 0 8px; color:var(--ink);">3. How to Request Assistance</h2>
+        <p style="margin:0; color:var(--muted);">
+          If you cannot access your account or need manual verification, please contact our support team at <a href="mailto:support@chorematrix.com">support@chorematrix.com</a>. We respond to valid data subject requests within 30 days without charge.
+        </p>
+      </section>
+    </div>
+  </div>
+</main>
+
+<div id="globalFooter"></div>
+
+<script type="module">
+import { authService, persistenceAdapter, renderNavbar, renderFooter, initCookieBanner } from './src/client.bundle.js';
+
+renderNavbar('data-rights');
+renderFooter();
+initCookieBanner();
+
+const btn = document.getElementById('btnDownloadExport');
+const status = document.getElementById('exportStatus');
+
+btn?.addEventListener('click', async () => {
+  if (status) status.textContent = 'Checking session...';
+  const user = await authService.getUser();
+  if (!user) {
+    if (status) status.innerHTML = 'You must be <a href="/login.html?redirect=/data-rights.html">logged in</a> to export cloud data.';
+    return;
+  }
+
+  try {
+    if (status) status.textContent = 'Generating data export archive...';
+    const data = await persistenceAdapter.exportUserData(user.id);
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `chorematrix-export-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    if (status) status.textContent = '✓ Data export downloaded successfully.';
+  } catch (err) {
+    if (status) status.textContent = `Export failed: ${err.message || 'Unknown error'}`;
+  }
+});
+</script>
+</body>
+</html>

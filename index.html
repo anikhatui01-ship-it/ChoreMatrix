@@ -3,7 +3,8 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>ChoreMatrix — Household Workload Optimizer (Phase 0 Prototype)</title>
+<title>ChoreMatrix — Household Workload Optimizer</title>
+<meta name="description" content="Stop arguing over who does what. ChoreMatrix calculates balanced, workable household chore allocations based on capacity, schedules, and effort." />
 <script>
   (function() {
     try {
@@ -14,6 +15,7 @@
     } catch (e) {}
   })();
 </script>
+<link rel="stylesheet" href="/src/styles/common.css" />
 <style>
   :root, html[data-theme="light"] {
     --bg: #f8fafc;
@@ -183,17 +185,9 @@
     }
   }
 
-  * { box-sizing: border-box; }
-  body {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-    background: var(--bg);
+  select option, .field select option {
+    background: var(--panel);
     color: var(--ink);
-    line-height: 1.5;
-  }
-
-  body, .panel, .item-card, .btn, .field input, .field select, .cal-col, .cal-task-card, .metric-card, .tab-btn, .theme-switch, .theme-btn {
-    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -203,150 +197,9 @@
     }
   }
 
-  button, input, select { font: inherit; }
-  button { cursor: pointer; }
-  .shell { max-width: 1360px; margin: 0 auto; padding: 24px 20px 80px; }
-  
-  /* Topbar */
-  .topbar {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 16px;
-    padding-bottom: 18px;
-    border-bottom: 1px solid var(--line);
-    margin-bottom: 20px;
-    flex-wrap: wrap;
-  }
-  .brand { display: flex; align-items: center; gap: 12px; }
-  .brandmark {
-    width: 38px; height: 38px;
-    border-radius: 10px;
-    background: var(--accent);
-    color: #fff;
-    display: grid;
-    place-items: center;
-    font-weight: 800;
-    font-size: 16px;
-    letter-spacing: -0.02em;
-  }
-  .brand h1 { font-size: 18px; margin: 0; font-weight: 800; letter-spacing: -0.01em; color: var(--ink); }
-  .brand span { font-size: 12px; color: var(--muted); font-weight: 600; }
-  .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-  
-  /* Theme Switcher */
-  .theme-switch {
-    display: inline-flex;
-    align-items: center;
-    background: var(--panel-subtle);
-    border: 1px solid var(--line);
-    border-radius: 9px;
-    padding: 2px;
-    gap: 2px;
-  }
-  .theme-btn {
-    border: none;
-    background: transparent;
-    color: var(--muted);
-    padding: 4px 8px;
-    border-radius: 7px;
-    font-size: 11px;
-    font-weight: 600;
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    transition: all 0.15s ease;
-  }
-  .theme-btn:hover {
-    color: var(--ink);
-  }
-  .theme-btn.active {
-    background: var(--btn-dark-bg);
-    color: var(--btn-dark-text);
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-  }
-
-  .btn {
-    border: 1px solid var(--btn-border);
-    background: var(--btn-bg);
-    color: var(--btn-text);
-    padding: 8px 13px;
-    border-radius: 10px;
-    font-weight: 600;
-    font-size: 13px;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    transition: all 0.15s ease;
-  }
-  .btn:hover { background: var(--btn-hover); border-color: var(--line-subtle); }
-  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
-  .btn.dark { background: var(--btn-dark-bg); border-color: var(--btn-dark-bg); color: var(--btn-dark-text); }
-  .btn.small { padding: 6px 10px; font-size: 12px; border-radius: 8px; }
-  .btn.active-view { background: var(--btn-dark-bg); border-color: var(--btn-dark-bg); color: var(--btn-dark-text); }
-  
-  /* Main Grid */
   .grid { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 24px; align-items: start; }
   .stack { display: grid; gap: 20px; }
-  
-  .panel {
-    background: var(--panel);
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    box-shadow: var(--shadow);
-    padding: 20px;
-  }
-  .panel-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 14px;
-    gap: 12px;
-  }
-  .panel-head h2 { font-size: 16px; font-weight: 700; margin: 0; color: var(--ink); }
-  .sub { color: var(--muted); font-size: 12px; margin-top: 2px; }
-  
-  /* Presets & Controls */
-  .preset-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
-  .preset-btn {
-    border: 1px solid var(--line);
-    background: var(--btn-bg);
-    padding: 6px 11px;
-    border-radius: 8px;
-    font-weight: 600;
-    font-size: 12px;
-    color: var(--muted);
-  }
-  .preset-btn.active {
-    background: var(--accent-soft);
-    border-color: var(--accent);
-    color: var(--accent);
-  }
-  
   .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
-  .field { display: flex; flex-direction: column; gap: 5px; }
-  .field label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.03em; }
-  .field input, .field select {
-    padding: 7px 10px;
-    border: 1px solid var(--input-border);
-    border-radius: 8px;
-    background: var(--input-bg);
-    color: var(--input-text);
-    font-size: 13px;
-  }
-  select option, .field select option {
-    background: var(--panel);
-    color: var(--ink);
-  }
-  .field input:focus, .field select:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 2px var(--accent-soft);
-  }
-  
-  /* Card Lists */
   .card-list { display: grid; gap: 12px; }
   .item-card {
     border: 1px solid var(--line);
@@ -357,12 +210,7 @@
     gap: 10px;
   }
   .item-card:hover { border-color: var(--line-subtle); }
-  .item-card-head {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 8px;
-  }
+  .item-card-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
   .item-title { font-weight: 700; font-size: 14px; display: flex; align-items: center; gap: 6px; color: var(--ink); }
   .item-title input {
     font-weight: 700;
@@ -372,23 +220,6 @@
     background: var(--input-bg);
     color: var(--input-text);
   }
-  .item-title input:focus {
-    outline: none;
-    border-color: var(--accent);
-  }
-  .badge {
-    display: inline-block;
-    padding: 2px 7px;
-    border-radius: 6px;
-    font-size: 11px;
-    font-weight: 600;
-    background: var(--badge-bg);
-    color: var(--badge-text);
-  }
-  .badge.teal { background: var(--badge-teal-bg); color: var(--badge-teal-text); }
-  .badge.amber { background: var(--badge-amber-bg); color: var(--badge-amber-text); }
-  .badge.red { background: var(--badge-red-bg); color: var(--badge-red-text); }
-  
   .del-btn {
     border: none;
     background: transparent;
@@ -399,8 +230,6 @@
     border-radius: 4px;
   }
   .del-btn:hover { color: var(--bad); background: var(--alert-bg); }
-  
-  /* Day checkboxes */
   .day-checks { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
   .day-check-label {
     display: inline-flex;
@@ -416,8 +245,6 @@
     cursor: pointer;
   }
   .day-check-label input { margin: 0; accent-color: var(--accent); }
-  
-  /* Member eligibility tags */
   .member-checks { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 4px; }
   .member-check-label {
     display: inline-flex;
@@ -433,322 +260,305 @@
     cursor: pointer;
   }
   .member-check-label input { margin: 0; accent-color: var(--accent); }
-  
-  /* Results Header & Summary */
-  .score-badge {
-    display: flex;
-    align-items: baseline;
-    gap: 6px;
-    font-size: 28px;
-    font-weight: 800;
-    color: var(--accent);
-  }
+  .score-badge { display: flex; align-items: baseline; gap: 6px; font-size: 28px; font-weight: 800; color: var(--accent); }
   .score-badge small { font-size: 12px; color: var(--muted); font-weight: 600; }
-  
-  .metrics-strip {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 10px;
-    margin: 14px 0;
-  }
-  .metric-card {
-    background: var(--panel-subtle);
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    padding: 10px 12px;
-  }
+  .metrics-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0; }
+  .metric-card { background: var(--panel-subtle); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
   .metric-card label { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; }
   .metric-card div { font-size: 17px; font-weight: 800; margin-top: 2px; color: var(--ink); }
-  
-  /* Diff notification banner */
-  .diff-banner {
-    background: var(--diff-bg);
-    border: 1px solid var(--diff-border);
-    color: var(--diff-text);
-    border-radius: 10px;
-    padding: 12px;
-    margin-bottom: 16px;
-    font-size: 12px;
-  }
+  .diff-banner { background: var(--diff-bg); border: 1px solid var(--diff-border); color: var(--diff-text); border-radius: 10px; padding: 12px; margin-bottom: 16px; font-size: 12px; }
   .diff-banner h4 { margin: 0 0 6px; color: var(--diff-text); font-size: 13px; font-weight: 700; }
   .diff-banner ul { margin: 0; padding-left: 18px; }
-  
-  /* Unassigned alerts */
-  .alert-box {
-    background: var(--alert-bg);
-    border: 1px solid var(--alert-border);
-    border-radius: 10px;
-    padding: 12px;
-    margin-bottom: 16px;
-    color: var(--alert-text);
-    font-size: 12px;
-  }
-  .alert-box h4 { margin: 0 0 6px; font-size: 13px; font-weight: 700; color: var(--alert-text); }
-  
-  /* Member utilization bars */
   .member-bar-row { margin-bottom: 12px; }
   .member-bar-meta { display: flex; justify-content: space-between; font-size: 12px; font-weight: 700; margin-bottom: 4px; color: var(--ink); }
   .bar-track { height: 9px; background: var(--bar-track); border-radius: 99px; overflow: hidden; }
   .bar-fill { height: 100%; border-radius: 99px; background: var(--bar-fill); }
-  
-  /* Week Tabs */
   .tab-strip { display: flex; gap: 6px; margin: 16px 0 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
-  .tab-btn {
-    border: 1px solid var(--line);
-    background: var(--btn-bg);
-    color: var(--muted);
-    padding: 6px 12px;
-    border-radius: 8px;
-    font-size: 12px;
-    font-weight: 600;
-  }
+  .tab-btn { border: 1px solid var(--line); background: var(--btn-bg); color: var(--muted); padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; }
   .tab-btn.active { background: var(--btn-dark-bg); color: var(--btn-dark-text); border-color: var(--btn-dark-bg); }
-  
-  /* Calendar schedule matrix */
-  .calendar-grid {
-    display: grid;
-    grid-template-columns: repeat(7, 1fr);
-    gap: 6px;
-    margin-top: 10px;
-  }
-  .cal-col {
-    background: var(--cal-col-bg);
-    border: 1px solid var(--line);
-    border-radius: 8px;
-    padding: 6px;
-    min-height: 120px;
-  }
-  .cal-col-head {
-    font-size: 11px;
-    font-weight: 800;
-    text-transform: uppercase;
-    color: var(--muted);
-    text-align: center;
-    padding-bottom: 6px;
-    border-bottom: 1px solid var(--line);
-    margin-bottom: 6px;
-  }
-  .cal-task-card {
-    background: var(--cal-card-bg);
-    border: 1px solid var(--cal-card-border);
-    border-radius: 6px;
-    padding: 5px 6px;
-    margin-bottom: 5px;
-    font-size: 11px;
-  }
+  .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 10px; }
+  .cal-col { background: var(--cal-col-bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px; min-height: 120px; }
+  .cal-col-head { font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--muted); text-align: center; padding-bottom: 6px; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
+  .cal-task-card { background: var(--cal-card-bg); border: 1px solid var(--cal-card-border); border-radius: 6px; padding: 5px 6px; margin-bottom: 5px; font-size: 11px; }
   .cal-task-name { font-weight: 700; color: var(--ink); line-height: 1.2; margin-bottom: 2px; }
   .cal-task-owner { color: var(--accent); font-weight: 700; font-size: 10px; }
   .cal-task-time { color: var(--muted); font-size: 10px; }
-  
-  /* Table View */
   table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 10px; }
   th, td { padding: 8px 6px; border-bottom: 1px solid var(--line); text-align: left; }
   th { font-size: 10px; text-transform: uppercase; color: var(--muted); font-weight: 700; }
   td { color: var(--ink); }
-  
-  @media (max-width: 1024px) {
-    .grid { grid-template-columns: 1fr; }
-    .calendar-grid { grid-template-columns: repeat(4, 1fr); }
-  }
-  @media (max-width: 640px) {
-    .calendar-grid { grid-template-columns: 1fr 1fr; }
-    .metrics-strip { grid-template-columns: 1fr; }
-    .form-row { grid-template-columns: 1fr; }
-    .actions { width: 100%; justify-content: flex-start; }
-  }
+  .btn.active-view { background: var(--btn-dark-bg); border-color: var(--btn-dark-bg); color: var(--btn-dark-text); }
+  @media (max-width: 1024px) { .grid { grid-template-columns: 1fr; } .calendar-grid { grid-template-columns: repeat(4, 1fr); } }
+  @media (max-width: 640px) { .calendar-grid { grid-template-columns: 1fr 1fr; } .metrics-strip { grid-template-columns: 1fr; } .form-row { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
 
-<div class="shell">
-  <!-- Top Navigation & Brand -->
-  <header class="topbar">
-    <div class="brand">
+<!-- Header & Nav -->
+<header class="header-nav">
+  <div class="shell nav-container">
+    <a href="/" class="brand">
       <div class="brandmark">CM</div>
-      <div>
+      <div class="brand-text">
         <h1>ChoreMatrix</h1>
-        <span>Deterministic Household Optimizer · Phase 0 Prototype</span>
+        <span>Workload Optimizer</span>
       </div>
-    </div>
-    <div class="actions">
+    </a>
+
+    <ul class="nav-links">
+      <li><a href="/how-it-works.html">How It Works</a></li>
+      <li><a href="/pricing.html">Pricing</a></li>
+      <li><a href="/why-chorematrix.html">Why ChoreMatrix</a></li>
+    </ul>
+
+    <div class="nav-actions">
       <!-- Theme Switcher (Light / Dark / System) -->
       <div class="theme-switch" role="group" aria-label="Theme mode">
-        <button type="button" class="theme-btn" data-theme-choice="light" title="Light theme">
+        <button type="button" class="theme-btn" data-theme-choice="light" title="Light theme" aria-pressed="false">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
           <span>Light</span>
         </button>
-        <button type="button" class="theme-btn" data-theme-choice="dark" title="Dark theme">
+        <button type="button" class="theme-btn" data-theme-choice="dark" title="Dark theme" aria-pressed="false">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
           <span>Dark</span>
         </button>
-        <button type="button" class="theme-btn" data-theme-choice="system" title="Follow system theme">
+        <button type="button" class="theme-btn" data-theme-choice="system" title="Follow system theme" aria-pressed="false">
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
           <span>System</span>
         </button>
       </div>
-      <span id="calcIndicator" style="font-size:12px; color:var(--good); font-weight:700; opacity:0; transition:opacity 0.25s ease;">✓ Calculated</span>
-      <button type="button" class="btn small" id="btnPresetFamily">Preset: Family</button>
-      <button type="button" class="btn small" id="btnPresetCouple">Preset: Couple</button>
-      <button type="button" class="btn small" id="btnPresetRoommates">Preset: Roommates</button>
-      <button type="button" class="btn small" id="btnRebalance" title="Re-optimize with minimum changes to settled tasks">Rebalance</button>
-      <button type="button" class="btn small primary" id="btnOptimize">Calculate Plan</button>
+
+      <a href="/login.html" class="btn small">Log In</a>
+      <a href="/app.html" class="btn small primary">Open App</a>
     </div>
-  </header>
+  </div>
+</header>
 
-  <!-- Main 2-Column Work Area -->
-  <main class="grid">
-    <!-- LEFT COLUMN: INPUTS -->
-    <section class="stack">
-      <!-- Household & Optimizer Settings -->
-      <div class="panel">
-        <div class="panel-head">
-          <div>
-            <h2>1. Household & Objective Setup</h2>
-            <div class="sub">Choose how the deterministic solver distributes workload.</div>
-          </div>
-        </div>
-        
-        <div class="form-row">
-          <div class="field">
-            <label>Optimization Mode</label>
-            <select id="selMode">
-              <option value="capacity_aware" selected>Capacity-Aware (Proportional share)</option>
-              <option value="balanced">Equal Workload (Flatten minutes)</option>
-            </select>
-          </div>
-          <div class="field">
-            <label>Planning Horizon</label>
-            <select id="selWeeks">
-              <option value="1">1 Week</option>
-              <option value="2">2 Weeks</option>
-              <option value="3">3 Weeks</option>
-              <option value="4" selected>4-Week Rotation</option>
-            </select>
-          </div>
-        </div>
+<main class="main-content" style="padding-top:24px;">
+  <div class="shell" style="max-width:1360px;">
+    <!-- Public Hero -->
+    <div style="text-align:center; padding:16px 0 28px; max-width:820px; margin:0 auto;">
+      <span class="badge teal" style="margin-bottom:8px;">First-Use Planning Aid · No Account Required</span>
+      <h1 style="font-size:32px; font-weight:800; margin:0 0 8px; color:var(--ink);">Stop arguing over who does what.<br>Let ChoreMatrix calculate the workload.</h1>
+      <p style="font-size:15px; color:var(--muted); margin:0 0 16px;">
+        Tell us your household, responsibilities and limits. Calculate a workable allocation instantly in your browser below.
+      </p>
+    </div>
+
+    <!-- Interactive Optimizer Controls -->
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding-bottom:14px; border-bottom:1px solid var(--line); margin-bottom:20px; flex-wrap:wrap;">
+      <span style="font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase;">Interactive Calculator:</span>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+        <span id="calcIndicator" style="font-size:12px; color:var(--good); font-weight:700; opacity:0; transition:opacity 0.25s ease;">✓ Calculated</span>
+        <button type="button" class="btn small" id="btnPresetFamily">Preset: Family</button>
+        <button type="button" class="btn small" id="btnPresetCouple">Preset: Couple</button>
+        <button type="button" class="btn small" id="btnPresetRoommates">Preset: Roommates</button>
+        <button type="button" class="btn small" id="btnRebalance" title="Re-optimize with minimum changes to settled tasks">Rebalance</button>
+        <button type="button" class="btn small primary" id="btnOptimize">Calculate Plan</button>
       </div>
+    </div>
 
-      <!-- Household Members -->
-      <div class="panel">
-        <div class="panel-head">
-          <div>
-            <h2>2. Household Members</h2>
-            <div class="sub">Specify realistic weekly household capacity & unavailable days.</div>
+    <!-- Main 2-Column Work Area -->
+    <div class="grid">
+      <!-- LEFT COLUMN: INPUTS -->
+      <section class="stack">
+        <!-- Household & Optimizer Settings -->
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>1. Household & Objective Setup</h2>
+              <div class="sub">Choose how the deterministic solver distributes workload.</div>
+            </div>
           </div>
-          <button class="btn small" id="btnAddMember">+ Add Member</button>
-        </div>
-        <div class="card-list" id="memberListContainer"></div>
-      </div>
-
-      <!-- Tasks & Responsibilities -->
-      <div class="panel">
-        <div class="panel-head">
-          <div>
-            <h2>3. Household Work & Constraints</h2>
-            <div class="sub">Frequency, duration, effort level (1–5), fixed day, and eligibility.</div>
-          </div>
-          <button class="btn small" id="btnAddTask">+ Add Task</button>
-        </div>
-        <div class="card-list" id="taskListContainer"></div>
-      </div>
-    </section>
-
-    <!-- RIGHT COLUMN: RESULTS & DIAGNOSTICS -->
-    <section class="stack">
-      <!-- Summary & Diagnostics -->
-      <div class="panel">
-        <div class="panel-head">
-          <div>
-            <h2>Optimizer Results & Diagnostics</h2>
-            <div class="sub">Evaluation metrics and fairness breakdown.</div>
-          </div>
-          <div class="score-badge" id="balanceScoreVal">
-            --<small>fairness index</small>
+          
+          <div class="form-row">
+            <div class="field">
+              <label for="selMode">Optimization Mode</label>
+              <select id="selMode">
+                <option value="capacity_aware" selected>Capacity-Aware (Proportional share)</option>
+                <option value="balanced">Equal Workload (Flatten minutes)</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="selWeeks">Planning Horizon</label>
+              <select id="selWeeks">
+                <option value="1">1 Week</option>
+                <option value="2">2 Weeks</option>
+                <option value="3">3 Weeks</option>
+                <option value="4" selected>4-Week Rotation</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        <!-- Rebalance Diff Notice -->
-        <div id="diffBannerContainer" class="diff-banner" style="display:none;"></div>
-
-        <!-- Unassigned Alerts -->
-        <div id="alertContainer" class="alert-box" style="display:none;"></div>
-
-        <!-- Metric Cards -->
-        <div class="metrics-strip">
-          <div class="metric-card">
-            <label>Total Capacity</label>
-            <div id="metricTotalCap">0 min</div>
+        <!-- Household Members -->
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>2. Household Members</h2>
+              <div class="sub">Specify realistic weekly household capacity & unavailable days.</div>
+            </div>
+            <button type="button" class="btn small" id="btnAddMember">+ Add Member</button>
           </div>
-          <div class="metric-card">
-            <label>Total Work</label>
-            <div id="metricTotalWork">0 min</div>
+          <div class="card-list" id="memberListContainer"></div>
+        </div>
+
+        <!-- Tasks & Responsibilities -->
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>3. Household Work & Constraints</h2>
+              <div class="sub">Frequency, duration, effort level (1–5), fixed day, and eligibility.</div>
+            </div>
+            <button type="button" class="btn small" id="btnAddTask">+ Add Task</button>
           </div>
-          <div class="metric-card">
-            <label>Weighted Load</label>
-            <div id="metricWeightedWork">0 pts</div>
+          <div class="card-list" id="taskListContainer"></div>
+        </div>
+      </section>
+
+      <!-- RIGHT COLUMN: RESULTS & DIAGNOSTICS -->
+      <section class="stack">
+        <!-- Summary & Diagnostics -->
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Optimizer Results & Diagnostics</h2>
+              <div class="sub">Evaluation metrics and fairness breakdown.</div>
+            </div>
+            <div class="score-badge" id="balanceScoreVal">
+              --<small>fairness index</small>
+            </div>
+          </div>
+
+          <!-- Rebalance Diff Notice -->
+          <div id="diffBannerContainer" class="diff-banner" style="display:none;"></div>
+
+          <!-- Unassigned Alerts -->
+          <div id="alertContainer" class="alert-box" style="display:none;"></div>
+
+          <!-- Metric Cards -->
+          <div class="metrics-strip">
+            <div class="metric-card">
+              <label>Total Capacity</label>
+              <div id="metricTotalCap">0 min</div>
+            </div>
+            <div class="metric-card">
+              <label>Total Work</label>
+              <div id="metricTotalWork">0 min</div>
+            </div>
+            <div class="metric-card">
+              <label>Weighted Load</label>
+              <div id="metricWeightedWork">0 pts</div>
+            </div>
+          </div>
+
+          <!-- Member Utilization Bars -->
+          <h3 style="font-size:13px; font-weight:700; margin:16px 0 8px;">Member Capacity Utilization</h3>
+          <div id="memberBarsContainer"></div>
+        </div>
+
+        <!-- Calendar Schedule & Assignments -->
+        <div class="panel">
+          <div class="panel-head">
+            <div>
+              <h2>Weekly Schedule & Assignments</h2>
+              <div class="sub">Calendar day slotting, effort weights, and explainability tags.</div>
+            </div>
+          </div>
+
+          <!-- Week Selection Tabs -->
+          <div class="tab-strip" id="weekTabsContainer">
+            <button type="button" class="tab-btn active" data-week="0">Week 1</button>
+            <button type="button" class="tab-btn" data-week="1">Week 2</button>
+            <button type="button" class="tab-btn" data-week="2">Week 3</button>
+            <button type="button" class="tab-btn" data-week="3">Week 4</button>
+          </div>
+
+          <!-- Schedule View Toggle -->
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span style="font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase;">View Layout</span>
+            <div style="display:flex; gap:6px;">
+              <button type="button" class="btn small active-view" id="btnViewCalendar">Calendar</button>
+              <button type="button" class="btn small" id="btnViewTable">Table</button>
+            </div>
+          </div>
+
+          <!-- Calendar Matrix Container -->
+          <div id="calendarView">
+            <div class="calendar-grid" id="calendarGridContainer"></div>
+          </div>
+
+          <!-- Table View Container -->
+          <div id="tableView" style="display:none;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Day</th>
+                  <th>Task</th>
+                  <th>Owner</th>
+                  <th>Duration</th>
+                  <th>Effort</th>
+                  <th>Reason</th>
+                </tr>
+              </thead>
+              <tbody id="tableBodyContainer"></tbody>
+            </table>
           </div>
         </div>
+      </section>
+    </div>
+  </div>
+</main>
 
-        <!-- Member Utilization Bars -->
-        <h3 style="font-size:13px; font-weight:700; margin:16px 0 8px;">Member Capacity Utilization</h3>
-        <div id="memberBarsContainer"></div>
-      </div>
+<div id="globalFooter"></div>
 
-      <!-- Calendar Schedule & Assignments -->
-      <div class="panel">
-        <div class="panel-head">
-          <div>
-            <h2>Weekly Schedule & Assignments</h2>
-            <div class="sub">Calendar day slotting, effort weights, and explainability tags.</div>
-          </div>
-        </div>
-
-        <!-- Week Selection Tabs -->
-        <div class="tab-strip" id="weekTabsContainer">
-          <button class="tab-btn active" data-week="0">Week 1</button>
-          <button class="tab-btn" data-week="1">Week 2</button>
-          <button class="tab-btn" data-week="2">Week 3</button>
-          <button class="tab-btn" data-week="3">Week 4</button>
-        </div>
-
-        <!-- Schedule View Toggle -->
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-          <span style="font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase;">View Layout</span>
-          <div style="display:flex; gap:6px;">
-            <button type="button" class="btn small active-view" id="btnViewCalendar">Calendar</button>
-            <button type="button" class="btn small" id="btnViewTable">Table</button>
-          </div>
-        </div>
-
-        <!-- Calendar Matrix Container -->
-        <div id="calendarView">
-          <div class="calendar-grid" id="calendarGridContainer"></div>
-        </div>
-
-        <!-- Table View Container -->
-        <div id="tableView" style="display:none;">
-          <table>
-            <thead>
-              <tr>
-                <th>Day</th>
-                <th>Task</th>
-                <th>Owner</th>
-                <th>Duration</th>
-                <th>Effort</th>
-                <th>Reason</th>
-              </tr>
-            </thead>
-            <tbody id="tableBodyContainer"></tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-  </main>
-</div>
-
-<!-- Embedded Deterministic Optimizer Engine (Self-Contained Browser Runtime) -->
 <script type="module">
-import { runOptimization, rebalanceHousehold, DAYS_OF_WEEK, EFFORT_MULTIPLIERS } from './optimizer.bundle.js';
+import { runOptimization, rebalanceHousehold, DAYS_OF_WEEK } from './optimizer.bundle.js';
+import { renderFooter, initCookieBanner } from './src/client.bundle.js';
+
+renderFooter();
+initCookieBanner();
+
+// Theme switcher initialization
+const THEME_STORAGE_KEY = 'chorematrix_theme';
+
+function initTheme() {
+  const saved = localStorage.getItem(THEME_STORAGE_KEY) || 'system';
+  applyTheme(saved);
+
+  document.querySelectorAll('.theme-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      setTheme(btn.dataset.themeChoice);
+    });
+  });
+
+  try {
+    const mql = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSchemeChange = () => {
+      const current = localStorage.getItem(THEME_STORAGE_KEY) || 'system';
+      if (current === 'system') applyTheme('system');
+    };
+    if (mql.addEventListener) mql.addEventListener('change', handleSchemeChange);
+  } catch (e) {}
+}
+
+function applyTheme(choice) {
+  const isDark = choice === 'dark' || (choice === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme-setting', choice);
+
+  document.querySelectorAll('.theme-btn').forEach(btn => {
+    const active = btn.dataset.themeChoice === choice;
+    btn.classList.toggle('active', active);
+    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
+  });
+}
+
+function setTheme(choice) {
+  try { localStorage.setItem(THEME_STORAGE_KEY, choice); } catch (e) {}
+  applyTheme(choice);
+}
 
 // Pre-defined prototype state fixtures
 const PRESETS = {
@@ -802,58 +612,9 @@ const PRESETS = {
 let currentRequest = JSON.parse(JSON.stringify(PRESETS.family));
 let currentResult = null;
 let activeWeek = 0;
-let activeView = 'calendar'; // 'calendar' | 'table'
+let activeView = 'calendar';
 
-// Helper: safe DOM query
 const $ = s => document.querySelector(s);
-
-const THEME_STORAGE_KEY = 'chorematrix_theme';
-
-function initTheme() {
-  const saved = localStorage.getItem(THEME_STORAGE_KEY) || 'system';
-  applyTheme(saved);
-
-  document.querySelectorAll('.theme-btn').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      setTheme(btn.dataset.themeChoice);
-    });
-  });
-
-  try {
-    const mql = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleSchemeChange = () => {
-      const current = localStorage.getItem(THEME_STORAGE_KEY) || 'system';
-      if (current === 'system') {
-        applyTheme('system');
-      }
-    };
-    if (mql.addEventListener) {
-      mql.addEventListener('change', handleSchemeChange);
-    } else if (mql.addListener) {
-      mql.addListener(handleSchemeChange);
-    }
-  } catch (e) {}
-}
-
-function applyTheme(choice) {
-  const isDark = choice === 'dark' || (choice === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
-  document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light');
-  document.documentElement.setAttribute('data-theme-setting', choice);
-
-  document.querySelectorAll('.theme-btn').forEach(btn => {
-    const active = btn.dataset.themeChoice === choice;
-    btn.classList.toggle('active', active);
-    btn.setAttribute('aria-pressed', active ? 'true' : 'false');
-  });
-}
-
-function setTheme(choice) {
-  try {
-    localStorage.setItem(THEME_STORAGE_KEY, choice);
-  } catch (e) {}
-  applyTheme(choice);
-}
 
 function init() {
   initTheme();
@@ -885,7 +646,7 @@ function renderMembers() {
             <input style="font-weight:700; width:120px; padding:3px 6px;" value="${escapeHtml(m.name)}" data-member-idx="${i}" data-field="name">
             <span class="badge teal">${escapeHtml(m.role)}</span>
           </div>
-          ${currentRequest.members.length > 1 ? `<button class="del-btn" data-del-member="${i}" title="Remove member">✕</button>` : ''}
+          ${currentRequest.members.length > 1 ? `<button type="button" class="del-btn" data-del-member="${i}" title="Remove member">✕</button>` : ''}
         </div>
         <div class="form-row">
           <div class="field">
@@ -931,7 +692,7 @@ function renderTasks() {
             <input style="font-weight:700; width:150px; padding:3px 6px;" value="${escapeHtml(t.name)}" data-task-idx="${i}" data-field="name">
             <span class="badge">${escapeHtml(t.category)}</span>
           </div>
-          ${currentRequest.tasks.length > 1 ? `<button class="del-btn" data-del-task="${i}" title="Remove task">✕</button>` : ''}
+          ${currentRequest.tasks.length > 1 ? `<button type="button" class="del-btn" data-del-task="${i}" title="Remove task">✕</button>` : ''}
         </div>
         <div class="form-row" style="grid-template-columns: repeat(4, 1fr);">
           <div class="field">
@@ -977,73 +738,42 @@ function renderTasks() {
 }
 
 function syncDOMToState() {
-  // 1. Household level settings
   const modeEl = $('#selMode');
   if (modeEl) currentRequest.household.mode = modeEl.value;
   const weeksEl = $('#selWeeks');
   if (weeksEl) currentRequest.household.planningHorizonWeeks = Number(weeksEl.value) || 1;
 
-  // 2. Members
   const memberCards = document.querySelectorAll('#memberListContainer .item-card');
   memberCards.forEach((card, i) => {
     if (!currentRequest.members[i]) return;
     const nameInput = card.querySelector('input[data-field="name"]');
-    if (nameInput) {
-      currentRequest.members[i].name = nameInput.value.trim() || `Person ${i + 1}`;
-    }
-
+    if (nameInput) currentRequest.members[i].name = nameInput.value.trim() || `Person ${i + 1}`;
     const roleSelect = card.querySelector('select[data-field="role"]');
-    if (roleSelect) {
-      currentRequest.members[i].role = roleSelect.value;
-    }
-
+    if (roleSelect) currentRequest.members[i].role = roleSelect.value;
     const capInput = card.querySelector('input[data-field="weeklyCapacityMinutes"]');
-    if (capInput) {
-      currentRequest.members[i].weeklyCapacityMinutes = Math.max(1, Number(capInput.value) || 1);
-    }
-
+    if (capInput) currentRequest.members[i].weeklyCapacityMinutes = Math.max(1, Number(capInput.value) || 1);
     const unavChecks = card.querySelectorAll('input[data-unav-day]');
     const unavDays = [];
-    unavChecks.forEach(chk => {
-      if (chk.checked && chk.dataset.unavDay) unavDays.push(chk.dataset.unavDay);
-    });
+    unavChecks.forEach(chk => { if (chk.checked && chk.dataset.unavDay) unavDays.push(chk.dataset.unavDay); });
     currentRequest.members[i].unavailableDays = unavDays;
   });
 
-  // 3. Tasks
   const taskCards = document.querySelectorAll('#taskListContainer .item-card');
   taskCards.forEach((card, i) => {
     if (!currentRequest.tasks[i]) return;
     const nameInput = card.querySelector('input[data-field="name"]');
-    if (nameInput) {
-      currentRequest.tasks[i].name = nameInput.value.trim() || `Task ${i + 1}`;
-    }
-
+    if (nameInput) currentRequest.tasks[i].name = nameInput.value.trim() || `Task ${i + 1}`;
     const freqInput = card.querySelector('input[data-field="frequencyPerWeek"]');
-    if (freqInput) {
-      currentRequest.tasks[i].frequencyPerWeek = Math.max(1, Math.min(14, Number(freqInput.value) || 1));
-    }
-
+    if (freqInput) currentRequest.tasks[i].frequencyPerWeek = Math.max(1, Math.min(14, Number(freqInput.value) || 1));
     const durInput = card.querySelector('input[data-field="durationMinutes"]');
-    if (durInput) {
-      currentRequest.tasks[i].durationMinutes = Math.max(1, Number(durInput.value) || 1);
-    }
-
+    if (durInput) currentRequest.tasks[i].durationMinutes = Math.max(1, Number(durInput.value) || 1);
     const effortSelect = card.querySelector('select[data-field="effortLevel"]');
-    if (effortSelect) {
-      currentRequest.tasks[i].effortLevel = Number(effortSelect.value) || 1;
-    }
-
+    if (effortSelect) currentRequest.tasks[i].effortLevel = Number(effortSelect.value) || 1;
     const fixedSelect = card.querySelector('select[data-field="fixedDay"]');
-    if (fixedSelect) {
-      currentRequest.tasks[i].fixedDays = fixedSelect.value ? [fixedSelect.value] : [];
-    }
-
+    if (fixedSelect) currentRequest.tasks[i].fixedDays = fixedSelect.value ? [fixedSelect.value] : [];
     const eligChecks = card.querySelectorAll('input[data-elig-member]');
     const eligMembers = [];
-    eligChecks.forEach(chk => {
-      if (chk.checked && chk.dataset.eligMember) eligMembers.push(chk.dataset.eligMember);
-    });
+    eligChecks.forEach(chk => { if (chk.checked && chk.dataset.eligMember) eligMembers.push(chk.dataset.eligMember); });
     currentRequest.tasks[i].eligibleMemberIds = eligMembers;
   });
 }
@@ -1053,9 +783,7 @@ function flashCalculateStatus() {
   if (el) {
     el.style.opacity = '1';
     clearTimeout(window._calcTimeout);
-    window._calcTimeout = setTimeout(() => {
-      el.style.opacity = '0';
-    }, 1500);
+    window._calcTimeout = setTimeout(() => { el.style.opacity = '0'; }, 1500);
   }
 }
 
@@ -1083,50 +811,39 @@ function executeRebalance() {
   flashCalculateStatus();
 }
 
-
 function renderResults() {
   if (!currentResult) return;
   const diag = currentResult.diagnostics;
 
-  // Balance Score
   $('#balanceScoreVal').innerHTML = `${diag.balanceScore}%<small>fairness index</small>`;
-
-  // Metrics
   $('#metricTotalCap').textContent = `${diag.totalHouseholdCapacityMinutes} min`;
   $('#metricTotalWork').textContent = `${diag.totalHouseholdWorkMinutes} min`;
   $('#metricWeightedWork').textContent = `${Math.round(diag.totalHouseholdWeightedWork)} pts`;
 
-  // Diff Banner
   const diffBox = $('#diffBannerContainer');
   if (currentResult.diffSummary && currentResult.diffSummary.length) {
     diffBox.style.display = 'block';
     diffBox.innerHTML = `
       <h4>What Changed (Differential Rebalance)</h4>
-      <ul>
-        ${currentResult.diffSummary.map(s => `<li>${escapeHtml(s)}</li>`).join('')}
-      </ul>
+      <ul>${currentResult.diffSummary.map(s => `<li>${escapeHtml(s)}</li>`).join('')}</ul>
     `;
   } else {
     diffBox.style.display = 'none';
   }
 
-  // Unassigned Alert Box
   const alertBox = $('#alertContainer');
   if (currentResult.unassignedTasks.length) {
     alertBox.style.display = 'block';
     alertBox.innerHTML = `
       <h4>⚠️ ${currentResult.unassignedTasks.length} Task Occurrence(s) Could Not Be Assigned</h4>
       <ul style="margin:0; padding-left:18px;">
-        ${currentResult.unassignedTasks.map(u => `
-          <li><strong>${escapeHtml(u.taskName)}</strong> (${u.diagnosticCode}): ${escapeHtml(u.remediation)}</li>
-        `).join('')}
+        ${currentResult.unassignedTasks.map(u => `<li><strong>${escapeHtml(u.taskName)}</strong> (${u.diagnosticCode}): ${escapeHtml(u.remediation)}</li>`).join('')}
       </ul>
     `;
   } else {
     alertBox.style.display = 'none';
   }
 
-  // Member Utilization Progress Bars
   const barsContainer = $('#memberBarsContainer');
   barsContainer.innerHTML = currentResult.memberSummaries.map(m => {
     const pct = Math.round(m.utilizationRatio * 100);
@@ -1144,11 +861,10 @@ function renderResults() {
     `;
   }).join('');
 
-  // Update tabs
   const tabStrip = $('#weekTabsContainer');
   const horizon = currentResult.weeks;
   tabStrip.innerHTML = Array.from({ length: horizon }).map((_, w) => `
-    <button class="tab-btn ${w === activeWeek ? 'active' : ''}" data-week="${w}">Week ${w + 1}</button>
+    <button type="button" class="tab-btn ${w === activeWeek ? 'active' : ''}" data-week="${w}">Week ${w + 1}</button>
   `).join('');
 
   renderSchedule();
@@ -1203,32 +919,24 @@ function renderSchedule() {
 }
 
 function attachListeners() {
-  $('#btnPresetFamily').addEventListener('click', (e) => { e.preventDefault(); loadPreset('family'); });
-  $('#btnPresetCouple').addEventListener('click', (e) => { e.preventDefault(); loadPreset('couple'); });
-  $('#btnPresetRoommates').addEventListener('click', (e) => { e.preventDefault(); loadPreset('roommates'); });
-  
-  const optBtn = $('#btnOptimize');
-  if (optBtn) {
-    optBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      executeOptimization();
-    });
-  }
+  $('#btnPresetFamily')?.addEventListener('click', (e) => { e.preventDefault(); loadPreset('family'); });
+  $('#btnPresetCouple')?.addEventListener('click', (e) => { e.preventDefault(); loadPreset('couple'); });
+  $('#btnPresetRoommates')?.addEventListener('click', (e) => { e.preventDefault(); loadPreset('roommates'); });
 
-  const rebBtn = $('#btnRebalance');
-  if (rebBtn) {
-    rebBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      executeRebalance();
-    });
-  }
+  $('#btnOptimize')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    executeOptimization();
+  });
 
-  $('#selMode').addEventListener('change', () => executeOptimization());
-  $('#selWeeks').addEventListener('change', () => executeOptimization());
+  $('#btnRebalance')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    executeRebalance();
+  });
 
-  $('#btnAddMember').addEventListener('click', (e) => {
+  $('#selMode')?.addEventListener('change', () => executeOptimization());
+  $('#selWeeks')?.addEventListener('change', () => executeOptimization());
+
+  $('#btnAddMember')?.addEventListener('click', (e) => {
     e.preventDefault();
     syncDOMToState();
     const newId = `m_${Date.now()}`;
@@ -1241,13 +949,12 @@ function attachListeners() {
       preferredTaskIds: [],
       avoidedTaskIds: []
     });
-    // Add to all tasks
     currentRequest.tasks.forEach(t => t.eligibleMemberIds.push(newId));
     renderInputs();
     executeOptimization();
   });
 
-  $('#btnAddTask').addEventListener('click', (e) => {
+  $('#btnAddTask')?.addEventListener('click', (e) => {
     e.preventDefault();
     syncDOMToState();
     const newId = `t_${Date.now()}`;
@@ -1264,7 +971,7 @@ function attachListeners() {
     executeOptimization();
   });
 
-  $('#weekTabsContainer').addEventListener('click', e => {
+  $('#weekTabsContainer')?.addEventListener('click', e => {
     const btn = e.target.closest('[data-week]');
     if (btn) {
       activeWeek = Number(btn.dataset.week);
@@ -1273,7 +980,7 @@ function attachListeners() {
     }
   });
 
-  $('#btnViewCalendar').addEventListener('click', (e) => {
+  $('#btnViewCalendar')?.addEventListener('click', (e) => {
     e.preventDefault();
     activeView = 'calendar';
     $('#btnViewCalendar').classList.add('active-view');
@@ -1281,7 +988,7 @@ function attachListeners() {
     renderSchedule();
   });
 
-  $('#btnViewTable').addEventListener('click', (e) => {
+  $('#btnViewTable')?.addEventListener('click', (e) => {
     e.preventDefault();
     activeView = 'table';
     $('#btnViewTable').classList.add('active-view');
@@ -1289,7 +996,6 @@ function attachListeners() {
     renderSchedule();
   });
 
-  // Delegated events for member updates to keep state synced as user types
   document.addEventListener('input', e => {
     const t = e.target;
     if (t.matches('[data-member-idx]')) {
@@ -1392,7 +1098,6 @@ function escapeHtml(v = '') {
   }[c]));
 }
 
-// Start prototype
 init();
 </script>
 </body>

@@ -318,10 +318,43 @@ The intended feeling is:
 
 > **Calm input → serious calculation → clear answer.**
 
-## Deployment Checkpoint
-Phase 0 production build prepared for Vercel deployment.
+## Supabase Auth URL Configuration
 
+To ensure email verification and password reset flows work reliably across desktop, mobile, and production environments, configure your Supabase project (under **Authentication → URL Configuration**) as follows:
 
-## Deployment Checkpoint
-Phase 0 production build prepared for Vercel deployment.
+### 1. Site URL
+Set the primary Site URL to your stable production domain:
+```text
+https://chorematrix.vercel.app
+```
 
+### 2. Redirect URLs (Allowed Callback URLs)
+Add explicit allowed redirect paths for production and local development. Avoid open wildcards (`*`) to prevent open redirect vulnerabilities:
+
+```text
+https://chorematrix.vercel.app/verify-email.html
+https://chorematrix.vercel.app/reset-password.html
+https://chorematrix.vercel.app/app.html
+http://localhost:4173/verify-email.html
+http://localhost:4173/reset-password.html
+http://localhost:4173/app.html
+http://localhost:5173/verify-email.html
+http://localhost:5173/reset-password.html
+http://localhost:5173/app.html
+http://127.0.0.1:4173/verify-email.html
+http://127.0.0.1:4173/reset-password.html
+```
+
+---
+
+## Mobile Testing & Email Confirmation Note
+
+When testing email confirmation flows across devices:
+
+> [!NOTE]
+> **Why clicking email verification links on a phone fails with `ERR_CONNECTION_REFUSED` in default local development:**  
+> If an account is created on a desktop dev server at `http://localhost:4173`, the verification link dispatched by Supabase embeds `http://localhost:4173/verify-email.html` as the target. Opening that email on a physical phone causes the phone to look for port 4173 on the *phone itself* (`127.0.0.1`), where no server is running. This is an expected networking characteristic, not an application bug.
+
+### How to test email verification on a mobile device:
+1. **Production testing (recommended):** Test against the deployed production site (`https://chorematrix.vercel.app`) where URLs are globally routable.
+2. **Local network testing:** Set `VITE_PUBLIC_SITE_URL` in `.env.local` to your workstation's LAN IP (e.g. `http://192.168.1.150:4173`), ensure the dev server listens on all interfaces (`serve -l 4173 dist`), and add that LAN URL to Supabase's Redirect URLs.

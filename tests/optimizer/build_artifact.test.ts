@@ -9,14 +9,19 @@ describe('Production Build Output (dist/)', () => {
   const distHtmlPath = path.join(distDir, 'index.html');
   const distBundlePath = path.join(distDir, 'optimizer.bundle.js');
 
-  it('verifies that dist/ exists and contains exactly the required runtime files', () => {
+  it('verifies that dist/ exists and contains the required production runtime files', () => {
     assert.ok(fs.existsSync(distDir), 'dist/ directory must exist after build');
     const files = fs.readdirSync(distDir);
-    assert.deepStrictEqual(
-      files.sort(),
-      ['index.html', 'optimizer.bundle.js'].sort(),
-      'dist/ must contain ONLY index.html and optimizer.bundle.js'
-    );
+    assert.ok(files.includes('index.html'), 'dist/ must contain index.html');
+    assert.ok(files.includes('app.html'), 'dist/ must contain app.html');
+    assert.ok(files.includes('how-it-works.html'), 'dist/ must contain how-it-works.html');
+    assert.ok(files.includes('pricing.html'), 'dist/ must contain pricing.html');
+    assert.ok(files.includes('why-chorematrix.html'), 'dist/ must contain why-chorematrix.html');
+    assert.ok(files.includes('privacy.html'), 'dist/ must contain privacy.html');
+    assert.ok(files.includes('account.html'), 'dist/ must contain account.html');
+    assert.ok(files.includes('optimizer.bundle.js'), 'dist/ must contain optimizer.bundle.js');
+    assert.ok(fs.existsSync(path.join(distDir, 'src', 'client.bundle.js')), 'dist/src must contain client.bundle.js');
+    assert.ok(fs.existsSync(path.join(distDir, 'src', 'styles', 'common.css')), 'dist/src/styles must contain common.css');
   });
 
   it('verifies that dist/index.html correctly imports ./optimizer.bundle.js', () => {

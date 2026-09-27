@@ -1,0 +1,239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Pricing & Free Trials — ChoreMatrix Household Workload Optimizer</title>
+<meta name="description" content="Explore transparent pricing options and 14-day free trials for ChoreMatrix. Household workload optimization for couples, families, and shared living." />
+<script>
+  (function() {
+    try {
+      var s = localStorage.getItem('chorematrix_theme') || 'system';
+      var d = s === 'dark' || (s === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.setAttribute('data-theme', d ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme-setting', s);
+    } catch(e){}
+  })();
+</script>
+<link rel="stylesheet" href="/src/styles/common.css" />
+<style>
+  .pricing-header {
+    text-align: center;
+    padding: 40px 0 24px;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+  .pricing-header h1 {
+    font-size: 36px;
+    font-weight: 800;
+    margin: 0 0 12px;
+    color: var(--ink);
+  }
+  .pricing-header p {
+    font-size: 16px;
+    color: var(--muted);
+    margin: 0 0 20px;
+  }
+  .pricing-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 24px;
+    margin: 32px 0 48px;
+    align-items: stretch;
+  }
+  .tier-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 28px;
+    box-shadow: var(--shadow);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  }
+  .tier-card.popular {
+    border-color: var(--accent);
+    box-shadow: 0 8px 30px rgba(15, 118, 110, 0.15);
+  }
+  .tier-popular-tag {
+    position: absolute;
+    top: -12px;
+    right: 24px;
+    background: var(--accent);
+    color: #fff;
+    font-size: 11px;
+    font-weight: 800;
+    text-transform: uppercase;
+    padding: 3px 10px;
+    border-radius: 99px;
+  }
+  .tier-price {
+    font-size: 36px;
+    font-weight: 800;
+    color: var(--ink);
+    margin: 16px 0 4px;
+  }
+  .tier-price small {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--muted);
+  }
+  .tier-annual {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 16px;
+  }
+  .tier-features {
+    list-style: none;
+    margin: 20px 0;
+    padding: 0;
+    display: grid;
+    gap: 10px;
+    font-size: 13px;
+    flex: 1;
+  }
+  .tier-features li {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    color: var(--ink);
+  }
+  .tier-features li::before {
+    content: "✓";
+    color: var(--good);
+    font-weight: 800;
+  }
+  .tier-limits {
+    list-style: none;
+    margin: 0 0 20px;
+    padding: 0;
+    display: grid;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .tier-limits li::before {
+    content: "•";
+    margin-right: 6px;
+  }
+  @media (max-width: 900px) {
+    .pricing-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div id="globalNavbar"></div>
+
+<main class="main-content">
+  <div class="shell">
+    <div class="pricing-header">
+      <span class="badge teal" style="margin-bottom:12px;">Fair, Transparent Planning</span>
+      <h1>Simple Pricing for Every Household</h1>
+      <p>
+        Always free for core optimization. Premium tiers add cloud sync, multi-week rotational fairness, and soft preferences.
+      </p>
+
+      <!-- Centralized Provisional Pricing Notice -->
+      <div id="pricingNotice" class="notice-banner" style="text-align:left;">
+        <strong>Provisional Development Pricing:</strong>
+        <span id="noticeContent">Loading configuration...</span>
+      </div>
+    </div>
+
+    <!-- Pricing Cards Container rendered from centralized PRICING_CONFIG -->
+    <div class="pricing-grid" id="pricingCardsContainer"></div>
+
+    <!-- FAQ Section -->
+    <section class="panel" style="margin-top:32px;">
+      <div class="panel-head">
+        <h2>Frequently Asked Questions</h2>
+      </div>
+      <div id="pricingFaqContainer" style="display:grid; gap:16px;"></div>
+    </section>
+  </div>
+</main>
+
+<div id="globalFooter"></div>
+
+<script type="module">
+import { PRICING_CONFIG, renderNavbar, renderFooter, initCookieBanner } from './src/client.bundle.js';
+
+renderNavbar('pricing');
+renderFooter();
+initCookieBanner();
+
+// Inject centralized provisional notice
+const noticeEl = document.getElementById('noticeContent');
+if (noticeEl) noticeEl.textContent = PRICING_CONFIG.provisionalNotice;
+
+// Render pricing cards dynamically from centralized config
+const grid = document.getElementById('pricingCardsContainer');
+if (grid) {
+  grid.innerHTML = PRICING_CONFIG.tiers.map(tier => {
+    const isFree = tier.monthlyPrice === 0;
+    return `
+      <div class="tier-card ${tier.popular ? 'popular' : ''}">
+        ${tier.popular ? `<div class="tier-popular-tag">Most Popular</div>` : ''}
+        <h3 style="margin:0; font-size:20px; font-weight:800; color:var(--ink);">${escapeHtml(tier.name)}</h3>
+        <p style="margin:4px 0 0; font-size:12px; color:var(--muted);">${escapeHtml(tier.tagline)}</p>
+
+        <div class="tier-price">
+          ${isFree ? '$0' : `$${tier.monthlyPrice.toFixed(2)}`}
+          <small>${isFree ? '/ forever' : '/ month'}</small>
+        </div>
+        <div class="tier-annual">
+          ${isFree ? 'No credit card required' : `or $${tier.annualPrice.toFixed(2)}/year billed annually`}
+        </div>
+
+        ${tier.trialDays > 0 ? `
+          <div style="margin-bottom:14px;">
+            <span class="badge teal">⭐ Includes ${tier.trialDays}-Day Free Trial</span>
+          </div>
+        ` : ''}
+
+        ${tier.isProvisional ? `
+          <div style="margin-bottom:12px;">
+            <span class="badge amber">Provisional Monetization Hypothesis</span>
+          </div>
+        ` : ''}
+
+        <ul class="tier-features">
+          ${tier.features.map(f => `<li>${escapeHtml(f)}</li>`).join('')}
+        </ul>
+
+        ${tier.limitations.length > 0 ? `
+          <ul class="tier-limits">
+            ${tier.limitations.map(l => `<li>${escapeHtml(l)}</li>`).join('')}
+          </ul>
+        ` : ''}
+
+        <div style="margin-top:auto;">
+          <a href="/app.html" class="btn ${tier.popular ? 'primary' : ''}" style="width:100%;">
+            ${escapeHtml(tier.ctaText)}
+          </a>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+// Render FAQs from centralized config
+const faqContainer = document.getElementById('pricingFaqContainer');
+if (faqContainer) {
+  faqContainer.innerHTML = PRICING_CONFIG.faq.map(item => `
+    <div>
+      <h4 style="margin:0 0 4px; font-size:14px; font-weight:700; color:var(--ink);">${escapeHtml(item.question)}</h4>
+      <p style="margin:0; font-size:13px; color:var(--muted); line-height:1.5;">${escapeHtml(item.answer)}</p>
+    </div>
+  `).join('');
+}
+
+function escapeHtml(str) {
+  return String(str || '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+</script>
+</body>
+</html>

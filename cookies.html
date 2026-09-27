@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Cookie Policy — ChoreMatrix</title>
+<meta name="description" content="ChoreMatrix Cookie Policy. Technical details on browser storage, strictly necessary session tokens, and zero marketing trackers." />
+<script>
+  (function() {
+    try {
+      var s = localStorage.getItem('chorematrix_theme') || 'system';
+      var d = s === 'dark' || (s === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.setAttribute('data-theme', d ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme-setting', s);
+    } catch(e){}
+  })();
+</script>
+<link rel="stylesheet" href="/src/styles/common.css" />
+</head>
+<body>
+
+<div id="globalNavbar"></div>
+
+<main class="main-content">
+  <div class="shell" style="max-width:800px;">
+    <div style="margin-bottom:28px;">
+      <span class="badge teal" style="margin-bottom:8px;">Storage & Transparency</span>
+      <h1 style="font-size:32px; font-weight:800; margin:0 0 8px; color:var(--ink);">Cookie & Storage Policy</h1>
+      <div style="font-size:13px; color:var(--muted);">
+        Effective Date: September 27, 2026 · Entity: [ChoreMatrix Legal Entity Placeholder]
+      </div>
+    </div>
+
+    <div class="panel" style="display:grid; gap:20px; line-height:1.6; font-size:14px;">
+      <section>
+        <h2 style="font-size:18px; margin:0 0 8px; color:var(--ink);">1. What Are Cookies and Local Storage?</h2>
+        <p style="margin:0; color:var(--muted);">
+          Cookies and HTML5 local storage are standard browser technologies that allow web applications to remember your preferences and session state between page visits.
+        </p>
+      </section>
+
+      <section>
+        <h2 style="font-size:18px; margin:0 0 8px; color:var(--ink);">2. How ChoreMatrix Uses Storage</h2>
+        <div style="display:grid; gap:14px; margin-top:10px;">
+          <div style="padding:14px; border:1px solid var(--line); border-radius:10px; background:var(--panel-subtle);">
+            <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+              <strong>1. Strictly Necessary Storage</strong>
+              <span class="badge teal">Required</span>
+            </div>
+            <p style="margin:0 0 8px; font-size:13px; color:var(--muted);">
+              Essential for core functionality. Without this storage, you cannot remain logged in or use saved households.
+            </p>
+            <ul style="margin:0; padding-left:18px; font-size:12px; color:var(--ink);">
+              <li><code>chorematrix_auth_token</code>: Stores your Supabase authentication session token.</li>
+              <li><code>chorematrix_theme</code>: Remembers your selected theme (Light, Dark, or System).</li>
+              <li><code>chorematrix_cookie_consent</code>: Remembers your privacy consent choices.</li>
+            </ul>
+          </div>
+
+          <div style="padding:14px; border:1px solid var(--line); border-radius:10px; background:var(--panel-subtle);">
+            <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+              <strong>2. UI Preference Storage</strong>
+              <span class="badge">Optional</span>
+            </div>
+            <p style="margin:0; font-size:13px; color:var(--muted);">
+              Remembers UI layout choices such as Calendar vs. Table view and the active week tab. You can disable this category in cookie preferences.
+            </p>
+          </div>
+
+          <div style="padding:14px; border:1px solid var(--line); border-radius:10px; background:var(--panel-subtle); opacity:0.8;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+              <strong>3. Analytics & Telemetry</strong>
+              <span class="badge">Disabled</span>
+            </div>
+            <p style="margin:0; font-size:13px; color:var(--muted);">
+              Product usage analytics are currently disabled. ChoreMatrix does not install Google Analytics, Meta Pixel, or third-party behavioral telemetry.
+            </p>
+          </div>
+
+          <div style="padding:14px; border:1px solid var(--line); border-radius:10px; background:var(--panel-subtle); opacity:0.8;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
+              <strong>4. Advertising & Cross-Site Tracking</strong>
+              <span class="badge">None</span>
+            </div>
+            <p style="margin:0; font-size:13px; color:var(--muted);">
+              ChoreMatrix contains zero advertising trackers and does not sell or share data with ad exchanges.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section>
+        <h2 style="font-size:18px; margin:0 0 8px; color:var(--ink);">3. Managing Your Choices</h2>
+        <p style="margin:0 0 12px; color:var(--muted);">
+          You can adjust your consent choices at any time without penalty. You can also clear cookies and local storage through your browser settings.
+        </p>
+        <button type="button" class="btn primary small" id="btnPageOpenCookieSettings">Open Cookie Preferences</button>
+      </section>
+    </div>
+  </div>
+</main>
+
+<div id="globalFooter"></div>
+
+<script type="module">
+import { renderNavbar, renderFooter, initCookieBanner } from './src/client.bundle.js';
+renderNavbar('cookies');
+renderFooter();
+initCookieBanner();
+
+document.getElementById('btnPageOpenCookieSettings')?.addEventListener('click', () => {
+  window.dispatchEvent(new CustomEvent('chorematrix:open-cookie-settings'));
+});
+</script>
+</body>
+</html>

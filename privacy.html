@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Privacy Policy — ChoreMatrix</title>
+<meta name="description" content="ChoreMatrix Privacy Policy. Transparent, plain-language description of data collected, data minimized, sub-processors, and deletion rights." />
+<script>
+  (function() {
+    try {
+      var s = localStorage.getItem('chorematrix_theme') || 'system';
+      var d = s === 'dark' || (s === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.setAttribute('data-theme', d ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme-setting', s);
+    } catch(e){}
+  })();
+</script>
+<link rel="stylesheet" href="/src/styles/common.css" />
+</head>
+<body>
+
+<div id="globalNavbar"></div>
+
+<main class="main-content">
+  <div class="shell" style="max-width:800px;">
+    <div style="margin-bottom:28px;">
+      <span class="badge teal" style="margin-bottom:8px;">Data Transparency</span>
+      <h1 style="font-size:32px; font-weight:800; margin:0 0 8px; color:var(--ink);">Privacy Policy</h1>
+      <div style="font-size:13px; color:var(--muted);">
+        Effective Date: September 27, 2026 · Entity: [ChoreMatrix Legal Entity Placeholder]
+      </div>
+    </div>
+
+    <div class="panel" style="display:grid; gap:20px; line-height:1.6; font-size:14px;">
+      <section>
+        <h2 style="font-size:18px; margin:0 0 8px; color:var(--ink);">1. Our Data Philosophy: Data Minimization</h2>
+        <p style="margin:0; color:var(--muted);">
+          Household routines, family member names, and personal schedules are sensitive personal details. ChoreMatrix collects only the minimum information necessary to calculate balanced household workload allocations.
+        </p>
+      </section>
+
+      <section>
+        <h2 style="font-size:18px; margin:0 0 8px; color:var(--ink);">2. What We Collect</h2>
+        <ul style="margin:0; padding-left:20px; color:var(--ink);">
+          <li><strong>Account & Authentication:</strong> Email address and password hash (managed securely via Supabase Auth).</li>
+          <li><strong>Household Configuration:</strong> Household label/name, type (e.g. couple, family, roommates), and optimization mode.</li>
+          <li><strong>Household Member Details:</strong> Nicknames or labels, household roles, weekly available minutes, and unavailable days.</li>
+          <li><strong>Task Information:</strong> Chore names, categories, estimated durations, effort ratings (1–5), fixed days, and eligibility tags.</li>
+          <li><strong>Generated Plans:</strong> Calculated schedules, fairness diagnostic scores, and assignment reason codes.</li>
+          <li><strong>Client Preferences:</strong> Light/Dark theme selection and UI view preferences stored locally in your browser.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 style="font-size:18px; margin:0 0 8px; color:var(--ink);">3. What We Do NOT Collect</h2>
+        <p style="margin:0 0 8px; color:var(--muted);">
+          To protect your household privacy, ChoreMatrix does <strong>not</strong> collect or request:
+        </p>
+        <ul style="margin:0; padding-left:20px; color:var(--ink);">
+          <li>No exact home street addresses or GPS location.</li>
+          <li>No phone numbers or contact book integration.</li>
+          <li>No government-issued identification.</li>
+          <li>No exact dates of birth for children.</li>
+          <li>No photos, video feeds, or biometric identifiers.</li>
+          <li>No microphone or camera permissions.</li>
+          <li>No financial account or payment card numbers (payment processing is not currently enabled).</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 style="font-size:18px; margin:0 0 8px; color:var(--ink);">4. How We Use Information</h2>
+        <ul style="margin:0; padding-left:20px; color:var(--ink);">
+          <li>To authenticate and maintain your secure login session.</li>
+          <li>To run deterministic workload optimization algorithms on your household inputs.</li>
+          <li>To preserve your saved households and weekly plans across sessions.</li>
+          <li>To provide explainability diagnostics and differential rebalancing when constraints change.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 style="font-size:18px; margin:0 0 8px; color:var(--ink);">5. Third-Party Service Providers</h2>
+        <p style="margin:0 0 8px; color:var(--muted);">
+          We do not sell personal data to data brokers or advertising networks. We share data solely with the infrastructure providers essential for running the service:
+        </p>
+        <ul style="margin:0; padding-left:20px; color:var(--ink);">
+          <li><strong>Supabase Inc.</strong> — Managed authentication and PostgreSQL database hosting with strict Row Level Security.</li>
+          <li><strong>Vercel Inc.</strong> — Static frontend application hosting, edge CDN caching, and TLS termination.</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2 style="font-size:18px; margin:0 0 8px; color:var(--ink);">6. Data Retention & Deletion</h2>
+        <p style="margin:0; color:var(--muted);">
+          Your household data is retained as long as your account remains active. You can export a complete JSON snapshot of all your household records or permanently delete your account and all associated data at any time directly from the <a href="/account.html">Account Security</a> dashboard.
+        </p>
+      </section>
+
+      <section>
+        <h2 style="font-size:18px; margin:0 0 8px; color:var(--ink);">7. Regulatory Disclosures</h2>
+        <p style="margin:0; color:var(--muted);">
+          ChoreMatrix provides universal rights to access, rectify, export, and delete personal data regardless of your jurisdiction. We do not make unsubstantiated regulatory certification claims. For inquiries, contact <a href="mailto:support@chorematrix.com">support@chorematrix.com</a>.
+        </p>
+      </section>
+    </div>
+  </div>
+</main>
+
+<div id="globalFooter"></div>
+
+<script type="module">
+import { renderNavbar, renderFooter, initCookieBanner } from './src/client.bundle.js';
+renderNavbar('privacy');
+renderFooter();
+initCookieBanner();
+</script>
+</body>
+</html>

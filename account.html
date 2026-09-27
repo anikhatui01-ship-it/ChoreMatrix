@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Account & Security — ChoreMatrix</title>
+<meta name="description" content="Manage your ChoreMatrix profile, subscription plan, active sessions, and security settings." />
+<script>
+  (function() {
+    try {
+      var s = localStorage.getItem('chorematrix_theme') || 'system';
+      var d = s === 'dark' || (s === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.setAttribute('data-theme', d ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme-setting', s);
+    } catch(e){}
+  })();
+</script>
+<link rel="stylesheet" href="/src/styles/common.css" />
+<style>
+  .account-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-top: 24px;
+  }
+  @media (max-width: 800px) {
+    .account-grid { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<div id="globalNavbar"></div>
+
+<main class="main-content">
+  <div class="shell">
+    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:12px;">
+      <div>
+        <h1 style="font-size:28px; font-weight:800; margin:0 0 4px; color:var(--ink);">Account & Security</h1>
+        <div style="font-size:13px; color:var(--muted);">Manage your active sessions, current plan tier, and data privacy.</div>
+      </div>
+      <div>
+        <a href="/app.html" class="btn primary small">Back to Optimizer</a>
+      </div>
+    </div>
+
+    <div id="accountAlert" class="alert-box" style="display:none;" role="alert"></div>
+    <div id="accountNotice" class="notice-banner" style="display:none;"></div>
+
+    <div class="account-grid">
+      <!-- 1. Profile & Subscription -->
+      <div class="panel">
+        <div class="panel-head">
+          <h2>Profile & Subscription</h2>
+        </div>
+
+        <div class="field">
+          <label>Account Email</label>
+          <input type="text" id="accEmail" readonly value="Loading…" style="font-weight:600;" />
+        </div>
+
+        <div class="field">
+          <label>Current Plan</label>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <input type="text" id="accPlan" readonly value="Free Tier (Essential Optimizer)" style="font-weight:700; color:var(--accent);" />
+            <a href="/pricing.html" class="btn small">View Plans</a>
+          </div>
+        </div>
+
+        <div style="margin-top:24px; padding-top:20px; border-top:1px solid var(--line);">
+          <h3 style="font-size:15px; font-weight:700; margin:0 0 10px; color:var(--ink);">Change Password</h3>
+          <form id="changePassForm">
+            <div class="field">
+              <label for="txtNewPass">New Password</label>
+              <input type="password" id="txtNewPass" required minlength="8" placeholder="••••••••" />
+            </div>
+            <button type="submit" class="btn small" id="btnSavePass">Update Password</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- 2. Security & Session Lifecycle -->
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <h2>Session Management & Security</h2>
+            <div class="sub">Explicit session termination scopes</div>
+          </div>
+        </div>
+
+        <p style="font-size:13px; color:var(--muted); margin:0 0 18px; line-height:1.45;">
+          Control which devices can access your household data. You can log out from this browser only, revoke access on other devices, or terminate all sessions worldwide.
+        </p>
+
+        <div style="display:grid; gap:12px;">
+          <!-- Option A: Sign out this device -->
+          <div style="padding:14px; border:1px solid var(--line); border-radius:10px; background:var(--panel-subtle);">
+            <div style="font-weight:700; font-size:13px; margin-bottom:3px; color:var(--ink);">Sign Out This Device</div>
+            <p style="font-size:12px; color:var(--muted); margin:0 0 10px;">
+              Terminates your session on this browser only. Other devices (such as your phone or work computer) remain signed in.
+            </p>
+            <button type="button" class="btn small" id="btnSignOutLocal">Sign Out This Device</button>
+          </div>
+
+          <!-- Option B: Sign out other devices -->
+          <div style="padding:14px; border:1px solid var(--line); border-radius:10px; background:var(--panel-subtle);">
+            <div style="font-weight:700; font-size:13px; margin-bottom:3px; color:var(--ink);">Sign Out All Other Devices</div>
+            <p style="font-size:12px; color:var(--muted); margin:0 0 10px;">
+              Revokes access on all other computers and phones while keeping this active browser session authenticated.
+            </p>
+            <button type="button" class="btn small" id="btnSignOutOthers">Sign Out Other Devices</button>
+          </div>
+
+          <!-- Option C: Sign out everywhere -->
+          <div style="padding:14px; border:1px solid var(--line); border-radius:10px; background:var(--panel-subtle);">
+            <div style="font-weight:700; font-size:13px; margin-bottom:3px; color:var(--ink);">Sign Out Everywhere</div>
+            <p style="font-size:12px; color:var(--muted); margin:0 0 10px;">
+              Invalidates all refresh tokens globally across all devices, including this browser.
+            </p>
+            <button type="button" class="btn small danger" id="btnSignOutGlobal">Sign Out Everywhere</button>
+          </div>
+        </div>
+
+        <!-- Danger Zone -->
+        <div style="margin-top:24px; padding-top:20px; border-top:1px solid var(--line);">
+          <h3 style="font-size:14px; font-weight:700; margin:0 0 6px; color:var(--bad);">Danger Zone</h3>
+          <p style="font-size:12px; color:var(--muted); margin:0 0 10px;">
+            Permanently delete your account and all associated household configurations, member details, and plans.
+          </p>
+          <button type="button" class="btn danger small" id="btnDeleteAccount">Delete Account & Data</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="globalFooter"></div>
+
+<script type="module">
+import { authService, persistenceAdapter, isSupabaseConfigured, renderNavbar, renderFooter, initCookieBanner } from './src/client.bundle.js';
+
+renderNavbar('account');
+renderFooter();
+initCookieBanner();
+
+const alertBox = document.getElementById('accountAlert');
+const noticeBox = document.getElementById('accountNotice');
+const emailField = document.getElementById('accEmail');
+const planField = document.getElementById('accPlan');
+
+function formatPlanTier(tier) {
+  if (!tier || tier === 'free') return 'Free Tier (Essential Optimizer)';
+  if (tier === 'pro') return 'Pro Tier (Advanced Households)';
+  if (tier === 'family_plus') return 'Family+ Tier';
+  return `${tier.charAt(0).toUpperCase()}${tier.slice(1)} Tier`;
+}
+
+let authSubscription = null;
+
+async function checkAccount() {
+  if (alertBox) alertBox.style.display = 'none';
+
+  if (!isSupabaseConfigured) {
+    if (noticeBox) {
+      noticeBox.innerHTML = '<strong>Development Mode:</strong> Cloud authentication is unconfigured in environment variables. Local planning remains fully functional.';
+      noticeBox.style.display = 'block';
+    }
+    if (emailField) emailField.value = 'local_user@chorematrix.local';
+    if (planField) planField.value = 'Free Tier (Offline Development)';
+    return;
+  }
+
+  // Set loading state initially
+  if (emailField) emailField.value = 'Loading…';
+
+  try {
+    // 1. Session verification with timeout guard
+    const user = await authService.requireAuth('/account.html', 8000);
+    if (!user) {
+      // requireAuth redirects unauthenticated / expired users to /login.html
+      if (emailField) emailField.value = 'Not signed in';
+      return;
+    }
+
+    // 2. Verified user authenticated: immediately display user email
+    if (emailField) {
+      emailField.value = user.email || 'No email associated';
+    }
+
+    // 3. Query user profile from public.profiles
+    try {
+      const profile = await persistenceAdapter.getProfile(user.id);
+      if (profile && planField) {
+        planField.value = formatPlanTier(profile.plan_tier);
+        if (profile.email && emailField && !emailField.value) {
+          emailField.value = profile.email;
+        }
+      } else if (planField) {
+        // Profile row absent -> graceful fallback to Free Tier
+        planField.value = 'Free Tier (Essential Optimizer)';
+      }
+    } catch (profileErr) {
+      console.warn('[Account] Profile fetch warning:', profileErr);
+      if (planField) planField.value = 'Free Tier (Essential Optimizer)';
+    }
+  } catch (err) {
+    console.error('[Account] Error loading account details:', err);
+    if (emailField && emailField.value === 'Loading…') {
+      emailField.value = 'Unable to load email';
+    }
+    showError(
+      `Unable to load account information (${err.message || 'Network error'}). ` +
+      `<button type="button" id="btnRetryAccount" class="btn small" style="margin-left:8px; padding:2px 8px;">Retry</button>`,
+      true
+    );
+    document.getElementById('btnRetryAccount')?.addEventListener('click', () => {
+      checkAccount();
+    });
+  }
+}
+
+// Subscribe to auth state changes to keep account UI in sync
+try {
+  const { data } = authService.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_OUT' || !session) {
+      if (emailField) emailField.value = 'Signed out';
+      window.location.href = '/login.html?redirect=/account.html';
+    } else if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+      if (session?.user && emailField && (emailField.value === 'Loading…' || emailField.value === 'Not signed in')) {
+        emailField.value = session.user.email || '';
+      }
+    }
+  });
+  authSubscription = data?.subscription;
+} catch (e) {
+  console.warn('[Account] Auth state listener warning:', e);
+}
+
+window.addEventListener('unload', () => {
+  if (authSubscription?.unsubscribe) {
+    authSubscription.unsubscribe();
+  }
+});
+
+checkAccount();
+
+// 1. Sign out local
+document.getElementById('btnSignOutLocal')?.addEventListener('click', async () => {
+  try {
+    await authService.signOut('local');
+    window.location.href = '/login.html';
+  } catch (err) {
+    showError(err.message || 'Logout failed.');
+  }
+});
+
+// 2. Sign out others
+document.getElementById('btnSignOutOthers')?.addEventListener('click', async () => {
+  try {
+    await authService.signOut('others');
+    showNotice('✓ Successfully terminated sessions on all other devices. This browser remains signed in.');
+  } catch (err) {
+    showError(err.message || 'Failed to sign out other devices.');
+  }
+});
+
+// 3. Sign out everywhere
+document.getElementById('btnSignOutGlobal')?.addEventListener('click', async () => {
+  if (confirm('Are you sure you want to sign out everywhere? All your active devices will be logged out.')) {
+    try {
+      await authService.signOut('global');
+      window.location.href = '/login.html';
+    } catch (err) {
+      showError(err.message || 'Global logout failed.');
+    }
+  }
+});
+
+// 4. Change Password (no TypeScript syntax in browser script)
+document.getElementById('changePassForm')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const passInput = document.getElementById('txtNewPass');
+  const pass = passInput ? passInput.value : '';
+  if (!pass || pass.length < 8) {
+    showError('Password must be at least 8 characters long.');
+    return;
+  }
+
+  try {
+    await authService.updatePassword(pass);
+    showNotice('✓ Password updated successfully.');
+    document.getElementById('changePassForm')?.reset();
+  } catch (err) {
+    showError(err.message || 'Failed to update password.');
+  }
+});
+
+// 5. Delete Account
+document.getElementById('btnDeleteAccount')?.addEventListener('click', async () => {
+  const promptText = prompt('WARNING: This permanently deletes your account, household members, tasks, and plans.\n\nType DELETE to confirm:');
+  if (promptText === 'DELETE') {
+    try {
+      const user = await authService.getUser();
+      if (user) {
+        await persistenceAdapter.deleteUserData(user.id);
+      }
+      await authService.signOut('global');
+      alert('Your account and household data have been deleted.');
+      window.location.href = '/';
+    } catch (err) {
+      showError(err.message || 'Account deletion failed.');
+    }
+  }
+});
+
+function showError(msg, isHtml = false) {
+  if (alertBox) {
+    if (isHtml) {
+      alertBox.innerHTML = msg;
+    } else {
+      alertBox.textContent = msg;
+    }
+    alertBox.style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+}
+
+function showNotice(msg) {
+  if (noticeBox) {
+    noticeBox.textContent = msg;
+    noticeBox.style.display = 'block';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+}
+</script>
+</body>
+</html>

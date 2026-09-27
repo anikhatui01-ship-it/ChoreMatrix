@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Why ChoreMatrix? — Workload Optimization vs Chore Tracking</title>
+<meta name="description" content="Why ChoreMatrix calculates household chore allocation instead of acting as another passive task checklist. Concrete mechanics and comparison." />
+<script>
+  (function() {
+    try {
+      var s = localStorage.getItem('chorematrix_theme') || 'system';
+      var d = s === 'dark' || (s === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.setAttribute('data-theme', d ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme-setting', s);
+    } catch(e){}
+  })();
+</script>
+<link rel="stylesheet" href="/src/styles/common.css" />
+<style>
+  .why-hero {
+    text-align: center;
+    padding: 44px 0 28px;
+    max-width: 800px;
+    margin: 0 auto;
+  }
+  .why-hero h1 {
+    font-size: 36px;
+    font-weight: 800;
+    margin: 0 0 14px;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+  }
+  .why-hero p {
+    font-size: 17px;
+    color: var(--muted);
+    line-height: 1.5;
+    margin: 0 0 24px;
+  }
+  .pillar-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 20px;
+    margin: 36px 0;
+  }
+  .pillar-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 24px;
+    box-shadow: var(--shadow);
+  }
+  .pillar-card h3 {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 0 0 8px;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .pillar-card p {
+    font-size: 13px;
+    color: var(--muted);
+    margin: 0;
+    line-height: 1.55;
+  }
+  .matrix-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+    font-size: 13px;
+  }
+  .matrix-table th, .matrix-table td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--line);
+    text-align: left;
+  }
+  .matrix-table th {
+    background: var(--panel-subtle);
+    color: var(--muted);
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 700;
+  }
+  .matrix-table td {
+    color: var(--ink);
+  }
+  .matrix-table td strong {
+    color: var(--accent);
+  }
+  @media (max-width: 768px) {
+    .pillar-grid { grid-template-columns: 1fr; }
+    .matrix-table { font-size: 11px; }
+    .matrix-table th, .matrix-table td { padding: 8px 6px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="globalNavbar"></div>
+
+<main class="main-content">
+  <div class="shell">
+    <section class="why-hero">
+      <span class="badge teal" style="margin-bottom:12px;">Product Differentiation</span>
+      <h1>ChoreMatrix doesn't just remember chores.<br>It calculates the household workload.</h1>
+      <p>
+        Most chore apps act as passive checklists or gamified points systems. ChoreMatrix approaches household responsibilities as a deterministic capacity-matching problem.
+      </p>
+      <div style="display:flex; justify-content:center; gap:12px;">
+        <a href="/app.html" class="btn large primary">Test the Optimizer</a>
+        <a href="/how-it-works.html" class="btn large">See How It Works</a>
+      </div>
+    </section>
+
+    <!-- 10 Mechanics Pillars -->
+    <section>
+      <div style="text-align:center; max-width:600px; margin:0 auto 20px;">
+        <h2 style="font-size:22px; font-weight:800; margin:0 0 6px; color:var(--ink);">10 Concrete Product Mechanics</h2>
+        <p style="font-size:13px; color:var(--muted); margin:0;">Grounded in actual constraints, schedule physics, and deterministic computation.</p>
+      </div>
+
+      <div class="pillar-grid">
+        <div class="pillar-card">
+          <h3><span>1.</span> Workload Optimization, Not Passive Lists</h3>
+          <p>Instead of expecting partners or roommates to manually negotiate every chore, ChoreMatrix distributes work based on availability and effort weighting.</p>
+        </div>
+
+        <div class="pillar-card">
+          <h3><span>2.</span> Capacity-Aware Balancing</h3>
+          <p>Treats unequal capacity proportionally. An adult with 300 available minutes and a student with 120 minutes each shoulder fair proportional burdens.</p>
+        </div>
+
+        <div class="pillar-card">
+          <h3><span>3.</span> Household Structure Flexibility</h3>
+          <p>Designed for reality: couples, growing families with children, flatmates with independent schedules, and multigenerational households.</p>
+        </div>
+
+        <div class="pillar-card">
+          <h3><span>4.</span> Hard Constraints vs Soft Preferences</h3>
+          <p>Respects hard limits: strict task ineligibility and unavailable days are never violated. Soft preferences and aversions guide fair scoring.</p>
+        </div>
+
+        <div class="pillar-card">
+          <h3><span>5.</span> Explainable Decision Tags</h3>
+          <p>Every assignment includes transparent reasoning codes: <code>eligible_match</code>, <code>capacity_relief</code>, <code>preference_bonus</code>.</p>
+        </div>
+
+        <div class="pillar-card">
+          <h3><span>6.</span> Differential Rebalancing</h3>
+          <p>When unexpected events happen, ChoreMatrix stabilizes settled tasks and moves only what is strictly necessary, avoiding routine chaos.</p>
+        </div>
+
+        <div class="pillar-card">
+          <h3><span>7.</span> Browser-First Spacious Experience</h3>
+          <p>Spacious two-column workspace makes household members, capacities, task constraints, and schedule matrices visible together.</p>
+        </div>
+
+        <div class="pillar-card">
+          <h3><span>8.</span> Deterministic Engine (Zero AI Hallucination)</h3>
+          <p>Mathematically reproducible results in milliseconds. The exact same inputs always produce the exact same plan without LLM drift.</p>
+        </div>
+
+        <div class="pillar-card">
+          <h3><span>9.</span> Multi-Week Rotational Fairness</h3>
+          <p>Rotates demanding recurring tasks (such as deep bathroom scrubbing) across a 4-week horizon so no single member carries permanent burdens.</p>
+        </div>
+
+        <div class="pillar-card">
+          <h3><span>10.</span> Explicit Overload Diagnostics</h3>
+          <p>When required work exceeds total household capacity, ChoreMatrix flags the exact minute deficit rather than failing silently.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Honest Comparison Matrix -->
+    <section class="panel" style="margin:40px 0;">
+      <div class="panel-head">
+        <div>
+          <h2>Architectural Comparison</h2>
+          <div class="sub">Comparing ChoreMatrix to conventional approaches based on documented market research.</div>
+        </div>
+      </div>
+
+      <div style="overflow-x:auto;">
+        <table class="matrix-table">
+          <thead>
+            <tr>
+              <th>Feature</th>
+              <th>ChoreMatrix</th>
+              <th>Generic To-Do Apps</th>
+              <th>Family Calendar Apps</th>
+              <th>Gamified Chore Trackers</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Primary Job</strong></td>
+              <td><strong>Calculates workload balance</strong></td>
+              <td>Stores task descriptions</td>
+              <td>Coordinates calendar events</td>
+              <td>Awards points for completion</td>
+            </tr>
+            <tr>
+              <td><strong>Capacity Awareness</strong></td>
+              <td><strong>Proportional minute limits</strong></td>
+              <td>None</td>
+              <td>Visual overlap only</td>
+              <td>None</td>
+            </tr>
+            <tr>
+              <td><strong>Effort Weighting</strong></td>
+              <td><strong>1 to 5 effort multipliers</strong></td>
+              <td>Flat priority tags</td>
+              <td>None</td>
+              <td>Arbitrary coin values</td>
+            </tr>
+            <tr>
+              <td><strong>Hard Constraints</strong></td>
+              <td><strong>Ineligibility & travel days</strong></td>
+              <td>Manual assignment</td>
+              <td>Manual scheduling</td>
+              <td>Manual claiming</td>
+            </tr>
+            <tr>
+              <td><strong>Rebalance Logic</strong></td>
+              <td><strong>Minimal disruption diff</strong></td>
+              <td>Manual rescheduling</td>
+              <td>Manual drag-and-drop</td>
+              <td>None</td>
+            </tr>
+            <tr>
+              <td><strong>Explainability</strong></td>
+              <td><strong>Algorithmic reason tags</strong></td>
+              <td>None</td>
+              <td>None</td>
+              <td>None</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+</main>
+
+<div id="globalFooter"></div>
+
+<script type="module">
+import { renderNavbar, renderFooter, initCookieBanner } from './src/client.bundle.js';
+renderNavbar('why-chorematrix');
+renderFooter();
+initCookieBanner();
+</script>
+</body>
+</html>

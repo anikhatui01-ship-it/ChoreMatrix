@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Verify Your Email — ChoreMatrix</title>
+<meta name="description" content="Verify your email address to complete your ChoreMatrix registration." />
+<script>
+  (function() {
+    try {
+      var s = localStorage.getItem('chorematrix_theme') || 'system';
+      var d = s === 'dark' || (s === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.setAttribute('data-theme', d ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme-setting', s);
+    } catch(e){}
+  })();
+</script>
+<link rel="stylesheet" href="/src/styles/common.css" />
+<style>
+  .auth-wrap {
+    max-width: 480px;
+    margin: 40px auto;
+    width: 100%;
+  }
+  .auth-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 36px 32px;
+    box-shadow: var(--shadow);
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<div id="globalNavbar"></div>
+
+<main class="main-content">
+  <div class="shell">
+    <div class="auth-wrap">
+      <div class="auth-card" id="verifyCard">
+        <div id="verifyIcon" style="width:48px; height:48px; border-radius:12px; background:var(--accent-soft); color:var(--accent); font-size:24px; display:grid; place-items:center; margin:0 auto 16px;">
+          ✉️
+        </div>
+        <h1 id="verifyTitle" style="font-size:24px; font-weight:800; margin:0 0 8px; color:var(--ink);">Check Your Inbox</h1>
+        <p id="verifyMessage" style="font-size:14px; color:var(--muted); line-height:1.5; margin:0 0 20px;">
+          We sent a confirmation link to <strong id="userEmailSpan" style="color:var(--ink);">your email</strong>. Please click the link to activate your account.
+        </p>
+
+        <div id="resendStatus" style="font-size:12px; margin-bottom:16px;"></div>
+
+        <div id="actionButtons" style="display:flex; flex-direction:column; gap:10px;">
+          <button type="button" class="btn primary" id="btnResend">Resend Verification Email</button>
+          <a href="/login.html" class="btn" id="btnReturnLogin">Return to Sign In</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="globalFooter"></div>
+
+<script type="module">
+import { authService, renderNavbar, renderFooter, initCookieBanner } from './src/client.bundle.js';
+
+renderNavbar('verify-email');
+renderFooter();
+initCookieBanner();
+
+const verifyIcon = document.getElementById('verifyIcon');
+const verifyTitle = document.getElementById('verifyTitle');
+const verifyMessage = document.getElementById('verifyMessage');
+const resendStatus = document.getElementById('resendStatus');
+const actionButtons = document.getElementById('actionButtons');
+const emailSpan = document.getElementById('userEmailSpan');
+const resendBtn = document.getElementById('btnResend');
+
+// Parse search and hash params
+const searchParams = new URLSearchParams(window.location.search);
+const rawHash = window.location.hash.startsWith('#') ? window.location.hash.slice(1) : window.location.hash;
+const hashParams = new URLSearchParams(rawHash);
+
+const email = searchParams.get('email') || '';
+if (emailSpan && email) {
+  emailSpan.textContent = email;
+}
+
+const errType = searchParams.get('error') || hashParams.get('error');
+const errCode = searchParams.get('error_code') || hashParams.get('error_code');
+const errDesc = searchParams.get('error_description') || hashParams.get('error_description');
+
+function showFailureState(title, message) {
+  if (verifyIcon) {
+    verifyIcon.textContent = '⚠️';
+    verifyIcon.style.background = 'var(--alert-bg, #fde8e8)';
+    verifyIcon.style.color = 'var(--bad, #c53030)';
+  }
+  if (verifyTitle) verifyTitle.textContent = title;
+  if (verifyMessage) verifyMessage.textContent = message;
+  if (resendStatus) resendStatus.innerHTML = '';
+  if (actionButtons) {
+    actionButtons.style.display = 'flex';
+    actionButtons.innerHTML = `
+      <a href="/login.html" class="btn primary">Return to Sign In</a>
+      <a href="/signup.html" class="btn">Create New Account</a>
+    `;
+  }
+}
+
+function handleVerified(user) {
+  if (verifyIcon) {
+    verifyIcon.textContent = '✓';
+    verifyIcon.style.background = 'var(--accent-soft)';
+    verifyIcon.style.color = 'var(--accent)';
+  }
+  if (verifyTitle) verifyTitle.textContent = 'Email Verified!';
+  if (verifyMessage) {
+    verifyMessage.textContent = `Welcome${user?.email ? ` (${user.email})` : ''}! Your account is now confirmed. Redirecting to your dashboard…`;
+  }
+  if (actionButtons) actionButtons.style.display = 'none';
+
+  setTimeout(() => {
+    window.location.href = '/app.html';
+  }, 1200);
+}
+
+// Case 1: Verification link error reported by Supabase Auth (e.g. otp_expired)
+if (errType || errCode) {
+  const readable = errDesc ? decodeURIComponent(errDesc.replace(/\+/g, ' ')) : 'The confirmation link is invalid or has expired.';
+  showFailureState('Verification Link Expired', readable);
+} else if (hashParams.has('access_token') || searchParams.has('code') || hashParams.get('type') === 'signup') {
+  // Case 2: Post-verification token/code detected in URL
+  if (verifyIcon) verifyIcon.textContent = '⏳';
+  if (verifyTitle) verifyTitle.textContent = 'Verifying Your Account…';
+  if (verifyMessage) verifyMessage.textContent = 'Please wait a moment while we verify your confirmation link and set up your session.';
+  if (actionButtons) actionButtons.style.display = 'none';
+
+  let hasResolved = false;
+
+  // Listen for Supabase completing auth initialization
+  const { data } = authService.onAuthStateChange((event, session) => {
+    if ((event === 'SIGNED_IN' || event === 'USER_UPDATED') && session?.user) {
+      if (!hasResolved) {
+        hasResolved = true;
+        handleVerified(session.user);
+      }
+    }
+  });
+
+  // Also query session directly in case client already initialized
+  authService.getSession().then(session => {
+    if (session?.user && !hasResolved) {
+      hasResolved = true;
+      handleVerified(session.user);
+    }
+  }).catch(() => {});
+
+  // Safety timeout: Never leave user on an infinite spinner
+  setTimeout(async () => {
+    if (hasResolved) return;
+    try {
+      const user = await authService.getUser();
+      if (user) {
+        hasResolved = true;
+        handleVerified(user);
+        return;
+      }
+    } catch (e) {}
+
+    showFailureState(
+      'Verification Timeout',
+      'We could not verify your session within the expected time. Your link may have expired or was already used. Please try signing in.'
+    );
+  }, 6000);
+} else {
+  // Case 3: Standard inbox check screen after signup
+  resendBtn?.addEventListener('click', async () => {
+    if (!email) {
+      if (resendStatus) resendStatus.innerHTML = '<span style="color:var(--bad);">No email specified. Please go to <a href="/signup.html">Sign Up</a>.</span>';
+      return;
+    }
+
+    resendBtn.disabled = true;
+    resendBtn.textContent = 'Sending…';
+
+    try {
+      await authService.resendVerificationEmail(email);
+      if (resendStatus) resendStatus.innerHTML = '<span style="color:var(--good, #18864b);">✓ New verification link sent. Please check your inbox.</span>';
+    } catch (err) {
+      if (resendStatus) resendStatus.innerHTML = `<span style="color:var(--bad);">${err.message || 'Unable to resend email right now.'}</span>`;
+    } finally {
+      resendBtn.disabled = false;
+      resendBtn.textContent = 'Resend Verification Email';
+    }
+  });
+}
+</script>
+</body>
+</html>

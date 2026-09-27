@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Sign In — ChoreMatrix</title>
+<meta name="description" content="Sign in to your ChoreMatrix account to access your saved households, member availability, and workload plans." />
+<script>
+  (function() {
+    try {
+      var s = localStorage.getItem('chorematrix_theme') || 'system';
+      var d = s === 'dark' || (s === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.setAttribute('data-theme', d ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme-setting', s);
+    } catch(e){}
+  })();
+</script>
+<link rel="stylesheet" href="/src/styles/common.css" />
+<style>
+  .auth-wrap {
+    max-width: 440px;
+    margin: 40px auto;
+    width: 100%;
+  }
+  .auth-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 32px;
+    box-shadow: var(--shadow);
+  }
+  .auth-title {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  .auth-title h1 {
+    font-size: 24px;
+    font-weight: 800;
+    margin: 0 0 6px;
+    color: var(--ink);
+  }
+  .auth-title p {
+    font-size: 13px;
+    color: var(--muted);
+    margin: 0;
+  }
+  .password-row {
+    position: relative;
+    display: flex;
+    align-items: center;
+  }
+  .password-row input {
+    width: 100%;
+    padding-right: 40px;
+  }
+  .password-toggle {
+    position: absolute;
+    right: 8px;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 4px;
+  }
+</style>
+</head>
+<body>
+
+<div id="globalNavbar"></div>
+
+<main class="main-content">
+  <div class="shell">
+    <div class="auth-wrap">
+      <div id="unconfiguredNotice" class="notice-banner" style="display:none; margin-bottom:16px;">
+        <strong>Offline Development Notice:</strong> Supabase cloud credentials are not yet configured in environment variables. Local planning remains fully functional.
+      </div>
+
+      <div class="auth-card">
+        <div class="auth-title">
+          <h1>Welcome Back</h1>
+          <p>Sign in to sync and rebalance your household plans.</p>
+        </div>
+
+        <div id="authAlert" class="alert-box" style="display:none;" role="alert"></div>
+
+        <form id="loginForm" novalidate>
+          <div class="field">
+            <label for="txtEmail">Email Address</label>
+            <input type="email" id="txtEmail" name="email" required autocomplete="email" placeholder="you@example.com" />
+          </div>
+
+          <div class="field">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <label for="txtPassword">Password</label>
+              <a href="/forgot-password.html" style="font-size:11px; font-weight:600;">Forgot?</a>
+            </div>
+            <div class="password-row">
+              <input type="password" id="txtPassword" name="password" required autocomplete="current-password" placeholder="••••••••" />
+              <button type="button" class="password-toggle" id="btnTogglePassword" aria-label="Show password">Show</button>
+            </div>
+          </div>
+
+          <button type="submit" class="btn primary" id="btnSubmit" style="width:100%; margin-top:8px;">
+            Sign In
+          </button>
+        </form>
+
+        <div style="text-align:center; font-size:13px; color:var(--muted); margin-top:20px;">
+          Don't have an account? <a href="/signup.html" style="font-weight:700;">Sign up</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="globalFooter"></div>
+
+<script type="module">
+import { authService, isSupabaseConfigured, renderNavbar, renderFooter, initCookieBanner } from './src/client.bundle.js';
+
+renderNavbar('login');
+renderFooter();
+initCookieBanner();
+
+if (!isSupabaseConfigured) {
+  const notice = document.getElementById('unconfiguredNotice');
+  if (notice) notice.style.display = 'block';
+}
+
+const form = document.getElementById('loginForm');
+const emailInput = document.getElementById('txtEmail');
+const passwordInput = document.getElementById('txtPassword');
+const toggleBtn = document.getElementById('btnTogglePassword');
+const submitBtn = document.getElementById('btnSubmit');
+const alertBox = document.getElementById('authAlert');
+
+toggleBtn?.addEventListener('click', () => {
+  const isPass = passwordInput.type === 'password';
+  passwordInput.type = isPass ? 'text' : 'password';
+  toggleBtn.textContent = isPass ? 'Hide' : 'Show';
+  toggleBtn.setAttribute('aria-label', isPass ? 'Hide password' : 'Show password');
+});
+
+form?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  alertBox.style.display = 'none';
+
+  const email = emailInput.value.trim();
+  const password = passwordInput.value;
+
+  if (!email || !email.includes('@')) {
+    showError('Please enter a valid email address.');
+    return;
+  }
+  if (!password) {
+    showError('Please enter your password.');
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    await authService.signIn(email, password);
+    const params = new URLSearchParams(window.location.search);
+    const redirect = params.get('redirect') || '/app.html';
+    window.location.href = redirect;
+  } catch (err) {
+    showError(err.message || 'Unable to sign in. Please check your credentials.');
+  } finally {
+    setLoading(false);
+  }
+});
+
+function showError(msg) {
+  if (alertBox) {
+    alertBox.textContent = msg;
+    alertBox.style.display = 'block';
+  }
+}
+
+function setLoading(isLoading) {
+  if (submitBtn) {
+    submitBtn.disabled = isLoading;
+    submitBtn.textContent = isLoading ? 'Signing In…' : 'Sign In';
+  }
+}
+</script>
+</body>
+</html>

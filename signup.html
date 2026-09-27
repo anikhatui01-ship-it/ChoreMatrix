@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Create an Account — ChoreMatrix</title>
+<meta name="description" content="Create a ChoreMatrix account to save and optimize your household chores. Minimal personal data required." />
+<script>
+  (function() {
+    try {
+      var s = localStorage.getItem('chorematrix_theme') || 'system';
+      var d = s === 'dark' || (s === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.setAttribute('data-theme', d ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme-setting', s);
+    } catch(e){}
+  })();
+</script>
+<link rel="stylesheet" href="/src/styles/common.css" />
+<style>
+  .auth-wrap {
+    max-width: 440px;
+    margin: 40px auto;
+    width: 100%;
+  }
+  .auth-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 32px;
+    box-shadow: var(--shadow);
+  }
+  .auth-title {
+    text-align: center;
+    margin-bottom: 24px;
+  }
+  .auth-title h1 {
+    font-size: 24px;
+    font-weight: 800;
+    margin: 0 0 6px;
+    color: var(--ink);
+  }
+  .auth-title p {
+    font-size: 13px;
+    color: var(--muted);
+    margin: 0;
+  }
+</style>
+</head>
+<body>
+
+<div id="globalNavbar"></div>
+
+<main class="main-content">
+  <div class="shell">
+    <div class="auth-wrap">
+      <div id="unconfiguredNotice" class="notice-banner" style="display:none; margin-bottom:16px;">
+        <strong>Offline Development Notice:</strong> Supabase cloud credentials are not yet configured in environment variables. Local planning remains fully functional.
+      </div>
+
+      <div class="auth-card">
+        <div class="auth-title">
+          <h1>Create Your Account</h1>
+          <p>We collect only your email to save and balance your plans.</p>
+        </div>
+
+        <div id="authAlert" class="alert-box" style="display:none;" role="alert"></div>
+
+        <form id="signupForm" novalidate>
+          <div class="field">
+            <label for="txtEmail">Email Address</label>
+            <input type="email" id="txtEmail" name="email" required autocomplete="email" placeholder="you@example.com" />
+          </div>
+
+          <div class="field">
+            <label for="txtPassword">Password</label>
+            <input type="password" id="txtPassword" name="password" required autocomplete="new-password" placeholder="At least 8 characters" minlength="8" />
+          </div>
+
+          <div class="field">
+            <label for="txtPasswordConfirm">Confirm Password</label>
+            <input type="password" id="txtPasswordConfirm" name="password_confirm" required autocomplete="new-password" placeholder="Repeat your password" minlength="8" />
+          </div>
+
+          <div style="margin:16px 0 20px;">
+            <label style="display:flex; align-items:flex-start; gap:8px; font-size:12px; color:var(--muted); cursor:pointer;">
+              <input type="checkbox" id="chkTerms" required style="margin-top:2px; accent-color:var(--accent);" />
+              <span>
+                I agree to the <a href="/terms.html" target="_blank">Terms of Service</a> and have reviewed the <a href="/privacy.html" target="_blank">Privacy Policy</a>.
+              </span>
+            </label>
+          </div>
+
+          <button type="submit" class="btn primary" id="btnSubmit" style="width:100%;">
+            Create Account
+          </button>
+        </form>
+
+        <div style="text-align:center; font-size:13px; color:var(--muted); margin-top:20px;">
+          Already have an account? <a href="/login.html" style="font-weight:700;">Sign in</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="globalFooter"></div>
+
+<script type="module">
+import { authService, isSupabaseConfigured, renderNavbar, renderFooter, initCookieBanner } from './src/client.bundle.js';
+
+renderNavbar('signup');
+renderFooter();
+initCookieBanner();
+
+if (!isSupabaseConfigured) {
+  const notice = document.getElementById('unconfiguredNotice');
+  if (notice) notice.style.display = 'block';
+}
+
+const form = document.getElementById('signupForm');
+const emailInput = document.getElementById('txtEmail');
+const passwordInput = document.getElementById('txtPassword');
+const confirmInput = document.getElementById('txtPasswordConfirm');
+const termsCheckbox = document.getElementById('chkTerms');
+const submitBtn = document.getElementById('btnSubmit');
+const alertBox = document.getElementById('authAlert');
+
+form?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  alertBox.style.display = 'none';
+
+  const email = emailInput.value.trim();
+  const password = passwordInput.value;
+  const confirm = confirmInput.value;
+
+  if (!email || !email.includes('@')) {
+    showError('Please enter a valid email address.');
+    return;
+  }
+  if (!password || password.length < 8) {
+    showError('Password must be at least 8 characters long.');
+    return;
+  }
+  if (password !== confirm) {
+    showError('Passwords do not match. Please re-enter.');
+    return;
+  }
+  if (!termsCheckbox.checked) {
+    showError('You must agree to the Terms of Service and Privacy Policy to create an account.');
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    const data = await authService.signUp(email, password);
+    // If confirmation is required, redirect to verify-email
+    if (data.user && !data.session) {
+      window.location.href = `/verify-email.html?email=${encodeURIComponent(email)}`;
+    } else {
+      window.location.href = '/app.html';
+    }
+  } catch (err) {
+    showError(err.message || 'Unable to create account. Please try again.');
+  } finally {
+    setLoading(false);
+  }
+});
+
+function showError(msg) {
+  if (alertBox) {
+    alertBox.textContent = msg;
+    alertBox.style.display = 'block';
+  }
+}
+
+function setLoading(isLoading) {
+  if (submitBtn) {
+    submitBtn.disabled = isLoading;
+    submitBtn.textContent = isLoading ? 'Creating Account…' : 'Create Account';
+  }
+}
+</script>
+</body>
+</html>
