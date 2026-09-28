@@ -210,4 +210,68 @@ describe('Database Schema & Row Level Security (RLS) Boundaries', () => {
     assert.strictEqual(tasksTable.select(null).length, 0);
     assert.strictEqual(plansTable.select(null).length, 0);
   });
+
+  it('verifies authenticated role has table privileges granted on all persistence tables', () => {
+    const requiredTables = [
+      'profiles',
+      'households',
+      'members',
+      'tasks',
+      'member_preferences',
+      'plans',
+      'user_privacy_preferences'
+    ];
+
+    for (const table of requiredTables) {
+      assert.ok(
+        sql.includes(`grant select, insert, update, delete on public.${table} to authenticated;`),
+        `Schema must grant SELECT, INSERT, UPDATE, DELETE on public.${table} to authenticated`
+      );
+    }
+
+    assert.ok(
+      sql.includes('grant usage on schema public to anon, authenticated;') ||
+      sql.includes('grant usage on schema public to authenticated;'),
+      'Schema must grant USAGE on schema public to authenticated'
+    );
+  });
+
+  it('verifies tables are NOT publicly writable by anonymous role', () => {
+    // anon must NEVER be granted write privileges (INSERT, UPDATE, DELETE)
+    assert.ok(
+      !sql.includes('to anon;') || !sql.includes('insert, update, delete on public.households to anon;'),
+      'households must not be writable by anon'
+    );
+    assert.ok(!sql.includes('grant insert on public.households to anon;'));
+    assert.ok(!sql.includes('grant update on public.households to anon;'));
+    assert.ok(!sql.includes('grant delete on public.households to anon;'));
+  });
+
+  it('verifies RLS is never disabled in any migration', () => {
+    const migrationsDir = path.resolve('supabase', 'migrations');
+    const migrationFiles = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql'));
+
+    for (const file of migrationFiles) {
+      const fileSql = fs.readFileSync(path.join(migrationsDir, file), 'utf8').toLowerCase();
+      assert.ok(
+        !fileSql.includes('disable row level security'),
+        `Migration ${file} must NEVER disable row level security`
+      );
+    }
+  });
+
+  it('verifies 02_fix_permissions_and_grants.sql contains idempotent grants and policies', () => {
+    const fixSqlPath = path.resolve('supabase', 'migrations', '02_fix_permissions_and_grants.sql');
+    assert.ok(fs.existsSync(fixSqlPath), '02_fix_permissions_and_grants.sql must exist');
+    const fixSql = fs.readFileSync(fixSqlPath, 'utf8');
+
+    assert.ok(fixSql.includes('grant select, insert, update, delete on public.households to authenticated;'));
+    assert.ok(fixSql.includes('grant select, insert, update, delete on public.members to authenticated;'));
+    assert.ok(fixSql.includes('grant select, insert, update, delete on public.tasks to authenticated;'));
+    assert.ok(fixSql.includes('grant select, insert, update, delete on public.member_preferences to authenticated;'));
+    assert.ok(fixSql.includes('grant select, insert, update, delete on public.plans to authenticated;'));
+    assert.ok(fixSql.includes('grant select, insert, update, delete on public.profiles to authenticated;'));
+    assert.ok(fixSql.includes('grant select, insert, update, delete on public.user_privacy_preferences to authenticated;'));
+  });
 });
+

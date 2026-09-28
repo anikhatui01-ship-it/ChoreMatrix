@@ -100,13 +100,22 @@ alter table public.member_preferences enable row level security;
 alter table public.plans enable row level security;
 alter table public.user_privacy_preferences enable row level security;
 
--- Profiles: Users can only read/update their own profile
+-- Profiles: Users can only read/update/delete their own profile
 create policy "Users can view own profile"
   on public.profiles for select
   using (auth.uid() = id);
 
+create policy "Users can insert own profile"
+  on public.profiles for insert
+  with check (auth.uid() = id);
+
 create policy "Users can update own profile"
   on public.profiles for update
+  using (auth.uid() = id)
+  with check (auth.uid() = id);
+
+create policy "Users can delete own profile"
+  on public.profiles for delete
   using (auth.uid() = id);
 
 -- Households: Users can only CRUD their own households
@@ -120,7 +129,8 @@ create policy "Users can create own households"
 
 create policy "Users can update own households"
   on public.households for update
-  using (auth.uid() = user_id);
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
 
 create policy "Users can delete own households"
   on public.households for delete
@@ -137,7 +147,8 @@ create policy "Users can insert own members"
 
 create policy "Users can update own members"
   on public.members for update
-  using (auth.uid() = user_id);
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
 
 create policy "Users can delete own members"
   on public.members for delete
@@ -154,7 +165,8 @@ create policy "Users can insert own tasks"
 
 create policy "Users can update own tasks"
   on public.tasks for update
-  using (auth.uid() = user_id);
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
 
 create policy "Users can delete own tasks"
   on public.tasks for delete
@@ -167,6 +179,11 @@ create policy "Users can view own member preferences"
 
 create policy "Users can insert own member preferences"
   on public.member_preferences for insert
+  with check (auth.uid() = user_id);
+
+create policy "Users can update own member preferences"
+  on public.member_preferences for update
+  using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
 
 create policy "Users can delete own member preferences"
@@ -182,6 +199,11 @@ create policy "Users can insert own plans"
   on public.plans for insert
   with check (auth.uid() = user_id);
 
+create policy "Users can update own plans"
+  on public.plans for update
+  using (auth.uid() = user_id)
+  with check (auth.uid() = user_id);
+
 create policy "Users can delete own plans"
   on public.plans for delete
   using (auth.uid() = user_id);
@@ -195,6 +217,29 @@ create policy "Users can upsert own privacy preferences"
   on public.user_privacy_preferences for all
   using (auth.uid() = user_id)
   with check (auth.uid() = user_id);
+
+-- ========================================================
+-- PERMISSIONS & TABLE PRIVILEGES (GRANTS)
+-- ========================================================
+-- In PostgreSQL, RLS policies are applied AFTER table-level privileges are checked.
+-- Authenticated users must be granted table privileges so that PostgREST queries
+-- can be evaluated against the RLS policies instead of failing with 42501 permission denied.
+
+grant usage on schema public to anon, authenticated;
+
+grant select, insert, update, delete on public.profiles to authenticated;
+grant select, insert, update, delete on public.households to authenticated;
+grant select, insert, update, delete on public.members to authenticated;
+grant select, insert, update, delete on public.tasks to authenticated;
+grant select, insert, update, delete on public.member_preferences to authenticated;
+grant select, insert, update, delete on public.plans to authenticated;
+grant select, insert, update, delete on public.user_privacy_preferences to authenticated;
+
+grant usage, select on all sequences in schema public to authenticated;
+
+alter default privileges in schema public grant select, insert, update, delete on tables to authenticated;
+alter default privileges in schema public grant usage, select on sequences to authenticated;
+
 
 -- ========================================================
 -- HELPER FUNCTIONS & TRIGGERS
