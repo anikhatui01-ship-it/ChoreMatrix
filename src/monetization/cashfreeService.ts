@@ -27,6 +27,7 @@ export interface CashfreeCredentials {
 export interface CreateSubscriptionParams {
   userId: string;
   userEmail: string;
+  customerName?: string;
   plan: string;
   interval?: string;
   phone?: string;
@@ -129,7 +130,7 @@ export async function createCashfreeSubscription(
   credentials: CashfreeCredentials,
   customFetch: typeof fetch = fetch
 ): Promise<CreateSubscriptionResult> {
-  const { userId, userEmail, plan, interval, phone, customSubscriptionId } = params;
+  const { userId, userEmail, customerName, plan, interval, phone, customSubscriptionId } = params;
   const { appId, secretKey, baseUrl, returnUrlBase } = credentials;
 
   if (!appId || !secretKey) {
@@ -139,6 +140,17 @@ export async function createCashfreeSubscription(
   if (!userId || !userEmail) {
     throw new Error('Valid user ID and email are required to create a subscription.');
   }
+
+  // Validate phone: 10-15 digits after stripping non-digits
+  const cleanPhone = String(phone || '').replace(/\D/g, '');
+  if (!cleanPhone || cleanPhone.length < 10 || cleanPhone.length > 15) {
+    throw new Error('Valid customer mobile number (10 to 15 digits) is required.');
+  }
+
+  const resolvedCustomerName = (
+    customerName ||
+    (userEmail.includes('@') ? userEmail.split('@')[0] : 'ChoreMatrix Customer')
+  ).slice(0, 100);
 
   // 1. Resolve exact existing Cashfree sandbox plan ID
   let resolvedPlanId: string | null = null;
@@ -172,8 +184,9 @@ export async function createCashfreeSubscription(
     subscription_id: subscriptionId,
     customer_details: {
       customer_id: userId,
+      customer_name: resolvedCustomerName,
       customer_email: userEmail,
-      customer_phone: phone || '9999999999'
+      customer_phone: cleanPhone
     },
     plan_details: {
       plan_id: resolvedPlanId

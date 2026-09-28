@@ -82,7 +82,18 @@ serve(async (req: Request) => {
 
     // 2. Parse request body
     const body = await req.json().catch(() => ({}));
-    const { plan, interval, phone } = body;
+    const { plan, interval } = body;
+    const rawPhone = body.customer_phone || body.phone || '';
+    const cleanPhone = String(rawPhone).replace(/\D/g, '');
+
+    if (!cleanPhone || cleanPhone.length < 10 || cleanPhone.length > 15) {
+      return new Response(JSON.stringify({
+        error: 'Valid customer mobile number (10 to 15 digits) is required.'
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
     const planId = resolvePlanId(plan, interval);
     if (!planId) {
@@ -93,6 +104,15 @@ serve(async (req: Request) => {
     }
 
     const planMeta = CASHFREE_PLANS[planId];
+
+    // Customer name from user metadata with safe fallback
+    const userMetadata = user.user_metadata || {};
+    const customerName = (
+      userMetadata.full_name ||
+      userMetadata.name ||
+      userMetadata.customer_name ||
+      (user.email ? user.email.split('@')[0] : 'ChoreMatrix Customer')
+    ).slice(0, 100);
 
     // 3. Credentials and endpoints
     const appId = Deno.env.get('CASHFREE_APP_ID');
@@ -113,7 +133,16 @@ serve(async (req: Request) => {
     const returnUrl = `${returnUrlBase.replace(/\/+$/, '')}/account.html?sub_id={subscription_id}`;
 
     // 5. Call Cashfree Create Subscription API
-    const cashfreeRes = await fetch(`${cashfreeBaseUrl.replace(/\/+$/, '')}/subscriptions`, {
+    const cashfreeEndpoint = `${cashfreeBaseUrl.replace(/\/+$/, '')}/subscriptions`;
+    console.log('[cashfree-create-subscription] Calling Cashfree API:', cashfreeEndpoint, {
+      subscription_id: subscriptionId,
+      plan_id: planId,
+      user_id: user.id,
+      customer_email: user.email,
+      customer_phone: cleanPhone
+    });
+
+    const cashfreeRes = await fetch(cashfreeEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -125,8 +154,9 @@ serve(async (req: Request) => {
         subscription_id: subscriptionId,
         customer_details: {
           customer_id: user.id,
+          customer_name: customerName,
           customer_email: user.email,
-          customer_phone: phone || '9999999999'
+          customer_phone: cleanPhone
         },
         plan_details: {
           plan_id: planId
@@ -137,23 +167,41 @@ serve(async (req: Request) => {
       })
     });
 
+    console.log('[cashfree-create-subscription] Cashfree response status:', cashfreeRes.status);
+
     if (!cashfreeRes.ok) {
       const errText = await cashfreeRes.text();
-      console.error('[Cashfree Error]', cashfreeRes.status, errText);
+      let errDetail = errText;
+      try {
+        const parsed = JSON.parse(errText);
+        errDetail = parsed.message || parsed.error || errText;
+      } catch {}
+      console.error('[Cashfree Gateway Error]', cashfreeRes.status, errDetail);
       return new Response(JSON.stringify({
-        error: 'Cashfree subscription creation rejected by gateway.',
-        status: cashfreeRes.status
+        error: `Cashfree gateway error (${cashfreeRes.status}): ${errDetail}`,
+        status: cashfreeRes.status,
+        details: errText
       }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    const data = await cashfreeRes.json();
-    const sessionId = data.subscription_session_id || data.data?.subscription_session_id || data.subReferenceId;
+    const data = await cashfreeRes.json().catch(() => ({}));
+    console.log('[cashfree-create-subscription] Cashfree response body:', JSON.stringify(data));
+
+    const sessionId =
+      data.subscription_session_id ||
+      data.data?.subscription_session_id ||
+      data.subReferenceId ||
+      data.data?.subReferenceId;
 
     if (!sessionId) {
-      return new Response(JSON.stringify({ error: 'Gateway response missing subscription_session_id.' }), {
+      console.error('[cashfree-create-subscription] Missing subscription_session_id:', data);
+      return new Response(JSON.stringify({
+        error: 'Gateway response missing subscription_session_id.',
+        response: data
+      }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });

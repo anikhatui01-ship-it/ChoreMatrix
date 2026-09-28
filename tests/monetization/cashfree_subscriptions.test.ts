@@ -17,6 +17,7 @@ import {
   generateWebhookEventId,
   processCashfreeWebhook
 } from '../../src/monetization/cashfreeService.ts';
+import { runCashfreeSdkCheckout } from '../../src/monetization/cashfreeCheckout.ts';
 import { isTierAdFree } from '../../src/config/pricing.ts';
 
 describe('Cashfree Sandbox Subscriptions & Webhook Integration Suite', () => {
@@ -126,7 +127,7 @@ describe('Cashfree Sandbox Subscriptions & Webhook Integration Suite', () => {
   });
 
   // ========================================================
-  // 2. CHECKOUT CREATION (Requirements 4, 5, 6, 7, 8)
+  // 2. CHECKOUT CREATION (Requirements 2, 5, 6, 7)
   // ========================================================
   describe('2. Checkout Creation & Secret Key Protection', () => {
     it('creates Cashfree subscription using correct plan ID and returns session ID (Pro Monthly)', async () => {
@@ -154,8 +155,10 @@ describe('Cashfree Sandbox Subscriptions & Webhook Integration Suite', () => {
         {
           userId: 'usr_alice_001',
           userEmail: 'alice@example.com',
+          customerName: 'Alice Smith',
           plan: 'pro',
-          interval: 'monthly'
+          interval: 'monthly',
+          phone: '9876543210'
         },
         mockCredentials,
         mockFetch
@@ -169,7 +172,9 @@ describe('Cashfree Sandbox Subscriptions & Webhook Integration Suite', () => {
 
       // Verify body
       assert.strictEqual(capturedBody.customer_details.customer_id, 'usr_alice_001');
+      assert.strictEqual(capturedBody.customer_details.customer_name, 'Alice Smith');
       assert.strictEqual(capturedBody.customer_details.customer_email, 'alice@example.com');
+      assert.strictEqual(capturedBody.customer_details.customer_phone, '9876543210');
       assert.strictEqual(capturedBody.plan_details.plan_id, 'CHOREMATRIX_PRO_MONTHLY');
       assert.strictEqual(
         capturedBody.subscription_meta.return_url,
@@ -214,7 +219,8 @@ describe('Cashfree Sandbox Subscriptions & Webhook Integration Suite', () => {
             userId: 'usr_test_user',
             userEmail: 'test@example.com',
             plan: tc.plan,
-            interval: tc.interval
+            interval: tc.interval,
+            phone: '9876543210'
           },
           mockCredentials,
           mockFetch
@@ -229,9 +235,140 @@ describe('Cashfree Sandbox Subscriptions & Webhook Integration Suite', () => {
   });
 
   // ========================================================
-  // 3. INVALID REQUESTS HANDLING (Requirement 16)
+  // 3. INVALID REQUESTS & PHONE VALIDATION (Requirements 3, 4, 5, 8, 16)
   // ========================================================
-  describe('3. Invalid Requests Handling', () => {
+  describe('3. Validation & Invalid Requests Handling (Phone, Free Tier, Session ID)', () => {
+    it('3. missing phone: rejects subscription creation when phone is missing or blank', async () => {
+      await assert.rejects(
+        async () => {
+          await createCashfreeSubscription(
+            {
+              userId: 'usr_valid',
+              userEmail: 'valid@example.com',
+              plan: 'pro',
+              interval: 'monthly'
+            },
+            mockCredentials
+          );
+        },
+        /Valid customer mobile number/
+      );
+    });
+
+    it('4. invalid phone: rejects subscription creation when phone has <10 or >15 digits or non-numeric', async () => {
+      // Too short (<10 digits)
+      await assert.rejects(
+        async () => {
+          await createCashfreeSubscription(
+            {
+              userId: 'usr_valid',
+              userEmail: 'valid@example.com',
+              plan: 'pro',
+              interval: 'monthly',
+              phone: '12345678'
+            },
+            mockCredentials
+          );
+        },
+        /Valid customer mobile number/
+      );
+
+      // Too long (>15 digits)
+      await assert.rejects(
+        async () => {
+          await createCashfreeSubscription(
+            {
+              userId: 'usr_valid',
+              userEmail: 'valid@example.com',
+              plan: 'pro',
+              interval: 'monthly',
+              phone: '12345678901234567'
+            },
+            mockCredentials
+          );
+        },
+        /Valid customer mobile number/
+      );
+
+      // Non-digits only
+      await assert.rejects(
+        async () => {
+          await createCashfreeSubscription(
+            {
+              userId: 'usr_valid',
+              userEmail: 'valid@example.com',
+              plan: 'pro',
+              interval: 'monthly',
+              phone: 'abc-def-ghij'
+            },
+            mockCredentials
+          );
+        },
+        /Valid customer mobile number/
+      );
+    });
+
+    it('5. valid customer details: correctly formats customer_name, customer_email, customer_phone and customer_id', async () => {
+      let capturedBody: any = null;
+      const mockFetch: typeof fetch = async (_url, init) => {
+        capturedBody = JSON.parse(init?.body as string);
+        return new Response(
+          JSON.stringify({
+            subscription_id: capturedBody.subscription_id,
+            subscription_session_id: 'sub_sess_valid_customer_details'
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      };
+
+      await createCashfreeSubscription(
+        {
+          userId: 'usr_alice_123',
+          userEmail: 'alice.smith@example.com',
+          customerName: 'Alice Smith',
+          plan: 'pro',
+          interval: 'monthly',
+          phone: '+1 (555) 234-5678' // formatted phone with non-digits
+        },
+        mockCredentials,
+        mockFetch
+      );
+
+      assert.strictEqual(capturedBody.customer_details.customer_id, 'usr_alice_123');
+      assert.strictEqual(capturedBody.customer_details.customer_name, 'Alice Smith');
+      assert.strictEqual(capturedBody.customer_details.customer_email, 'alice.smith@example.com');
+      assert.strictEqual(capturedBody.customer_details.customer_phone, '15552345678');
+    });
+
+    it('8. missing session ID handled: rejects when Cashfree gateway response omits subscription_session_id', async () => {
+      const mockFetch: typeof fetch = async () => {
+        return new Response(
+          JSON.stringify({
+            subscription_id: 'sub_missing_sess_123',
+            subscription_status: 'INITIALIZED'
+          }),
+          { status: 200, headers: { 'Content-Type': 'application/json' } }
+        );
+      };
+
+      await assert.rejects(
+        async () => {
+          await createCashfreeSubscription(
+            {
+              userId: 'usr_user1',
+              userEmail: 'user1@example.com',
+              plan: 'pro',
+              interval: 'monthly',
+              phone: '9876543210'
+            },
+            mockCredentials,
+            mockFetch
+          );
+        },
+        /missing subscription_session_id/
+      );
+    });
+
     it('rejects subscription creation for Free tier', async () => {
       await assert.rejects(
         async () => {
@@ -240,7 +377,8 @@ describe('Cashfree Sandbox Subscriptions & Webhook Integration Suite', () => {
               userId: 'usr_free_user',
               userEmail: 'free@example.com',
               plan: 'free',
-              interval: 'monthly'
+              interval: 'monthly',
+              phone: '9876543210'
             },
             mockCredentials
           );
@@ -258,7 +396,8 @@ describe('Cashfree Sandbox Subscriptions & Webhook Integration Suite', () => {
               userId: 'usr_attacker',
               userEmail: 'attacker@example.com',
               plan: 'enterprise_vip_tier',
-              interval: 'monthly'
+              interval: 'monthly',
+              phone: '9876543210'
             },
             mockCredentials
           );
@@ -276,7 +415,8 @@ describe('Cashfree Sandbox Subscriptions & Webhook Integration Suite', () => {
               userId: '',
               userEmail: '',
               plan: 'pro',
-              interval: 'monthly'
+              interval: 'monthly',
+              phone: '9876543210'
             },
             mockCredentials
           );
@@ -293,7 +433,8 @@ describe('Cashfree Sandbox Subscriptions & Webhook Integration Suite', () => {
               userId: 'usr_valid',
               userEmail: 'valid@example.com',
               plan: 'pro',
-              interval: 'monthly'
+              interval: 'monthly',
+              phone: '9876543210'
             },
             { appId: '', secretKey: '' }
           );
@@ -320,7 +461,8 @@ describe('Cashfree Sandbox Subscriptions & Webhook Integration Suite', () => {
               userId: 'usr_user1',
               userEmail: 'user1@example.com',
               plan: 'pro',
-              interval: 'monthly'
+              interval: 'monthly',
+              phone: '9876543210'
             },
             mockCredentials,
             failingFetch
@@ -776,10 +918,55 @@ describe('Cashfree Sandbox Subscriptions & Webhook Integration Suite', () => {
       assert.strictEqual(updatedProfile.subscription_status, 'past_due');
       assert.strictEqual(isTierAdFree(updatedProfile.plan_tier), false);
     });
+
+    it('16. user isolation: webhook event for User A cannot modify User B profile', async () => {
+      const db = new MockSupabaseDb();
+      const userA = 'usr_alice_isolation';
+      const userB = 'usr_bob_isolation';
+      const subA = 'sub_alice_isolation_01';
+      const subB = 'sub_bob_isolation_02';
+
+      db.profiles.set(userA, { id: userA, plan_tier: 'free', subscription_status: 'none' });
+      db.profiles.set(userB, { id: userB, plan_tier: 'free', subscription_status: 'none' });
+      db.subscriptions.set(subA, { subscription_id: subA, user_id: userA, plan_id: 'CHOREMATRIX_PRO_MONTHLY' });
+      db.subscriptions.set(subB, { subscription_id: subB, user_id: userB, plan_id: 'ChoreMatrix_Plus_Monthly' });
+
+      const timestamp = '1716387000000';
+      const payloadA = {
+        type: 'SUBSCRIPTION_STATUS_CHANGE',
+        data: {
+          subscription_details: {
+            subscription_id: subA,
+            plan_id: 'CHOREMATRIX_PRO_MONTHLY',
+            subscription_status: 'ACTIVE'
+          },
+          customer_details: { customer_id: userA }
+        }
+      };
+
+      const rawBodyA = JSON.stringify(payloadA);
+      const signatureA = crypto.createHmac('sha256', mockCredentials.secretKey).update(timestamp + rawBodyA).digest('base64');
+
+      await processCashfreeWebhook({
+        rawBody: rawBodyA,
+        signature: signatureA,
+        timestamp,
+        secretKey: mockCredentials.secretKey,
+        dbClient: db
+      });
+
+      // User A is upgraded to Pro
+      assert.strictEqual(db.profiles.get(userA).plan_tier, 'pro');
+      assert.strictEqual(db.profiles.get(userA).subscription_status, 'active');
+
+      // User B remains on Free tier with zero modification
+      assert.strictEqual(db.profiles.get(userB).plan_tier, 'free');
+      assert.strictEqual(db.profiles.get(userB).subscription_status, 'none');
+    });
   });
 
   // ========================================================
-  // 7. EDGE FUNCTION FILES & UI CHECKS
+  // 7. EDGE FUNCTION FILES & FRONTEND WEB CHECKOUT SDK CHECKS
   // ========================================================
   describe('7. Edge Function Files & Frontend Web Checkout SDK Checks', () => {
     it('verifies cashfree-create-subscription edge function exists and enforces authentication', () => {
@@ -807,16 +994,98 @@ describe('Cashfree Sandbox Subscriptions & Webhook Integration Suite', () => {
       assert.ok(content.includes('timingSafeEqual'), 'Must use timing-safe comparison');
     });
 
-    it('verifies upgrade.html loads official Cashfree SDK and includes upgrade trigger', () => {
+    it('1. unauthenticated upgrade attempt: upgrade.html verifies authentication and redirects to login preserving plan and interval', () => {
       const upgradePath = path.join(rootDir, 'upgrade.html');
       assert.ok(fs.existsSync(upgradePath), 'upgrade.html must exist');
 
       const content = fs.readFileSync(upgradePath, 'utf8');
-      assert.ok(content.includes('https://sdk.cashfree.com/js/v3/cashfree.js'), 'Must load official Cashfree SDK');
-      assert.ok(content.includes('btnCashfreeUpgrade'), 'Must have upgrade trigger button');
-      assert.ok(content.includes('initiateCashfreeSubscription'), 'Must bind initiateCashfreeSubscription');
-      assert.ok(content.includes('https://chorematrix.online'), 'Must disclose production return domain');
-      assert.ok(content.includes('SANDBOX') || content.includes('Sandbox'), 'Must declare SANDBOX mode');
+      assert.ok(content.includes('authService.getUser()'), 'Must check user authentication');
+      assert.ok(content.includes('/login.html?redirect='), 'Must redirect unauthenticated users to login');
+      assert.ok(content.includes('plan='), 'Must preserve plan in redirect');
+      assert.ok(content.includes('interval='), 'Must preserve interval in redirect');
+    });
+
+    it('upgrade.html contains mobile number field with tel/numeric/autocomplete and 10-15 digit validation', () => {
+      const upgradePath = path.join(rootDir, 'upgrade.html');
+      const content = fs.readFileSync(upgradePath, 'utf8');
+
+      assert.ok(content.includes('Mobile number'), 'Must display Mobile number label');
+      assert.ok(content.includes('type="tel"'), 'Must set type="tel"');
+      assert.ok(content.includes('inputmode="numeric"'), 'Must set inputmode="numeric"');
+      assert.ok(content.includes('autocomplete="tel"'), 'Must set autocomplete="tel"');
+      assert.ok(content.includes('txtCustomerPhone'), 'Must have ID txtCustomerPhone');
+      assert.ok(content.includes('.replace(/\\D/g'), 'Must strip non-digits to validate 10-15 digits');
+      assert.ok(!content.includes('name="cc-number"'), 'Must not collect credit card numbers');
+    });
+
+    it('9. Cashfree checkout() called with subsSessionId: initializes SDK in sandbox mode and calls checkout', async () => {
+      let initMode = '';
+      let checkoutArgs: any = null;
+
+      (globalThis as any).window = {
+        Cashfree: (cfg: { mode: string }) => {
+          initMode = cfg.mode;
+          return {
+            checkout: async (opts: any) => {
+              checkoutArgs = opts;
+              return { redirect: true };
+            }
+          };
+        }
+      };
+
+      const res = await runCashfreeSdkCheckout('sub_sess_valid_abc_12345');
+      assert.strictEqual(res.success, true);
+      assert.strictEqual(initMode, 'sandbox', 'Must initialize Cashfree in sandbox mode');
+      assert.strictEqual(checkoutArgs.subsSessionId, 'sub_sess_valid_abc_12345', 'Must pass subsSessionId');
+      assert.strictEqual(checkoutArgs.redirectTarget, '_self', 'Default redirectTarget must be _self');
+
+      delete (globalThis as any).window;
+    });
+
+    it('10. Cashfree SDK error surfaced: returns clear user-readable error when SDK checkout fails or throws', async () => {
+      // Case A: SDK returns error object
+      (globalThis as any).window = {
+        Cashfree: () => ({
+          checkout: async () => ({
+            error: { message: 'Card mandate authorization failed by bank' }
+          })
+        })
+      };
+
+      const res1 = await runCashfreeSdkCheckout('sub_sess_err_1');
+      assert.strictEqual(res1.success, false);
+      assert.strictEqual(res1.error, 'Card mandate authorization failed by bank');
+
+      // Case B: SDK throws exception
+      (globalThis as any).window = {
+        Cashfree: () => ({
+          checkout: async () => {
+            throw new Error('Connection to Cashfree hosted checkout was refused');
+          }
+        })
+      };
+
+      const res2 = await runCashfreeSdkCheckout('sub_sess_err_2');
+      assert.strictEqual(res2.success, false);
+      assert.strictEqual(res2.error, 'Connection to Cashfree hosted checkout was refused');
+
+      delete (globalThis as any).window;
+    });
+
+    it('src/monetization/cashfreeCheckout.ts uses cashfree.checkout({ subsSessionId, redirectTarget: "_self" })', () => {
+      const code = fs.readFileSync(path.join(rootDir, 'src', 'monetization', 'cashfreeCheckout.ts'), 'utf8');
+      assert.ok(code.includes('cashfree.checkout({'), 'Must call cashfree.checkout');
+      assert.ok(code.includes('subsSessionId:'), 'Must pass subsSessionId');
+      assert.ok(code.includes("Cashfree({ mode: 'sandbox' })"), 'Must initialize SDK in sandbox mode');
+      assert.ok(!code.includes('cashfree.subscriptionsCheckout('), 'Must NOT use deprecated subscriptionsCheckout');
+      assert.ok(!code.includes('CASHFREE_SECRET_KEY'), 'Must never contain secret key');
+    });
+
+    it('17. existing Free/Pro/Plus entitlement behavior unchanged', () => {
+      assert.strictEqual(isTierAdFree('free'), false, 'Free tier has ads');
+      assert.strictEqual(isTierAdFree('pro'), true, 'Pro tier is ad-free');
+      assert.strictEqual(isTierAdFree('plus'), true, 'Plus tier is ad-free');
     });
   });
 });

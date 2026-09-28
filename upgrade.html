@@ -210,10 +210,29 @@ if (cardEl && selectedTier) {
       Payment processing is currently being finalized for production. Live credit card checkout and subscription activation will open soon. Cashfree SANDBOX subscription checkout is active below for testing.
     </div>
 
+    <!-- Mobile number field required by Cashfree Subscriptions -->
+    <div style="margin-bottom: 20px; text-align: left;">
+      <label for="txtCustomerPhone" style="display: block; font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 6px;">
+        Mobile number
+      </label>
+      <input
+        id="txtCustomerPhone"
+        type="tel"
+        inputmode="numeric"
+        autocomplete="tel"
+        placeholder="e.g. 9876543210"
+        style="width: 100%; padding: 11px 14px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; background: var(--panel); color: var(--ink); box-sizing: border-box;"
+      />
+      <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">
+        Required by Cashfree for mandate authorization notifications (10–15 digits).
+      </div>
+    </div>
+
     <div style="margin-bottom: 20px;">
       <button type="button" id="btnCashfreeUpgrade" class="btn primary" style="width: 100%; font-size: 15px; font-weight: 700; padding: 12px 18px; text-align: center;">
         Upgrade to ${escapeHtml(selectedTier.name)} with Cashfree (Sandbox)
       </button>
+      <div id="inlineCheckoutError" style="display: none; margin-top: 12px; padding: 12px 14px; background: #fef2f2; border: 1px solid #ef4444; border-radius: 8px; color: #991b1b; font-size: 13px; font-weight: 600; line-height: 1.45; text-align: left; word-break: break-word;"></div>
       <div style="font-size: 11px; color: var(--muted); text-align: center; margin-top: 6px;">
         Cashfree Sandbox Plan: <code>${escapeHtml(cashfreePlanId)}</code> · Return Domain: <code>https://chorematrix.online</code>
       </div>
@@ -231,41 +250,77 @@ if (cardEl && selectedTier) {
 
   // Attach Cashfree upgrade trigger
   const upgradeBtn = document.getElementById('btnCashfreeUpgrade');
+  const inlineErrorEl = document.getElementById('inlineCheckoutError');
+
+  function displayCheckoutError(msg) {
+    console.error('[Upgrade Checkout Error Surfaced]:', msg);
+    if (inlineErrorEl) {
+      inlineErrorEl.textContent = `Checkout Error: ${msg}`;
+      inlineErrorEl.style.display = 'block';
+    }
+    showFeedback(msg, 'error');
+  }
+
+  function clearAllErrors() {
+    if (inlineErrorEl) {
+      inlineErrorEl.style.display = 'none';
+      inlineErrorEl.textContent = '';
+    }
+    clearFeedback();
+  }
+
   if (upgradeBtn) {
     upgradeBtn.addEventListener('click', async () => {
-      clearFeedback();
+      clearAllErrors();
 
-      // 1. Verify user is logged in
+      // 1. Verify user is authenticated with a valid session
       const user = await authService.getUser();
+      const currentPlan = selectedTier?.id || 'pro';
+      const currentInterval = isAnnual ? 'annual' : 'monthly';
+      const returnUrl = `/upgrade.html?plan=${encodeURIComponent(currentPlan)}&interval=${encodeURIComponent(currentInterval)}`;
+
       if (!user) {
-        showFeedback('Please sign in or create an account to upgrade your subscription plan.', 'error');
+        displayCheckoutError('Please sign in or create an account to upgrade your subscription plan. Redirecting to sign in…');
         setTimeout(() => {
-          window.location.href = `/login.html?redirect=${encodeURIComponent(window.location.pathname + window.location.search)}`;
-        }, 1500);
+          window.location.href = `/login.html?redirect=${encodeURIComponent(returnUrl)}`;
+        }, 1200);
         return;
       }
 
-      // 2. Set button loading state
+      // 2. Validate clean 10–15 digit mobile number
+      const phoneInput = document.getElementById('txtCustomerPhone');
+      const rawPhone = phoneInput ? phoneInput.value : '';
+      const cleanPhone = rawPhone.replace(/\D/g, '');
+      if (!cleanPhone || cleanPhone.length < 10 || cleanPhone.length > 15) {
+        displayCheckoutError('Please enter a valid mobile number (10 to 15 digits) before proceeding to checkout.');
+        if (phoneInput) phoneInput.focus();
+        return;
+      }
+
+      // 3. Set button loading state
       const originalText = upgradeBtn.textContent;
       upgradeBtn.disabled = true;
       upgradeBtn.textContent = 'Connecting to Cashfree Sandbox…';
 
       try {
+        console.log('[Upgrade Page] Initiating subscription upgrade for:', selectedTier.id, isAnnual ? 'annual' : 'monthly');
         const result = await initiateCashfreeSubscription({
           plan: selectedTier.id,
-          interval: isAnnual ? 'annual' : 'monthly'
+          interval: isAnnual ? 'annual' : 'monthly',
+          phone: cleanPhone
         });
 
         if (!result.success) {
-          showFeedback(result.error || 'Unable to initiate Cashfree checkout session.', 'error');
+          displayCheckoutError(result.error || 'Unable to initiate Cashfree checkout session.');
           upgradeBtn.disabled = false;
           upgradeBtn.textContent = originalText;
         } else {
           showFeedback('Cashfree checkout session initialized. Redirecting to payment authorization…', 'info');
+          upgradeBtn.textContent = 'Redirecting to Cashfree…';
         }
       } catch (err) {
-        console.error('[Upgrade Checkout Error]', err);
-        showFeedback(err.message || 'An error occurred while launching Cashfree checkout.', 'error');
+        console.error('[Upgrade Checkout Exception]', err);
+        displayCheckoutError(err.message || 'An unexpected error occurred while launching Cashfree checkout.');
         upgradeBtn.disabled = false;
         upgradeBtn.textContent = originalText;
       }

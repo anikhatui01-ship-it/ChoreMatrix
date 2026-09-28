@@ -82,7 +82,18 @@ serve(async (req: Request) => {
 
     // 2. Parse request body
     const body = await req.json().catch(() => ({}));
-    const { plan, interval, phone } = body;
+    const { plan, interval } = body;
+    const rawPhone = body.customer_phone || body.phone || '';
+    const cleanPhone = String(rawPhone).replace(/\D/g, '');
+
+    if (!cleanPhone || cleanPhone.length < 10 || cleanPhone.length > 15) {
+      return new Response(JSON.stringify({
+        error: 'Valid customer mobile number (10 to 15 digits) is required.'
+      }), {
+        status: 400,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
 
     const planId = resolvePlanId(plan, interval);
     if (!planId) {
@@ -93,6 +104,15 @@ serve(async (req: Request) => {
     }
 
     const planMeta = CASHFREE_PLANS[planId];
+
+    // Customer name from user metadata with safe fallback
+    const userMetadata = user.user_metadata || {};
+    const customerName = (
+      userMetadata.full_name ||
+      userMetadata.name ||
+      userMetadata.customer_name ||
+      (user.email ? user.email.split('@')[0] : 'ChoreMatrix Customer')
+    ).slice(0, 100);
 
     // 3. Credentials and endpoints
     const appId = Deno.env.get('CASHFREE_APP_ID');
@@ -125,8 +145,9 @@ serve(async (req: Request) => {
         subscription_id: subscriptionId,
         customer_details: {
           customer_id: user.id,
+          customer_name: customerName,
           customer_email: user.email,
-          customer_phone: phone || '9999999999'
+          customer_phone: cleanPhone
         },
         plan_details: {
           plan_id: planId
@@ -149,8 +170,12 @@ serve(async (req: Request) => {
       });
     }
 
-    const data = await cashfreeRes.json();
-    const sessionId = data.subscription_session_id || data.data?.subscription_session_id || data.subReferenceId;
+    const data = await cashfreeRes.json().catch(() => ({}));
+    const sessionId =
+      data.subscription_session_id ||
+      data.data?.subscription_session_id ||
+      data.subReferenceId ||
+      data.data?.subReferenceId;
 
     if (!sessionId) {
       return new Response(JSON.stringify({ error: 'Gateway response missing subscription_session_id.' }), {
