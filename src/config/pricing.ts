@@ -20,12 +20,15 @@ export interface CheckoutDisclosures {
   jurisdictionNotice: string;
 }
 
+export type AdEntitlement = 'ads_enabled' | 'ad_free';
+
 export interface PricingTier {
   id: string;
   name: string;
   tagline: string;
   monthlyPrice: number;
   annualPrice: number;
+  annualSavingText: string;
   billingIntervals: Array<'month' | 'year'>;
   trialDays: number;
   monthlyRenewalAmount: number;
@@ -38,6 +41,7 @@ export interface PricingTier {
   limitations: string[];
   ctaText: string;
   adFree: boolean;
+  adEntitlement: AdEntitlement;
   checkoutDisclosures: CheckoutDisclosures;
 }
 
@@ -52,16 +56,17 @@ export interface PricingConfig {
 
 export const PRICING_CONFIG: PricingConfig = {
   isBusinessFinalized: false,
-  provisionalNotice: 'Informational Pricing Only: Subscription payment checkout is currently in development. Pricing and trial durations are provisional development values based on monetization hypotheses in 13-monetization.md. Core optimization and interactive planning remain accessible without entering payment details.',
-  defaultTrialDays: 14,
-  autoRenewalPolicyNotice: 'Automatic Renewal Disclosure: Future paid subscriptions automatically renew at the applicable recurring rate at the end of each billing cycle or promotional trial period until cancelled. Cancellations can be executed online anytime via Account Settings without phone or manual cancellation barriers. California and other jurisdictions require explicit affirmative consent and clear disclosure of all renewal terms adjacent to the purchase action.',
+  provisionalNotice: 'Informational Pricing Only: Subscription payment checkout is currently in development. Pricing and trial durations are development values. Core optimization and interactive planning remain accessible without entering payment details.',
+  defaultTrialDays: 7,
+  autoRenewalPolicyNotice: 'Automatic Renewal Disclosure: Future paid subscriptions automatically renew at the applicable recurring rate ($5.99/mo or $59.99/yr for Pro; $9.99/mo or $99.99/yr for Plus) at the end of each billing cycle or promotional trial period until cancelled. Cancellations can be executed online anytime via Account Settings without phone or manual cancellation barriers. California and other jurisdictions require explicit affirmative consent and clear disclosure of all renewal terms adjacent to the purchase action.',
   tiers: [
     {
       id: 'free',
       name: 'Free',
-      tagline: 'Essential workload optimization for a single household.',
+      tagline: 'Essential workload optimization for your household.',
       monthlyPrice: 0,
       annualPrice: 0,
+      annualSavingText: 'Free forever',
       billingIntervals: ['month'],
       trialDays: 0,
       monthlyRenewalAmount: 0,
@@ -70,20 +75,21 @@ export const PRICING_CONFIG: PricingConfig = {
       cancellationMethod: 'Not applicable (no recurring charges)',
       isProvisional: false,
       features: [
-        '1 active household',
-        'Deterministic workload optimizer',
-        'Capacity-aware & equal balance modes',
-        'Weekly calendar & table schedule views',
-        'Basic differential rebalancing',
-        'Full Light, Dark, and System theme support',
-        'Ad-supported planning'
+        '1-week planning',
+        'core optimizer',
+        'Calculate Plan',
+        'Rebalance',
+        'cloud saving',
+        'basic diagnostics',
+        'ads'
       ],
       limitations: [
-        'Single planning horizon',
-        'Local browser storage only'
+        '1-week planning horizon only',
+        'Ad-supported workspace'
       ],
-      ctaText: 'Continue free',
+      ctaText: 'Continue Free',
       adFree: false,
+      adEntitlement: 'ads_enabled',
       checkoutDisclosures: {
         chargedToday: 0,
         trialDurationText: 'None (permanently free)',
@@ -92,85 +98,82 @@ export const PRICING_CONFIG: PricingConfig = {
         recurringFrequency: 'monthly',
         renewalBehavior: 'Free forever without automated recurring charges.',
         cancellationMethod: 'Delete account at any time in Account Settings.',
-        materialLimitations: ['Local storage only', 'Single planning horizon'],
+        materialLimitations: ['1-week planning only', 'Ad-supported workspace'],
         taxesNotice: 'No tax applicable',
         jurisdictionNotice: 'Free tier requires no payment method.'
       }
     },
     {
-      id: 'household_pro',
-      name: 'Household Pro',
-      tagline: 'Multi-week rotation and full constraint flexibility.',
-      monthlyPrice: 4.99, // Hypothesized Option A from 13-monetization.md
-      annualPrice: 39.00,
+      id: 'pro',
+      name: 'Pro',
+      tagline: 'Multi-week rotational fairness, soft preferences, and no ads.',
+      monthlyPrice: 5.99,
+      annualPrice: 59.99,
+      annualSavingText: 'Save about 2 months',
       billingIntervals: ['month', 'year'],
-      trialDays: 14,
-      monthlyRenewalAmount: 4.99,
-      annualRenewalAmount: 39.00,
+      trialDays: 7,
+      monthlyRenewalAmount: 5.99,
+      annualRenewalAmount: 59.99,
       renewalInterval: 'monthly',
-      cancellationMethod: '1-click online cancellation via Account dashboard prior to renewal date',
+      cancellationMethod: 'Online cancellation via Account Settings prior to renewal date',
       isProvisional: true,
       popular: true,
       features: [
-        'Everything in Free',
-        '100% ad-free workspace',
-        '4-week multi-week rotation heuristics',
-        'Cloud sync & secure multi-device sign-in',
-        'Aversion & preference scoring (soft preferences)',
-        'Full explainability tags (Why this assignment?)',
-        'Exportable schedule summaries'
+        'everything in Free',
+        '4-week planning',
+        'advanced preferences/aversions',
+        'richer plan information',
+        'no ads'
       ],
-      limitations: [
-        '1 cloud household'
-      ],
-      ctaText: 'Start 14-day free trial',
+      limitations: [],
+      ctaText: 'Start 7-day free trial',
       adFree: true,
+      adEntitlement: 'ad_free',
       checkoutDisclosures: {
         chargedToday: 0,
-        trialDurationText: '14-day free trial period',
-        chargedAfterTrialMonthly: 4.99,
-        chargedAfterTrialAnnual: 39.00,
+        trialDurationText: '7-day free trial period',
+        chargedAfterTrialMonthly: 5.99,
+        chargedAfterTrialAnnual: 59.99,
         recurringFrequency: 'monthly',
-        renewalBehavior: 'Renews automatically each month or year until cancelled. Notice provided prior to annual renewal.',
+        renewalBehavior: 'Renews automatically each month ($5.99/mo) or year ($59.99/yr) until cancelled. Notice provided prior to renewal.',
         cancellationMethod: 'Online via Account Settings before trial expires to prevent any charge.',
-        materialLimitations: ['1 saved cloud household profile'],
+        materialLimitations: [],
         taxesNotice: 'Applicable state/local sales taxes calculated at checkout.',
         jurisdictionNotice: 'Complies with California ARL and statutory continuous service disclosure standards.'
       }
     },
     {
-      id: 'household_plus',
-      name: 'Household Plus',
-      tagline: 'For roommates, vacation homes, and complex multi-property households.',
-      monthlyPrice: 7.99, // Hypothesized Option B from 13-monetization.md
-      annualPrice: 59.00,
+      id: 'plus',
+      name: 'Plus',
+      tagline: 'Comprehensive household planning with priority feedback and no ads.',
+      monthlyPrice: 9.99,
+      annualPrice: 99.99,
+      annualSavingText: 'Save about 2 months',
       billingIntervals: ['month', 'year'],
-      trialDays: 14,
-      monthlyRenewalAmount: 7.99,
-      annualRenewalAmount: 59.00,
+      trialDays: 7,
+      monthlyRenewalAmount: 9.99,
+      annualRenewalAmount: 99.99,
       renewalInterval: 'monthly',
-      cancellationMethod: '1-click online cancellation via Account dashboard prior to renewal date',
+      cancellationMethod: 'Online cancellation via Account Settings prior to renewal date',
       isProvisional: true,
       features: [
-        'Everything in Pro',
-        '100% ad-free workspace',
-        'Multiple saved households (e.g. shared vacation, roommates)',
-        'Priority differential rebalancing',
-        'Advanced constraint diagnostics',
-        'Priority feature feedback'
+        'everything in Pro',
+        'priority feature feedback',
+        'no ads'
       ],
       limitations: [],
-      ctaText: 'Start 14-day free trial',
+      ctaText: 'Start 7-day free trial',
       adFree: true,
+      adEntitlement: 'ad_free',
       checkoutDisclosures: {
         chargedToday: 0,
-        trialDurationText: '14-day free trial period',
-        chargedAfterTrialMonthly: 7.99,
-        chargedAfterTrialAnnual: 59.00,
+        trialDurationText: '7-day free trial period',
+        chargedAfterTrialMonthly: 9.99,
+        chargedAfterTrialAnnual: 99.99,
         recurringFrequency: 'monthly',
-        renewalBehavior: 'Renews automatically each month or year until cancelled. Notice provided prior to annual renewal.',
+        renewalBehavior: 'Renews automatically each month ($9.99/mo) or year ($99.99/yr) until cancelled. Notice provided prior to renewal.',
         cancellationMethod: 'Online via Account Settings before trial expires to prevent any charge.',
-        materialLimitations: ['None'],
+        materialLimitations: [],
         taxesNotice: 'Applicable state/local sales taxes calculated at checkout.',
         jurisdictionNotice: 'Complies with California ARL and statutory continuous service disclosure standards.'
       }
@@ -179,11 +182,11 @@ export const PRICING_CONFIG: PricingConfig = {
   faq: [
     {
       question: 'Is the core optimizer really free?',
-      answer: 'Yes. Generating an optimized household workload allocation and testing differential rebalancing is completely free.'
+      answer: 'Yes. Generating an optimized household workload allocation, testing differential rebalancing, and saving your configuration is completely free.'
     },
     {
       question: 'How do free trials work?',
-      answer: 'Paid tiers will include a visible 14-day free trial from centralized configuration when subscription billing launches. You can continue free at any time.'
+      answer: 'Paid tiers include a 7-day free trial when subscription billing launches. You can cancel online anytime before the trial ends to avoid recurring charges.'
     },
     {
       question: 'Is payment processing active today?',
@@ -193,11 +196,24 @@ export const PRICING_CONFIG: PricingConfig = {
 };
 
 /**
+ * Normalizes tier ID string to handle canonical IDs and legacy aliases.
+ */
+export function normalizeTierId(tierId: string | null | undefined): string {
+  if (!tierId) return 'free';
+  const clean = tierId.toLowerCase().trim();
+  if (clean === 'household_pro' || clean === 'pro') return 'pro';
+  if (clean === 'household_plus' || clean === 'family_plus' || clean === 'plus') return 'plus';
+  return clean;
+}
+
+/**
  * Returns a tier by ID from centralized pricing config.
+ * Supports canonical IDs ('free', 'pro', 'plus') and legacy aliases ('household_pro', 'household_plus').
  */
 export function getTierById(tierId: string | null | undefined): PricingTier | undefined {
   if (!tierId) return undefined;
-  return PRICING_CONFIG.tiers.find(t => t.id === tierId);
+  const normalized = normalizeTierId(tierId);
+  return PRICING_CONFIG.tiers.find(t => t.id === normalized);
 }
 
 /**
@@ -205,14 +221,34 @@ export function getTierById(tierId: string | null | undefined): PricingTier | un
  * Authoritative check based on centralized tier configuration.
  */
 export function isTierAdFree(tierId: string | null | undefined): boolean {
-  if (!tierId || tierId === 'free') return false;
+  if (!tierId) return false;
   const tier = getTierById(tierId);
-  return Boolean(tier?.adFree);
+  return Boolean(tier && tier.adFree);
 }
 
 /**
  * Returns default paid plan tier for upgrade flows.
  */
 export function getDefaultPaidTier(): PricingTier {
-  return PRICING_CONFIG.tiers.find(t => t.id === 'household_pro') || PRICING_CONFIG.tiers[1];
+  return PRICING_CONFIG.tiers.find(t => t.id === 'pro') || PRICING_CONFIG.tiers[1];
 }
+
+/**
+ * Calculates annual savings for a plan compared to monthly billing over 12 months.
+ */
+export function calculateAnnualSavings(tier: PricingTier): {
+  monthlyTotal: number;
+  annualPrice: number;
+  savingsAmount: number;
+  savingsText: string;
+} {
+  const monthlyTotal = Math.round(tier.monthlyPrice * 12 * 100) / 100;
+  const savingsAmount = Math.max(0, Math.round((monthlyTotal - tier.annualPrice) * 100) / 100);
+  return {
+    monthlyTotal,
+    annualPrice: tier.annualPrice,
+    savingsAmount,
+    savingsText: tier.annualSavingText
+  };
+}
+

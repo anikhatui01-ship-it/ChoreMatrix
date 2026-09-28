@@ -52,7 +52,7 @@ describe('Ad Monetization & Entitlement Architecture', () => {
     assert.strictEqual(mockContainer.style.display, 'block');
     assert.ok(mockContainer.innerHTML.includes('Sponsor Notice · Free Tier'), 'Must include sponsor notice');
     assert.ok(mockContainer.innerHTML.includes('Development Ad Placement Placeholder'), 'Must identify as development placeholder');
-    assert.ok(mockContainer.innerHTML.includes('/upgrade.html?plan=household_pro'), 'Must link to upgrade page');
+    assert.ok(mockContainer.innerHTML.includes('/upgrade.html?plan=pro'), 'Must link to upgrade page');
     assert.ok(!mockContainer.innerHTML.includes('googlesyndication'), 'Must contain zero external ad scripts');
   });
 

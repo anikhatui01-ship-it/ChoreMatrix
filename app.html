@@ -139,15 +139,25 @@
         <span id="cloudStatus" style="font-size:12px; color:var(--muted); font-weight:600;">Mode: Local Browser Storage</span>
       </div>
 
-      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
-        <span id="calcIndicator" style="font-size:12px; color:var(--good); font-weight:700; opacity:0; transition:opacity 0.25s ease;">✓ Calculated</span>
-        <button type="button" class="btn small" id="btnPresetFamily">Preset: Family</button>
-        <button type="button" class="btn small" id="btnPresetCouple">Preset: Couple</button>
-        <button type="button" class="btn small" id="btnPresetRoommates">Preset: Roommates</button>
-        <button type="button" class="btn small" id="btnRebalance" title="Re-optimize with minimum changes to settled tasks">Rebalance</button>
-        <button type="button" class="btn small primary" id="btnOptimize">Calculate Plan</button>
+      <div style="display:flex; flex-direction:column; gap:8px; align-items:flex-end;">
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <button type="button" class="btn small" id="btnPresetFamily">Preset: Family</button>
+          <button type="button" class="btn small" id="btnPresetCouple">Preset: Couple</button>
+          <button type="button" class="btn small" id="btnPresetRoommates">Preset: Roommates</button>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+          <span id="unsavedIndicator" style="display:none; font-size:12px; font-weight:700; color:var(--accent);">● Unsaved changes</span>
+          <span id="saveStatusIndicator" style="display:none; font-size:12px; font-weight:700; color:var(--good); transition:opacity 0.25s ease;">Changes saved.</span>
+          <span id="calcIndicator" style="font-size:12px; color:var(--good); font-weight:700; opacity:0; transition:opacity 0.25s ease;">✓ Calculated</span>
+          <button type="button" class="btn small" id="btnSave" style="min-width:115px;">Save Changes</button>
+          <button type="button" class="btn small" id="btnRebalance" title="Re-optimize with minimum changes to settled tasks">Rebalance</button>
+          <button type="button" class="btn small primary" id="btnOptimize">Calculate Plan</button>
+        </div>
       </div>
     </div>
+
+    <!-- Alert / Load Notice Container -->
+    <div id="cloudAlert" class="alert-box" style="display:none; margin-bottom:16px;" role="alert"></div>
 
     <!-- Main 2-Column Work Area -->
     <div class="grid">
@@ -187,7 +197,7 @@
           <div class="panel-head">
             <div>
               <h2>2. Household Members</h2>
-              <div class="sub">Specify realistic weekly household capacity & unavailable days.</div>
+              <div class="sub">Specify realistic weekly household capacity, unavailable days & preferences.</div>
             </div>
             <button type="button" class="btn small" id="btnAddMember">+ Add Member</button>
           </div>
@@ -374,13 +384,93 @@ let activeWeek = 0;
 let activeView = 'calendar';
 let currentUser = null;
 
+let lastSavedSnapshot = null;
+let hasUnsavedChanges = false;
+let isSaving = false;
+
 const $ = s => document.querySelector(s);
+
+/**
+ * Computes a canonical, structural snapshot of the optimizer source configuration.
+ * Derived data (fairness score, assignments) are intentionally excluded.
+ */
+function getConfigurationSnapshot(req) {
+  if (!req) return '';
+  return JSON.stringify({
+    household: {
+      name: req.household?.name || '',
+      type: req.household?.type || '',
+      mode: req.household?.mode || '',
+      planningHorizonWeeks: req.household?.planningHorizonWeeks || 1
+    },
+    members: (req.members || []).map(m => ({
+      id: m.id,
+      name: m.name || '',
+      role: m.role || '',
+      weeklyCapacityMinutes: m.weeklyCapacityMinutes,
+      unavailableDays: (m.unavailableDays || []).slice().sort(),
+      preferredTaskIds: (m.preferredTaskIds || []).slice().sort(),
+      avoidedTaskIds: (m.avoidedTaskIds || []).slice().sort()
+    })),
+    tasks: (req.tasks || []).map(t => ({
+      id: t.id,
+      name: t.name || '',
+      category: t.category || '',
+      frequencyPerWeek: t.frequencyPerWeek,
+      durationMinutes: t.durationMinutes,
+      effortLevel: t.effortLevel,
+      fixedDays: (t.fixedDays || []).slice().sort(),
+      eligibleMemberIds: (t.eligibleMemberIds || []).slice().sort()
+    }))
+  });
+}
+
+/**
+ * Evaluates dirty state against the last successfully persisted cloud state.
+ */
+function updateDirtyState() {
+  syncDOMToState();
+  const currentSnapshot = getConfigurationSnapshot(currentRequest);
+  // If lastSavedSnapshot is null (starter data never saved to cloud), it is dirty if user is authed
+  hasUnsavedChanges = (lastSavedSnapshot === null) ? Boolean(currentUser) : (currentSnapshot !== lastSavedSnapshot);
+
+  const unsavedEl = $('#unsavedIndicator');
+  const btnSave = $('#btnSave');
+
+  if (unsavedEl) {
+    unsavedEl.style.display = (hasUnsavedChanges && currentUser) ? 'inline-block' : 'none';
+  }
+
+  if (btnSave && !isSaving) {
+    if (btnSave.textContent !== 'Save failed — Try again') {
+      if (hasUnsavedChanges && currentUser) {
+        btnSave.classList.add('primary');
+        btnSave.textContent = 'Save Changes';
+      } else {
+        btnSave.classList.remove('primary');
+        if (btnSave.textContent !== 'Saved') {
+          btnSave.textContent = 'Save Changes';
+        }
+      }
+    }
+  }
+}
 
 async function init() {
   attachListeners();
 
   if (isSupabaseConfigured) {
-    currentUser = await authService.getUser();
+    try {
+      const session = await authService.getSession();
+      currentUser = session?.user || await authService.getUser();
+    } catch (e) {
+      try {
+        currentUser = await authService.getUser();
+      } catch (e2) {
+        currentUser = null;
+      }
+    }
+
     if (currentUser) {
       $('#cloudStatus').innerHTML = `Cloud Sync: <strong>${escapeHtml(currentUser.email)}</strong>`;
       try {
@@ -388,23 +478,51 @@ async function init() {
       } catch (e) {
         await adSlot.init(null);
       }
+
       try {
         const cloudData = await persistenceAdapter.loadActiveHousehold(currentUser.id);
         if (cloudData && cloudData.request) {
+          // 1. SAVED USER DATA EXISTS -> ALWAYS WINS
           currentRequest = cloudData.request;
           $('#selMode').value = currentRequest.household.mode;
           $('#selWeeks').value = currentRequest.household.planningHorizonWeeks;
           renderInputs();
+
           if (cloudData.latestPlan) {
             currentResult = cloudData.latestPlan;
             renderResults();
-            return;
+          } else {
+            executeOptimization();
           }
-          executeOptimization();
+
+          lastSavedSnapshot = getConfigurationSnapshot(currentRequest);
+          hasUnsavedChanges = false;
+          updateDirtyState();
+          $('#cloudStatus').innerHTML = `Cloud Sync: <strong>${escapeHtml(currentUser.email)}</strong> · <span style="color:var(--good); font-weight:700;">Saved ✓</span>`;
           return;
         }
+
+        // 2. NO SAVED DATA (New authenticated user)
+        loadStarterForNewUser(false);
+        return;
       } catch (err) {
-        console.warn('Could not load cloud household:', err);
+        // 3. LOAD FAILURE (Network or server error)
+        console.error('Failed to load cloud household:', err);
+        $('#cloudStatus').innerHTML = `Cloud Sync: <strong>${escapeHtml(currentUser.email)}</strong> · <span style="color:var(--bad);">Load failed</span>`;
+        const alertBox = $('#cloudAlert');
+        if (alertBox) {
+          alertBox.innerHTML = `
+            <strong>Unable to load your saved cloud household:</strong> ${escapeHtml(err.message || 'Connection error')}.
+            <button type="button" class="btn small" id="btnRetryLoad" style="margin-left:12px; padding:2px 8px;">Retry Load</button>
+          `;
+          alertBox.style.display = 'block';
+          $('#btnRetryLoad')?.addEventListener('click', () => {
+            alertBox.style.display = 'none';
+            init();
+          });
+        }
+        loadStarterForNewUser(true);
+        return;
       }
     } else {
       await adSlot.init(null);
@@ -413,7 +531,26 @@ async function init() {
     await adSlot.init(null);
   }
 
+  // Unauthenticated local/preview mode
   loadPreset('family');
+  lastSavedSnapshot = null;
+  hasUnsavedChanges = false;
+  $('#cloudStatus').textContent = 'Mode: Local Browser Storage (Unauthenticated)';
+  updateDirtyState();
+}
+
+function loadStarterForNewUser(isError = false) {
+  currentRequest = JSON.parse(JSON.stringify(PRESETS.family));
+  $('#selMode').value = currentRequest.household.mode;
+  $('#selWeeks').value = currentRequest.household.planningHorizonWeeks;
+  renderInputs();
+  executeOptimization();
+  lastSavedSnapshot = null;
+  hasUnsavedChanges = true;
+  updateDirtyState();
+  if (!isError && currentUser) {
+    $('#cloudStatus').innerHTML = `Cloud Sync: <strong>${escapeHtml(currentUser.email)}</strong> · <span style="color:var(--accent); font-weight:700;">Starter Plan (Unsaved)</span>`;
+  }
 }
 
 function loadPreset(key) {
@@ -422,6 +559,7 @@ function loadPreset(key) {
   $('#selWeeks').value = currentRequest.household.planningHorizonWeeks;
   renderInputs();
   executeOptimization();
+  updateDirtyState();
 }
 
 function renderInputs() {
@@ -431,8 +569,11 @@ function renderInputs() {
 
 function renderMembers() {
   const container = $('#memberListContainer');
+  const tasks = currentRequest.tasks || [];
   container.innerHTML = currentRequest.members.map((m, i) => {
     const unavSet = new Set(m.unavailableDays || []);
+    const prefTaskId = (m.preferredTaskIds && m.preferredTaskIds[0]) || '';
+    const avoidTaskId = (m.avoidedTaskIds && m.avoidedTaskIds[0]) || '';
     return `
       <div class="item-card">
         <div class="item-card-head">
@@ -467,6 +608,22 @@ function renderMembers() {
                 ${d.toUpperCase()}
               </label>
             `).join('')}
+          </div>
+        </div>
+        <div class="form-row" style="margin-top:8px;">
+          <div class="field">
+            <label style="font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase;">Preferred Task (Affinity)</label>
+            <select data-member-idx="${i}" data-field="preferredTaskId">
+              <option value="">None</option>
+              ${tasks.map(t => `<option value="${t.id}" ${prefTaskId === t.id ? 'selected' : ''}>${escapeHtml(t.name)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="field">
+            <label style="font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase;">Avoided Task (Aversion)</label>
+            <select data-member-idx="${i}" data-field="avoidedTaskId">
+              <option value="">None</option>
+              ${tasks.map(t => `<option value="${t.id}" ${avoidTaskId === t.id ? 'selected' : ''}>${escapeHtml(t.name)}</option>`).join('')}
+            </select>
           </div>
         </div>
       </div>
@@ -550,6 +707,15 @@ function syncDOMToState() {
     const unavDays = [];
     unavChecks.forEach(chk => { if (chk.checked && chk.dataset.unavDay) unavDays.push(chk.dataset.unavDay); });
     currentRequest.members[i].unavailableDays = unavDays;
+
+    const prefSelect = card.querySelector('select[data-field="preferredTaskId"]');
+    if (prefSelect) {
+      currentRequest.members[i].preferredTaskIds = prefSelect.value ? [prefSelect.value] : [];
+    }
+    const avoidSelect = card.querySelector('select[data-field="avoidedTaskId"]');
+    if (avoidSelect) {
+      currentRequest.members[i].avoidedTaskIds = avoidSelect.value ? [avoidSelect.value] : [];
+    }
   });
 
   const taskCards = document.querySelectorAll('#taskListContainer .item-card');
@@ -581,19 +747,6 @@ function flashCalculateStatus() {
   }
 }
 
-async function persistToCloudIfAuthed() {
-  if (currentUser && isSupabaseConfigured && currentResult) {
-    try {
-      const hId = await persistenceAdapter.saveHousehold(currentUser.id, currentRequest);
-      await persistenceAdapter.savePlan(currentUser.id, hId, currentResult);
-      const cs = $('#cloudStatus');
-      if (cs) cs.innerHTML = `Cloud Sync: <strong>Saved ✓</strong>`;
-    } catch (e) {
-      console.warn('Auto-save to cloud failed:', e);
-    }
-  }
-}
-
 let isCalculating = false;
 let lastCalculatedHash = '';
 
@@ -614,7 +767,6 @@ function executeOptimization(force = false) {
   }
   renderResults();
   flashCalculateStatus();
-  persistToCloudIfAuthed();
   isCalculating = false;
 }
 
@@ -633,8 +785,76 @@ function executeRebalance() {
   }
   renderResults();
   flashCalculateStatus();
-  persistToCloudIfAuthed();
   isCalculating = false;
+}
+
+/**
+ * Persists the user's canonical household configuration to Supabase.
+ * Distinct action from Calculate Plan or Rebalance.
+ */
+async function handleSave() {
+  if (isSaving) return;
+  syncDOMToState();
+
+  const btnSave = $('#btnSave');
+  const alertBox = $('#cloudAlert');
+  if (alertBox) alertBox.style.display = 'none';
+
+  if (!currentUser) {
+    // Unauthenticated: prompt redirect to sign in to save
+    window.location.href = `/login.html?redirect=${encodeURIComponent(window.location.pathname)}`;
+    return;
+  }
+
+  isSaving = true;
+  btnSave.disabled = true;
+  btnSave.classList.remove('danger');
+  btnSave.textContent = 'Saving…';
+
+  try {
+    const hId = await persistenceAdapter.saveHousehold(currentUser.id, currentRequest, currentResult);
+    currentRequest.household.id = hId;
+    lastSavedSnapshot = getConfigurationSnapshot(currentRequest);
+    hasUnsavedChanges = false;
+    updateDirtyState();
+
+    btnSave.textContent = 'Saved';
+    btnSave.classList.remove('primary');
+
+    const statusEl = $('#saveStatusIndicator');
+    if (statusEl) {
+      statusEl.textContent = 'Changes saved.';
+      statusEl.style.display = 'inline-block';
+      statusEl.style.opacity = '1';
+      clearTimeout(window._saveTimeout);
+      window._saveTimeout = setTimeout(() => {
+        statusEl.style.opacity = '0';
+        setTimeout(() => { statusEl.style.display = 'none'; }, 250);
+      }, 2500);
+    }
+
+    const cs = $('#cloudStatus');
+    if (cs) {
+      cs.innerHTML = `Cloud Sync: <strong>${escapeHtml(currentUser.email)}</strong> · <span style="color:var(--good); font-weight:700;">Saved ✓</span>`;
+    }
+
+    setTimeout(() => {
+      if (!isSaving && !hasUnsavedChanges && btnSave.textContent === 'Saved') {
+        btnSave.textContent = 'Save Changes';
+      }
+    }, 2500);
+  } catch (err) {
+    console.error('Failed to save to cloud:', err);
+    btnSave.textContent = 'Save failed — Try again';
+    btnSave.classList.add('danger');
+    if (alertBox) {
+      alertBox.textContent = `Save failed: ${err.message || 'Network error'}. Your local changes are preserved in memory.`;
+      alertBox.style.display = 'block';
+    }
+  } finally {
+    isSaving = false;
+    btnSave.disabled = false;
+  }
 }
 
 function renderResults() {
@@ -749,6 +969,11 @@ function attachListeners() {
   $('#btnPresetCouple')?.addEventListener('click', (e) => { e.preventDefault(); loadPreset('couple'); });
   $('#btnPresetRoommates')?.addEventListener('click', (e) => { e.preventDefault(); loadPreset('roommates'); });
 
+  $('#btnSave')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    handleSave();
+  });
+
   $('#btnOptimize')?.addEventListener('click', (e) => {
     e.preventDefault();
     executeOptimization();
@@ -759,8 +984,15 @@ function attachListeners() {
     executeRebalance();
   });
 
-  $('#selMode')?.addEventListener('change', () => executeOptimization());
-  $('#selWeeks')?.addEventListener('change', () => executeOptimization());
+  $('#selMode')?.addEventListener('change', () => {
+    executeOptimization();
+    updateDirtyState();
+  });
+
+  $('#selWeeks')?.addEventListener('change', () => {
+    executeOptimization();
+    updateDirtyState();
+  });
 
   $('#btnAddMember')?.addEventListener('click', (e) => {
     e.preventDefault();
@@ -778,6 +1010,7 @@ function attachListeners() {
     currentRequest.tasks.forEach(t => t.eligibleMemberIds.push(newId));
     renderInputs();
     executeOptimization();
+    updateDirtyState();
   });
 
   $('#btnAddTask')?.addEventListener('click', (e) => {
@@ -795,6 +1028,7 @@ function attachListeners() {
     });
     renderInputs();
     executeOptimization();
+    updateDirtyState();
   });
 
   $('#weekTabsContainer')?.addEventListener('click', e => {
@@ -831,6 +1065,7 @@ function attachListeners() {
       if (currentRequest.members[idx]) {
         currentRequest.members[idx][field] = field === 'weeklyCapacityMinutes' ? Number(t.value) || 1 : t.value;
       }
+      updateDirtyState();
     }
     if (t.matches('[data-task-idx]')) {
       const idx = Number(t.dataset.taskIdx);
@@ -842,6 +1077,7 @@ function attachListeners() {
           currentRequest.tasks[idx][field] = t.value;
         }
       }
+      updateDirtyState();
     }
   });
 
@@ -852,8 +1088,17 @@ function attachListeners() {
       const idx = Number(t.dataset.memberIdx);
       const field = t.dataset.field;
       if (currentRequest.members[idx]) {
-        currentRequest.members[idx][field] = field === 'weeklyCapacityMinutes' ? Number(t.value) || 1 : t.value;
+        if (field === 'weeklyCapacityMinutes') {
+          currentRequest.members[idx][field] = Number(t.value) || 1;
+        } else if (field === 'preferredTaskId') {
+          currentRequest.members[idx].preferredTaskIds = t.value ? [t.value] : [];
+        } else if (field === 'avoidedTaskId') {
+          currentRequest.members[idx].avoidedTaskIds = t.value ? [t.value] : [];
+        } else {
+          currentRequest.members[idx][field] = t.value;
+        }
       }
+      updateDirtyState();
     }
     if (t.matches('[data-task-idx]')) {
       const idx = Number(t.dataset.taskIdx);
@@ -867,6 +1112,7 @@ function attachListeners() {
           currentRequest.tasks[idx][field] = t.value;
         }
       }
+      updateDirtyState();
     }
     if (t.matches('[data-unav-day]')) {
       const idx = Number(t.dataset.memberIdx);
@@ -877,6 +1123,7 @@ function attachListeners() {
         if (t.checked) set.add(day); else set.delete(day);
         member.unavailableDays = Array.from(set);
       }
+      updateDirtyState();
     }
     if (t.matches('[data-elig-member]')) {
       const idx = Number(t.dataset.taskIdx);
@@ -887,6 +1134,7 @@ function attachListeners() {
         if (t.checked) set.add(mId); else set.delete(mId);
         task.eligibleMemberIds = Array.from(set);
       }
+      updateDirtyState();
     }
   });
 
@@ -904,6 +1152,7 @@ function attachListeners() {
         });
         renderInputs();
         executeOptimization();
+        updateDirtyState();
       }
       return;
     }
@@ -915,7 +1164,15 @@ function attachListeners() {
       currentRequest.tasks.splice(idx, 1);
       renderInputs();
       executeOptimization();
+      updateDirtyState();
       return;
+    }
+  });
+
+  window.addEventListener('beforeunload', (e) => {
+    if (hasUnsavedChanges && currentUser) {
+      e.preventDefault();
+      e.returnValue = '';
     }
   });
 }

@@ -102,6 +102,8 @@ initCookieBanner();
 
 const params = new URLSearchParams(window.location.search);
 const requestedPlanId = params.get('plan');
+const requestedInterval = params.get('interval') || 'monthly';
+const isAnnual = requestedInterval === 'annual' || requestedInterval === 'annually';
 
 let selectedTier = getTierById(requestedPlanId);
 const fallbackNoticeEl = document.getElementById('fallbackNotice');
@@ -109,7 +111,7 @@ const fallbackNoticeEl = document.getElementById('fallbackNotice');
 if (!selectedTier || selectedPlanIsFree(selectedTier)) {
   if (requestedPlanId && requestedPlanId !== 'free') {
     if (fallbackNoticeEl) {
-      fallbackNoticeEl.textContent = `Notice: Plan "${escapeHtml(requestedPlanId)}" was not recognized. Displaying Household Pro details below.`;
+      fallbackNoticeEl.textContent = `Notice: Plan "${escapeHtml(requestedPlanId)}" was not recognized. Displaying Pro details below.`;
       fallbackNoticeEl.style.display = 'block';
     }
   }
@@ -122,6 +124,15 @@ function selectedPlanIsFree(tier) {
 
 const cardEl = document.getElementById('upgradeCardContent');
 if (cardEl && selectedTier) {
+  const displayPrice = isAnnual ? selectedTier.annualPrice : selectedTier.monthlyPrice;
+  const intervalUnit = isAnnual ? '/ yr' : '/ mo';
+  const subIntervalText = isAnnual
+    ? `Billed annually (${escapeHtml(selectedTier.annualSavingText)})`
+    : `or $${selectedTier.annualPrice.toFixed(2)}/yr billed annually (${escapeHtml(selectedTier.annualSavingText)})`;
+  const renewalText = isAnnual
+    ? `$${selectedTier.checkoutDisclosures.chargedAfterTrialAnnual.toFixed(2)}/yr`
+    : `$${selectedTier.checkoutDisclosures.chargedAfterTrialMonthly.toFixed(2)}/mo`;
+
   cardEl.innerHTML = `
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
       <div>
@@ -132,10 +143,10 @@ if (cardEl && selectedTier) {
       </div>
       <div style="text-align: right;">
         <div style="font-size: 28px; font-weight: 800; color: var(--ink);">
-          $${selectedTier.monthlyPrice.toFixed(2)}
-          <small style="font-size: 13px; color: var(--muted); font-weight: 600;">/ mo</small>
+          $${displayPrice.toFixed(2)}
+          <small style="font-size: 13px; color: var(--muted); font-weight: 600;">${intervalUnit}</small>
         </div>
-        <div style="font-size: 11px; color: var(--muted);">or $${selectedTier.annualPrice.toFixed(2)}/yr billed annually</div>
+        <div style="font-size: 11px; color: var(--muted);">${subIntervalText}</div>
       </div>
     </div>
 
@@ -155,7 +166,7 @@ if (cardEl && selectedTier) {
     <div style="background: var(--panel-subtle); border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin: 20px 0; font-size: 12px; color: var(--muted); line-height: 1.45;">
       <strong style="color: var(--ink);">Continuous Service & Renewal Terms:</strong><br>
       • Charged today: $${selectedTier.checkoutDisclosures.chargedToday.toFixed(2)} (Trial period: ${escapeHtml(selectedTier.checkoutDisclosures.trialDurationText)})<br>
-      • Recurring renewal: $${selectedTier.checkoutDisclosures.chargedAfterTrialMonthly.toFixed(2)}/mo or $${selectedTier.checkoutDisclosures.chargedAfterTrialAnnual.toFixed(2)}/yr<br>
+      • Recurring renewal: ${renewalText}<br>
       • Cancellation: ${escapeHtml(selectedTier.checkoutDisclosures.cancellationMethod)}
     </div>
 
@@ -163,6 +174,7 @@ if (cardEl && selectedTier) {
       <strong>Upgrade Checkout Coming Soon:</strong><br>
       Payment processing is currently being finalized. Live credit card checkout and subscription activation will open soon. Core planning and deterministic optimization remain completely accessible without entering payment details.
     </div>
+
 
     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
       <a href="/app.html" class="btn primary" style="flex: 1; text-align: center;">

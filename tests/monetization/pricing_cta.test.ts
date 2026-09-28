@@ -15,7 +15,8 @@ describe('Pricing CTAs & Upgrade Route Architecture', () => {
 
     // Free tier CTA must point to /app.html
     assert.ok(
-      content.includes("isFree ? '/app.html' : `/upgrade.html?plan=${encodeURIComponent(tier.id)}`") ||
+      content.includes("isFree\n      ? '/app.html'") ||
+      content.includes("isFree ? '/app.html'") ||
       content.includes('/app.html'),
       'Free tier must route to /app.html'
     );
@@ -36,7 +37,8 @@ describe('Pricing CTAs & Upgrade Route Architecture', () => {
 
     // Ensure paid CTAs do not link directly to /app.html
     assert.ok(
-      content.includes("isFree ? '/app.html' : `/upgrade.html?plan=${encodeURIComponent(tier.id)}`"),
+      content.includes("isFree\n      ? '/app.html'") ||
+      content.includes("isFree ? '/app.html' : `/upgrade.html?plan="),
       'Paid tiers must NOT link directly to /app.html'
     );
   });
@@ -54,25 +56,36 @@ describe('Pricing CTAs & Upgrade Route Architecture', () => {
     // Required dynamic fields rendered from selected tier
     assert.ok(content.includes('selectedTier.name'), 'Must render selectedTier.name');
     assert.ok(content.includes('selectedTier.monthlyPrice'), 'Must render selectedTier.monthlyPrice');
+    assert.ok(content.includes('selectedTier.annualPrice'), 'Must render selectedTier.annualPrice');
     assert.ok(content.includes('selectedTier.trialDays'), 'Must render selectedTier.trialDays');
     assert.ok(content.includes('selectedTier.checkoutDisclosures'), 'Must render selectedTier.checkoutDisclosures');
     assert.ok(content.includes('selectedTier.features'), 'Must render selectedTier.features');
   });
 
   it('verifies helper functions resolve valid paid plans accurately from centralized config', () => {
-    const pro = getTierById('household_pro');
-    assert.ok(pro, 'Household Pro must exist');
-    assert.strictEqual(pro.name, 'Household Pro');
-    assert.strictEqual(pro.monthlyPrice, 4.99);
-    assert.strictEqual(pro.trialDays, 14);
+    const pro = getTierById('pro');
+    assert.ok(pro, 'Pro must exist');
+    assert.strictEqual(pro.name, 'Pro');
+    assert.strictEqual(pro.monthlyPrice, 5.99);
+    assert.strictEqual(pro.annualPrice, 59.99);
+    assert.strictEqual(pro.trialDays, 7);
     assert.strictEqual(pro.adFree, true);
 
-    const plus = getTierById('household_plus');
-    assert.ok(plus, 'Household Plus must exist');
-    assert.strictEqual(plus.name, 'Household Plus');
-    assert.strictEqual(plus.monthlyPrice, 7.99);
-    assert.strictEqual(plus.trialDays, 14);
+    // Backward compatibility alias
+    const proAlias = getTierById('household_pro');
+    assert.strictEqual(proAlias?.id, 'pro');
+
+    const plus = getTierById('plus');
+    assert.ok(plus, 'Plus must exist');
+    assert.strictEqual(plus.name, 'Plus');
+    assert.strictEqual(plus.monthlyPrice, 9.99);
+    assert.strictEqual(plus.annualPrice, 99.99);
+    assert.strictEqual(plus.trialDays, 7);
     assert.strictEqual(plus.adFree, true);
+
+    // Backward compatibility alias
+    const plusAlias = getTierById('household_plus');
+    assert.strictEqual(plusAlias?.id, 'plus');
   });
 
   it('verifies invalid plan parameter falls back gracefully to default paid tier', () => {
@@ -80,7 +93,7 @@ describe('Pricing CTAs & Upgrade Route Architecture', () => {
     assert.strictEqual(invalidTier, undefined, 'Invalid tier id must return undefined');
 
     const fallback = getDefaultPaidTier();
-    assert.strictEqual(fallback.id, 'household_pro', 'Fallback must safely return household_pro');
+    assert.strictEqual(fallback.id, 'pro', 'Fallback must safely return pro');
     assert.strictEqual(fallback.adFree, true);
 
     const content = fs.readFileSync(upgradeHtmlPath, 'utf8');

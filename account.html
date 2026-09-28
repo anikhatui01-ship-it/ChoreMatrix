@@ -140,7 +140,7 @@
 <div id="globalFooter"></div>
 
 <script type="module">
-import { authService, persistenceAdapter, isSupabaseConfigured, renderNavbar, renderFooter, initCookieBanner } from './src/client.bundle.js';
+import { authService, persistenceAdapter, isSupabaseConfigured, getTierById, renderNavbar, renderFooter, initCookieBanner } from './src/client.bundle.js';
 
 renderNavbar('account');
 renderFooter();
@@ -151,11 +151,17 @@ const noticeBox = document.getElementById('accountNotice');
 const emailField = document.getElementById('accEmail');
 const planField = document.getElementById('accPlan');
 
-function formatPlanTier(tier) {
-  if (!tier || tier === 'free') return 'Free Tier (Essential Optimizer)';
-  if (tier === 'pro') return 'Pro Tier (Advanced Households)';
-  if (tier === 'family_plus') return 'Family+ Tier';
-  return `${tier.charAt(0).toUpperCase()}${tier.slice(1)} Tier`;
+function formatPlanTier(tierId, interval, status) {
+  const tier = getTierById(tierId);
+  const tierName = tier ? `${tier.name} Tier` : (tierId ? `${tierId.charAt(0).toUpperCase()}${tierId.slice(1)} Tier` : 'Free Tier');
+  let suffix = tier && tier.id !== 'free' ? `(${tier.tagline})` : '(Essential Optimizer)';
+  if (interval || status) {
+    const parts = [];
+    if (status && status !== 'active') parts.push(status.charAt(0).toUpperCase() + status.slice(1));
+    if (interval) parts.push(interval === 'annually' ? 'Annual' : 'Monthly');
+    if (parts.length > 0) suffix = `[${parts.join(' · ')}]`;
+  }
+  return `${tierName} ${suffix}`;
 }
 
 let authSubscription = null;
@@ -194,13 +200,13 @@ async function checkAccount() {
     try {
       const profile = await persistenceAdapter.getProfile(user.id);
       if (profile && planField) {
-        planField.value = formatPlanTier(profile.plan_tier);
+        planField.value = formatPlanTier(profile.plan_tier, profile.billing_interval, profile.subscription_status);
         if (profile.email && emailField && !emailField.value) {
           emailField.value = profile.email;
         }
       } else if (planField) {
         // Profile row absent -> graceful fallback to Free Tier
-        planField.value = 'Free Tier (Essential Optimizer)';
+        planField.value = formatPlanTier('free');
       }
     } catch (profileErr) {
       console.warn('[Account] Profile fetch warning:', profileErr);

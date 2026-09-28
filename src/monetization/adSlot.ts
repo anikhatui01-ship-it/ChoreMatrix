@@ -64,14 +64,14 @@ export class HouseAdProvider implements AdProvider {
             <span style="font-size: 11px; color: var(--muted);">Development Ad Placement Placeholder</span>
           </div>
           <div style="font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 2px;">
-            Need 4-week multi-week rotation & cloud sync?
+            Need 4-week planning & ad-free workspace?
           </div>
           <div style="font-size: 12px; color: var(--muted); line-height: 1.4;">
-            Household Pro removes all ads, balances heavy chores across 4 weeks, and saves across devices.
+            ChoreMatrix Pro removes all ads, supports 4-week planning, and advanced preferences.
           </div>
         </div>
         <div>
-          <a href="/upgrade.html?plan=household_pro" class="btn small" style="white-space: nowrap; border-color: var(--line-subtle);">
+          <a href="/upgrade.html?plan=pro" class="btn small" style="white-space: nowrap; border-color: var(--line-subtle);">
             View Pro Plan
           </a>
         </div>

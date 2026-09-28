@@ -4,14 +4,31 @@
 
 import type { DayOfWeek, HouseholdType, OptimizationMode, OptimizationRequest, OptimizationResult } from '../optimizer/types.ts';
 
+export type BillingInterval = 'monthly' | 'annually';
+export type SubscriptionStatus = 'active' | 'trialing' | 'canceled' | 'past_due' | 'incomplete';
+
 export interface ProfileRow {
   id: string;
   email: string;
   plan_tier: string;
+  billing_interval?: BillingInterval | null;
+  subscription_status?: SubscriptionStatus | null;
   trial_ends_at: string | null;
+  current_period_start?: string | null;
+  current_period_end?: string | null;
   created_at: string;
   updated_at: string;
 }
+
+export interface BillingDetails {
+  plan_tier: string;
+  billing_interval: BillingInterval;
+  subscription_status: SubscriptionStatus;
+  trial_ends_at: string | null;
+  current_period_start: string | null;
+  current_period_end: string | null;
+}
+
 
 export interface HouseholdRow {
   id: string;

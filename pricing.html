@@ -129,6 +129,41 @@
     content: "•";
     margin-right: 6px;
   }
+  .billing-toggle-wrap {
+    display: flex;
+    justify-content: center;
+    margin: 24px 0 8px;
+  }
+  .billing-toggle {
+    display: inline-flex;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 99px;
+    padding: 4px;
+    gap: 4px;
+    box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.06));
+  }
+  .billing-toggle-btn {
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    font-size: 13px;
+    font-weight: 700;
+    padding: 8px 18px;
+    border-radius: 99px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+  }
+  .billing-toggle-btn:hover {
+    color: var(--ink);
+  }
+  .billing-toggle-btn.active {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(15, 118, 110, 0.25);
+  }
   @media (max-width: 900px) {
     .pricing-grid { grid-template-columns: 1fr; }
   }
@@ -151,6 +186,19 @@
       <div id="pricingNotice" class="notice-banner" style="text-align:left;">
         <strong>Provisional Development Pricing:</strong>
         <span id="noticeContent">Loading configuration...</span>
+      </div>
+    </div>
+
+    <!-- Monthly / Annual Billing Toggle -->
+    <div class="billing-toggle-wrap">
+      <div class="billing-toggle" role="radiogroup" aria-label="Billing cycle selector">
+        <button type="button" class="billing-toggle-btn active" id="btnMonthlyBilling" role="radio" aria-checked="true">
+          Monthly Billing
+        </button>
+        <button type="button" class="billing-toggle-btn" id="btnAnnualBilling" role="radio" aria-checked="false">
+          Annual Billing
+          <span class="badge green" style="margin-left:6px; font-size:11px;">Save ~2 Months</span>
+        </button>
       </div>
     </div>
 
@@ -186,23 +234,53 @@ initCookieBanner();
 const noticeEl = document.getElementById('noticeContent');
 if (noticeEl) noticeEl.textContent = PRICING_CONFIG.provisionalNotice;
 
-// Render pricing cards dynamically from centralized config
 const grid = document.getElementById('pricingCardsContainer');
-if (grid) {
+let currentInterval = 'monthly'; // 'monthly' | 'annually'
+
+function renderTiers() {
+  const isAnnual = currentInterval === 'annually';
+  if (!grid) return;
+
   grid.innerHTML = PRICING_CONFIG.tiers.map(tier => {
     const isFree = tier.monthlyPrice === 0;
+    const displayPrice = isFree
+      ? '$0'
+      : (isAnnual ? `$${tier.annualPrice.toFixed(2)}` : `$${tier.monthlyPrice.toFixed(2)}`);
+    const intervalLabel = isFree
+      ? '/ forever'
+      : (isAnnual ? '/ year' : '/ month');
+
+    let subPriceNotice = '';
+    if (isFree) {
+      subPriceNotice = 'No credit card required';
+    } else if (isAnnual) {
+      subPriceNotice = `<span class="badge green" style="font-weight:700;">${escapeHtml(tier.annualSavingText)}</span>`;
+    } else {
+      subPriceNotice = `or $${tier.annualPrice.toFixed(2)}/year billed annually (${escapeHtml(tier.annualSavingText)})`;
+    }
+
+    const renewalTermText = isFree
+      ? 'Free forever without automated recurring charges.'
+      : (isAnnual
+          ? `Renews at $${tier.annualPrice.toFixed(2)}/year until cancelled.`
+          : `Renews at $${tier.monthlyPrice.toFixed(2)}/month until cancelled.`);
+
+    const ctaUrl = isFree
+      ? '/app.html'
+      : `/upgrade.html?plan=${encodeURIComponent(tier.id)}&interval=${isAnnual ? 'annual' : 'monthly'}`;
+
     return `
-      <div class="tier-card ${tier.popular ? 'popular' : ''}">
+      <div class="tier-card ${tier.popular ? 'popular' : ''}" data-tier-id="${tier.id}">
         ${tier.popular ? `<div class="tier-popular-tag">Most Popular</div>` : ''}
         <h3 style="margin:0; font-size:20px; font-weight:800; color:var(--ink);">${escapeHtml(tier.name)}</h3>
         <p style="margin:4px 0 0; font-size:12px; color:var(--muted);">${escapeHtml(tier.tagline)}</p>
 
         <div class="tier-price">
-          ${isFree ? '$0' : `$${tier.monthlyPrice.toFixed(2)}`}
-          <small>${isFree ? '/ forever' : '/ month'}</small>
+          <span class="price-val">${displayPrice}</span>
+          <small>${intervalLabel}</small>
         </div>
         <div class="tier-annual">
-          ${isFree ? 'No credit card required' : `or $${tier.annualPrice.toFixed(2)}/year billed annually`}
+          ${subPriceNotice}
         </div>
 
         ${tier.trialDays > 0 ? `
@@ -230,12 +308,12 @@ if (grid) {
         <div style="font-size:11px; color:var(--muted); line-height:1.4; margin:12px 0; padding:8px 10px; background:var(--panel-subtle); border-radius:6px; border:1px solid var(--line);">
           <strong style="color:var(--ink);">Renewal & Billing Terms:</strong><br>
           • Charged today: $${tier.checkoutDisclosures.chargedToday.toFixed(2)}<br>
-          • Renewal: ${escapeHtml(tier.checkoutDisclosures.renewalBehavior)}<br>
+          • Renewal: ${renewalTermText}<br>
           • Cancellation: ${escapeHtml(tier.checkoutDisclosures.cancellationMethod)}
         </div>
 
         <div style="margin-top:auto;">
-          <a href="${isFree ? '/app.html' : `/upgrade.html?plan=${encodeURIComponent(tier.id)}`}" class="btn ${tier.popular ? 'primary' : ''}" style="width:100%;">
+          <a href="${ctaUrl}" class="btn ${tier.popular ? 'primary' : ''}" style="width:100%;">
             ${escapeHtml(isFree ? 'Launch Optimizer' : tier.ctaText)}
           </a>
         </div>
@@ -243,6 +321,34 @@ if (grid) {
     `;
   }).join('');
 }
+
+// Initial render
+renderTiers();
+
+// Toggle event listeners
+const btnMonthly = document.getElementById('btnMonthlyBilling');
+const btnAnnual = document.getElementById('btnAnnualBilling');
+
+if (btnMonthly && btnAnnual) {
+  btnMonthly.addEventListener('click', () => {
+    currentInterval = 'monthly';
+    btnMonthly.classList.add('active');
+    btnMonthly.setAttribute('aria-checked', 'true');
+    btnAnnual.classList.remove('active');
+    btnAnnual.setAttribute('aria-checked', 'false');
+    renderTiers();
+  });
+
+  btnAnnual.addEventListener('click', () => {
+    currentInterval = 'annually';
+    btnAnnual.classList.add('active');
+    btnAnnual.setAttribute('aria-checked', 'true');
+    btnMonthly.classList.remove('active');
+    btnMonthly.setAttribute('aria-checked', 'false');
+    renderTiers();
+  });
+}
+
 
 // Render statutory auto-renewal policy
 const policyEl = document.getElementById('autoRenewalPolicyContent');
