@@ -262,12 +262,15 @@ a:hover { text-decoration: underline; }
   letter-spacing: -0.02em;
 }
 
-.brand-text h1 {
+.brand-text h1,
+.brand-text .brand-title {
   font-size: 17px;
   margin: 0;
   font-weight: 800;
   letter-spacing: -0.01em;
   color: var(--ink);
+  line-height: 1.2;
+  display: block;
 }
 
 .brand-text span {

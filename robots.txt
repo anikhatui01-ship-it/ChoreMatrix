@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /app.html
+Disallow: /account.html
+Disallow: /reset-password.html
+Disallow: /verify-email.html
+
+Sitemap: https://chorematrix.com/sitemap.xml

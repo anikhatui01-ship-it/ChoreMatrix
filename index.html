@@ -5,6 +5,19 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>ChoreMatrix — Household Workload Optimizer</title>
 <meta name="description" content="Stop arguing over who does what. ChoreMatrix calculates balanced, workable household chore allocations based on capacity, schedules, and effort." />
+<link rel="canonical" href="https://chorematrix.com/" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="alternate icon" href="/favicon.ico" />
+<meta property="og:title" content="ChoreMatrix — Household Workload Optimizer" />
+<meta property="og:description" content="Stop arguing over who does what. ChoreMatrix calculates balanced, workable household chore allocations based on capacity, schedules, and effort." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://chorematrix.com/" />
+<meta property="og:image" content="https://chorematrix.com/og-image.jpg" />
+<meta property="og:site_name" content="ChoreMatrix" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="ChoreMatrix — Household Workload Optimizer" />
+<meta name="twitter:description" content="Stop arguing over who does what. ChoreMatrix calculates balanced, workable household chore allocations based on capacity, schedules, and effort." />
+<meta name="twitter:image" content="https://chorematrix.com/og-image.jpg" />
 <script>
   (function() {
     try {
@@ -290,6 +303,7 @@
   .btn.active-view { background: var(--btn-dark-bg); border-color: var(--btn-dark-bg); color: var(--btn-dark-text); }
   @media (max-width: 1024px) { .grid { grid-template-columns: 1fr; } .calendar-grid { grid-template-columns: repeat(4, 1fr); } }
   @media (max-width: 640px) { .calendar-grid { grid-template-columns: 1fr 1fr; } .metrics-strip { grid-template-columns: 1fr; } .form-row { grid-template-columns: 1fr; } }
+  @media (max-width: 380px) { .calendar-grid { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -300,7 +314,7 @@
     <a href="/" class="brand">
       <div class="brandmark">CM</div>
       <div class="brand-text">
-        <h1>ChoreMatrix</h1>
+        <span class="brand-title">ChoreMatrix</span>
         <span>Workload Optimizer</span>
       </div>
     </a>

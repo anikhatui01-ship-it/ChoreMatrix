@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>404 — Page Not Found · ChoreMatrix</title>
+<meta name="description" content="The requested page could not be found on ChoreMatrix. Return to the homepage or launch the workload optimizer." />
+<meta name="robots" content="noindex, follow" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="alternate icon" href="/favicon.ico" />
+<script>
+  (function() {
+    try {
+      var s = localStorage.getItem('chorematrix_theme') || 'system';
+      var d = s === 'dark' || (s === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.setAttribute('data-theme', d ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme-setting', s);
+    } catch(e){}
+  })();
+</script>
+<link rel="stylesheet" href="/src/styles/common.css" />
+<style>
+  .error-wrap {
+    max-width: 620px;
+    margin: 60px auto;
+    text-align: center;
+  }
+  .error-code {
+    font-size: 72px;
+    font-weight: 900;
+    line-height: 1;
+    color: var(--accent);
+    letter-spacing: -0.04em;
+    margin-bottom: 12px;
+  }
+  .error-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 40px 32px;
+    box-shadow: var(--shadow);
+  }
+</style>
+</head>
+<body>
+
+<div id="globalNavbar"></div>
+
+<main class="main-content">
+  <div class="shell">
+    <div class="error-wrap">
+      <div class="error-card">
+        <span class="badge amber" style="margin-bottom:12px;">Route Not Found</span>
+        <div class="error-code">404</div>
+        <h1 style="font-size:26px; font-weight:800; margin:0 0 10px; color:var(--ink);">
+          This page isn't on the schedule.
+        </h1>
+        <p style="font-size:15px; color:var(--muted); line-height:1.5; margin:0 0 28px;">
+          The link you followed may have been moved, renamed, or does not exist. Your saved household data and optimizer remain safe.
+        </p>
+
+        <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
+          <a href="/" class="btn primary">Return to Homepage</a>
+          <a href="/how-it-works.html" class="btn">How It Works</a>
+          <a href="/faq.html" class="btn">FAQ</a>
+          <a href="/app.html" class="btn">Launch Optimizer</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="globalFooter"></div>
+
+<script type="module">
+import { renderNavbar, renderFooter, initCookieBanner } from './src/client.bundle.js';
+
+renderNavbar('404');
+renderFooter();
+initCookieBanner();
+</script>
+</body>
+</html>

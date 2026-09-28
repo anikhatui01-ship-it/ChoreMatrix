@@ -158,7 +158,8 @@ export async function build(options = {}) {
     'reset-password.html',
     'verify-email.html',
     'account.html',
-    'app.html'
+    'app.html',
+    '404.html'
   ];
 
   for (const file of htmlFiles) {
@@ -168,6 +169,22 @@ export async function build(options = {}) {
       // Normalize relative script paths for production
       content = content.replace(/from\s+['"](?:\.\/src|\/src|\.)\/optimizer\.bundle\.js['"]/g, "from './optimizer.bundle.js'");
       fs.writeFileSync(path.join(distDir, file), content, 'utf8');
+    }
+  }
+
+  // 6. Copy static root assets (favicons, social images, SEO files)
+  const staticAssets = [
+    'favicon.svg',
+    'favicon.png',
+    'favicon.ico',
+    'og-image.jpg',
+    'robots.txt',
+    'sitemap.xml'
+  ];
+  for (const asset of staticAssets) {
+    const assetPath = path.join(rootDir, asset);
+    if (fs.existsSync(assetPath)) {
+      fs.copyFileSync(assetPath, path.join(distDir, asset));
     }
   }
 

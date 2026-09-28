@@ -5,6 +5,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>ChoreMatrix — Household Workload Optimizer Workspace</title>
 <meta name="description" content="Interactive household workload optimization workspace. Calculate fair chore schedules, set constraints, and rebalance allocations." />
+<meta name="robots" content="noindex, nofollow" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="alternate icon" href="/favicon.ico" />
 <script>
   (function() {
     try {
@@ -121,6 +124,7 @@
   .btn.active-view { background: var(--btn-dark-bg); border-color: var(--btn-dark-bg); color: var(--btn-dark-text); }
   @media (max-width: 1024px) { .grid { grid-template-columns: 1fr; } .calendar-grid { grid-template-columns: repeat(4, 1fr); } }
   @media (max-width: 640px) { .calendar-grid { grid-template-columns: 1fr 1fr; } .metrics-strip { grid-template-columns: 1fr; } .form-row { grid-template-columns: 1fr; } }
+  @media (max-width: 380px) { .calendar-grid { grid-template-columns: 1fr; } }
 </style>
 </head>
 <body>
@@ -131,7 +135,7 @@
   <div class="workspace-shell">
     <div class="action-bar">
       <div>
-        <h2 style="font-size:18px; font-weight:800; margin:0 0 2px; color:var(--ink);">Household Optimizer Workspace</h2>
+        <h1 style="font-size:18px; font-weight:800; margin:0 0 2px; color:var(--ink);">Household Optimizer Workspace</h1>
         <span id="cloudStatus" style="font-size:12px; color:var(--muted); font-weight:600;">Mode: Local Browser Storage</span>
       </div>
 

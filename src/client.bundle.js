@@ -21426,7 +21426,7 @@ function renderNavbar(activePage = "") {
         <a href="/" class="brand">
           <div class="brandmark">CM</div>
           <div class="brand-text">
-            <h1>ChoreMatrix</h1>
+            <span class="brand-title">ChoreMatrix</span>
             <span>Workload Optimizer</span>
           </div>
         </a>
