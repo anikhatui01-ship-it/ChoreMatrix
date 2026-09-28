@@ -1,10 +1,31 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { SupabaseAdapter } from '../../src/persistence/supabaseAdapter.ts';
+import { SupabaseAdapter, isValidPlanSnapshot } from '../../src/persistence/supabaseAdapter.ts';
+import { runOptimization } from '../../src/optimizer/engine.ts';
 import type { OptimizationRequest, OptimizationResult } from '../../src/optimizer/types.ts';
 
+const SCHEMA_NOT_NULL_COLUMNS: Record<string, string[]> = {
+  plans: [
+    'household_id',
+    'user_id',
+    'optimizer_version',
+    'balance_score',
+    'total_work_minutes',
+    'total_capacity_minutes',
+    'diagnostics',
+    'member_summaries',
+    'unassigned_tasks',
+    'assignments',
+    'diff_summary'
+  ],
+  households: ['user_id', 'name', 'type', 'mode', 'planning_horizon_weeks'],
+  members: ['household_id', 'user_id', 'name', 'role', 'weekly_capacity_minutes'],
+  tasks: ['household_id', 'user_id', 'name', 'category', 'frequency_per_week', 'duration_minutes', 'effort_level'],
+  member_preferences: ['household_id', 'user_id', 'member_id', 'task_id', 'preference_type']
+};
+
 /**
- * High-fidelity in-memory Mock Supabase Client simulating Postgres RLS and queries
+ * High-fidelity in-memory Mock Supabase Client simulating Postgres RLS, constraints, and queries
  */
 class MockSupabaseClient {
   private tables: Record<string, any[]> = {
@@ -15,6 +36,10 @@ class MockSupabaseClient {
     plans: [],
     profiles: []
   };
+
+  getTable(tableName: string) {
+    return this.tables[tableName] || [];
+  }
 
   public shouldFailNextOperation: string | null = null;
 
@@ -87,6 +112,14 @@ class MockSupabaseClient {
                   client.shouldFailNextOperation = null;
                   return { data: null, error: new Error(`Simulated insert failure on ${tableName}`) };
                 }
+                const notNullCols = SCHEMA_NOT_NULL_COLUMNS[tableName];
+                if (notNullCols) {
+                  for (const col of notNullCols) {
+                    if (rowList[0][col] === null || rowList[0][col] === undefined) {
+                      return { data: null, error: new Error(`null value in column '${col}' of relation '${tableName}' violates not-null constraint.`) };
+                    }
+                  }
+                }
                 const row = { ...rowList[0] };
                 if (!row.id) row.id = crypto.randomUUID();
                 table.push(row);
@@ -98,6 +131,16 @@ class MockSupabaseClient {
             if (client.shouldFailNextOperation === tableName || client.shouldFailNextOperation === 'all') {
               client.shouldFailNextOperation = null;
               return resolve({ data: null, error: new Error(`Simulated insert failure on ${tableName}`) });
+            }
+            const notNullCols = SCHEMA_NOT_NULL_COLUMNS[tableName];
+            if (notNullCols) {
+              for (const r of rowList) {
+                for (const col of notNullCols) {
+                  if (r[col] === null || r[col] === undefined) {
+                    return resolve({ data: null, error: new Error(`null value in column '${col}' of relation '${tableName}' violates not-null constraint.`) });
+                  }
+                }
+              }
             }
             for (const r of rowList) {
               const row = { ...r };
@@ -611,5 +654,271 @@ describe('Authenticated Persistence & Save Changes Regression Suite', () => {
 
     // Must handle beforeunload with unsaved changes
     assert.ok(content.includes('beforeunload'), 'app.html must register beforeunload listener for unsaved changes');
+  });
+});
+
+describe('Production Regression: Non-Null Plans Columns & Household Lifecycle (Requirements A - F)', () => {
+  const userId = '00000000-0000-0000-0000-000000000001';
+
+  function createTestRequest(): OptimizationRequest {
+    return {
+      household: {
+        id: 'h_test',
+        name: 'The Pearson Household',
+        type: 'family',
+        mode: 'capacity_aware',
+        planningHorizonWeeks: 2
+      },
+      members: [
+        {
+          id: 'm1',
+          name: 'Jack',
+          role: 'Adult',
+          weeklyCapacityMinutes: 300,
+          unavailableDays: ['wed'],
+          preferredTaskIds: ['t1'],
+          avoidedTaskIds: ['t2']
+        },
+        {
+          id: 'm2',
+          name: 'Rebecca',
+          role: 'Adult',
+          weeklyCapacityMinutes: 300,
+          unavailableDays: [],
+          preferredTaskIds: ['t2'],
+          avoidedTaskIds: []
+        }
+      ],
+      tasks: [
+        {
+          id: 't1',
+          name: 'Prepare Dinner',
+          category: 'Food',
+          frequencyPerWeek: 7,
+          durationMinutes: 30, // 7 * 30 = 210 min/week
+          effortLevel: 3,
+          eligibleMemberIds: ['m1', 'm2']
+        },
+        {
+          id: 't2',
+          name: 'Wash Dishes',
+          category: 'Kitchen',
+          frequencyPerWeek: 7,
+          durationMinutes: 20, // 7 * 20 = 140 min/week
+          effortLevel: 2,
+          eligibleMemberIds: ['m1', 'm2']
+        }
+      ]
+    };
+  }
+
+  it('Test A: save household before calculating a plan persists configuration without inserting invalid plans row', async () => {
+    const mockClient = new MockSupabaseClient();
+    const adapter = new SupabaseAdapter(mockClient);
+    const request = createTestRequest();
+
+    // User edits household and clicks "Save Changes" BEFORE calculating a plan (currentResult is null)
+    const householdId = await adapter.saveHousehold(userId, request, null);
+    assert.ok(householdId, 'Must return saved household UUID');
+
+    // Households, members, tasks, and preferences must be persisted
+    const households = mockClient.getTable('households');
+    assert.equal(households.length, 1);
+    assert.equal(households[0].name, 'The Pearson Household');
+    assert.equal(households[0].user_id, userId);
+
+    const members = mockClient.getTable('members');
+    assert.equal(members.length, 2);
+    assert.equal(members[0].name, 'Jack');
+    assert.equal(members[1].name, 'Rebecca');
+
+    const tasks = mockClient.getTable('tasks');
+    assert.equal(tasks.length, 2);
+    assert.equal(tasks[0].name, 'Prepare Dinner');
+    assert.equal(tasks[1].name, 'Wash Dishes');
+
+    // Plans table must have 0 rows — no invalid plan insert was attempted
+    const plans = mockClient.getTable('plans');
+    assert.equal(plans.length, 0, 'Plans table must have 0 rows when saving before calculating a plan');
+  });
+
+  it('Test B: save household after calculating a plan persists household and valid plan snapshot', async () => {
+    const mockClient = new MockSupabaseClient();
+    const adapter = new SupabaseAdapter(mockClient);
+    const request = createTestRequest();
+
+    // User calculates a plan using optimizer
+    const planResult = runOptimization(request);
+    assert.ok(planResult);
+    assert.ok(planResult.assignments.length > 0);
+    assert.equal(typeof planResult.diagnostics.totalHouseholdWorkMinutes, 'number');
+
+    // Save household with calculated plan
+    const householdId = await adapter.saveHousehold(userId, request, planResult);
+    assert.ok(householdId);
+
+    // Plans table must have exactly 1 row
+    const plans = mockClient.getTable('plans');
+    assert.equal(plans.length, 1, 'Plans table must contain the saved plan snapshot');
+    const savedPlan = plans[0];
+    assert.equal(savedPlan.household_id, householdId);
+    assert.equal(savedPlan.user_id, userId);
+    assert.equal(savedPlan.total_work_minutes, planResult.diagnostics.totalHouseholdWorkMinutes);
+    assert.equal(savedPlan.total_capacity_minutes, planResult.diagnostics.totalHouseholdCapacityMinutes);
+    assert.equal(savedPlan.balance_score, planResult.diagnostics.balanceScore);
+  });
+
+  it('Test C: refresh restores saved configuration (both with and without prior plan)', async () => {
+    const mockClient = new MockSupabaseClient();
+    const adapter = new SupabaseAdapter(mockClient);
+    const request = createTestRequest();
+
+    // Step 1: Save before plan
+    await adapter.saveHousehold(userId, request, null);
+
+    // Simulate browser refresh
+    const refreshedBeforePlan = await adapter.loadActiveHousehold(userId);
+    assert.ok(refreshedBeforePlan);
+    assert.equal(refreshedBeforePlan.request.household.name, 'The Pearson Household');
+    assert.equal(refreshedBeforePlan.request.members.length, 2);
+    assert.equal(refreshedBeforePlan.latestPlan, null, 'latestPlan should be null before plan calculation');
+
+    // Step 2: Calculate plan and save
+    const planResult = runOptimization(refreshedBeforePlan.request);
+    await adapter.saveHousehold(userId, refreshedBeforePlan.request, planResult);
+
+    // Simulate second browser refresh
+    const refreshedAfterPlan = await adapter.loadActiveHousehold(userId);
+    assert.ok(refreshedAfterPlan);
+    assert.equal(refreshedAfterPlan.request.household.name, 'The Pearson Household');
+    assert.ok(refreshedAfterPlan.latestPlan, 'latestPlan must be restored after plan calculation');
+    assert.equal(
+      refreshedAfterPlan.latestPlan.diagnostics.totalHouseholdWorkMinutes,
+      planResult.diagnostics.totalHouseholdWorkMinutes
+    );
+    assert.equal(refreshedAfterPlan.latestPlan.assignments.length, planResult.assignments.length);
+  });
+
+  it('Test D: logout/login restores saved configuration instead of resetting to default', async () => {
+    const mockClient = new MockSupabaseClient();
+    const adapter = new SupabaseAdapter(mockClient);
+    const request = createTestRequest();
+    request.household.name = 'Custom Preserved Castle';
+    request.members[0].name = 'Master Cook';
+    request.members[0].weeklyCapacityMinutes = 450;
+
+    await adapter.saveHousehold(userId, request, null);
+
+    // Simulate user logging out (session destroyed in memory)
+    let inMemorySession: any = null;
+    assert.equal(inMemorySession, null);
+
+    // Simulate user logging back in with fresh adapter / session
+    const freshAdapter = new SupabaseAdapter(mockClient);
+    inMemorySession = { userId };
+
+    const restored = await freshAdapter.loadActiveHousehold(inMemorySession.userId);
+    assert.ok(restored, 'Restored data must exist for logged-in user');
+    assert.equal(restored.request.household.name, 'Custom Preserved Castle');
+    assert.equal(restored.request.members[0].name, 'Master Cook');
+    assert.equal(restored.request.members[0].weeklyCapacityMinutes, 450);
+  });
+
+  it('Test E: calculated plan snapshot contains correct, non-faked total_work_minutes matching optimizer diagnostics', async () => {
+    const mockClient = new MockSupabaseClient();
+    const adapter = new SupabaseAdapter(mockClient);
+    const request = createTestRequest();
+
+    // 7 * 30 min (Prepare Dinner) + 7 * 20 min (Wash Dishes) = 210 + 140 = 350 min/week
+    // Multiplied by planningHorizonWeeks (2) = 700 total household work minutes
+    const expectedWeeklyWorkMinutes = (7 * 30) + (7 * 20); // 350
+    const expectedHorizonWorkMinutes = expectedWeeklyWorkMinutes * request.household.planningHorizonWeeks; // 700
+    const expectedHorizonCapacityMinutes = (300 + 300) * request.household.planningHorizonWeeks; // 1200
+
+    const planResult = runOptimization(request);
+    assert.equal(planResult.diagnostics.totalHouseholdWorkMinutes, expectedHorizonWorkMinutes);
+    assert.equal(planResult.diagnostics.totalHouseholdCapacityMinutes, expectedHorizonCapacityMinutes);
+    assert.ok(expectedHorizonWorkMinutes > 0, 'Work minutes must be a genuine non-zero derived value');
+
+    await adapter.saveHousehold(userId, request, planResult);
+
+    const plans = mockClient.getTable('plans');
+    assert.equal(plans.length, 1);
+    const savedPlan = plans[0];
+
+    assert.equal(savedPlan.total_work_minutes, expectedHorizonWorkMinutes, 'total_work_minutes must match expected calculation');
+    assert.equal(savedPlan.total_capacity_minutes, expectedHorizonCapacityMinutes, 'total_capacity_minutes must match members sum * horizon');
+    assert.equal(typeof savedPlan.balance_score, 'number');
+    assert.ok(savedPlan.balance_score > 0);
+  });
+
+  it('Test F: no NULL is sent to any NOT NULL plans column and invalid plans are rejected', async () => {
+    const mockClient = new MockSupabaseClient();
+    const adapter = new SupabaseAdapter(mockClient);
+    const request = createTestRequest();
+    const planResult = runOptimization(request);
+
+    const householdId = await adapter.saveHousehold(userId, request, planResult);
+
+    const plans = mockClient.getTable('plans');
+    assert.equal(plans.length, 1);
+    const row = plans[0];
+
+    // Check all NOT NULL columns according to supabase/migrations/01_initial_schema.sql
+    const notNullCols = [
+      'household_id',
+      'user_id',
+      'optimizer_version',
+      'balance_score',
+      'total_work_minutes',
+      'total_capacity_minutes',
+      'diagnostics',
+      'member_summaries',
+      'unassigned_tasks',
+      'assignments',
+      'diff_summary'
+    ];
+
+    for (const col of notNullCols) {
+      assert.notEqual(row[col], null, `Column '${col}' must not be null`);
+      assert.notEqual(row[col], undefined, `Column '${col}' must not be undefined`);
+      if (typeof row[col] === 'number') {
+        assert.ok(!Number.isNaN(row[col]), `Column '${col}' must not be NaN`);
+      }
+    }
+
+    // Verify isValidPlanSnapshot rejects invalid or incomplete plans
+    assert.equal(isValidPlanSnapshot(null), false);
+    assert.equal(isValidPlanSnapshot(undefined), false);
+    assert.equal(isValidPlanSnapshot({} as any), false);
+    assert.equal(isValidPlanSnapshot({ assignments: [], diagnostics: {} } as any), false);
+    assert.equal(
+      isValidPlanSnapshot({
+        assignments: [{ taskId: 't1', memberId: 'm1' }],
+        diagnostics: { totalHouseholdWorkMinutes: null, totalHouseholdCapacityMinutes: 600, balanceScore: 90 }
+      } as any),
+      false
+    );
+
+    // Verify adapter.savePlan directly rejects plans missing required metrics
+    await assert.rejects(
+      async () => {
+        await adapter.savePlan(userId, householdId, {
+          runId: 'invalid',
+          householdId,
+          mode: 'capacity_aware',
+          weeks: 2,
+          assignments: [],
+          unassignedTasks: [],
+          memberSummaries: [],
+          diagnostics: {
+            totalHouseholdWorkMinutes: null as any,
+            totalHouseholdCapacityMinutes: 600,
+            balanceScore: 90
+          } as any
+        });
+      },
+      /Cannot persist plan snapshot: missing required non-null plan metrics/
+    );
   });
 });

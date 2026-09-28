@@ -24,6 +24,65 @@ export function generateUuid(): string {
   });
 }
 
+/**
+ * Evaluates whether an OptimizationResult object contains complete, valid, non-null
+ * metrics required for persistent storage in the public.plans table.
+ *
+ * GUARANTEES:
+ * 1. Checks that diagnostics exists with numeric, non-NaN totalHouseholdWorkMinutes,
+ *    totalHouseholdCapacityMinutes, and balanceScore.
+ * 2. Checks that assignments array is present.
+ * 3. Never permits null or undefined to slip through into NOT NULL database columns.
+ * 4. Never uses 0 as a fake fallback for missing metrics.
+ */
+export function isValidPlanSnapshot(planResult?: OptimizationResult | null): planResult is OptimizationResult {
+  if (!planResult || typeof planResult !== 'object') return false;
+  if (!Array.isArray(planResult.assignments)) return false;
+  if (!planResult.diagnostics || typeof planResult.diagnostics !== 'object') return false;
+
+  const totalWorkMinutes =
+    typeof planResult.diagnostics.totalHouseholdWorkMinutes === 'number'
+      ? planResult.diagnostics.totalHouseholdWorkMinutes
+      : typeof (planResult as any).totalHouseholdWorkMinutes === 'number'
+      ? (planResult as any).totalHouseholdWorkMinutes
+      : null;
+
+  const totalCapacityMinutes =
+    typeof planResult.diagnostics.totalHouseholdCapacityMinutes === 'number'
+      ? planResult.diagnostics.totalHouseholdCapacityMinutes
+      : typeof (planResult as any).totalHouseholdCapacityMinutes === 'number'
+      ? (planResult as any).totalHouseholdCapacityMinutes
+      : null;
+
+  const balanceScore =
+    typeof planResult.diagnostics.balanceScore === 'number'
+      ? planResult.diagnostics.balanceScore
+      : typeof (planResult as any).balanceScore === 'number'
+      ? (planResult as any).balanceScore
+      : null;
+
+  if (
+    totalWorkMinutes === null ||
+    Number.isNaN(totalWorkMinutes) ||
+    totalCapacityMinutes === null ||
+    Number.isNaN(totalCapacityMinutes) ||
+    balanceScore === null ||
+    Number.isNaN(balanceScore)
+  ) {
+    return false;
+  }
+
+  // Must have at least one assignment or unassigned task diagnostic to represent a real calculated plan
+  if (
+    planResult.assignments.length === 0 &&
+    (!Array.isArray(planResult.unassignedTasks) || planResult.unassignedTasks.length === 0)
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
 export class SupabaseAdapter {
   protected customClient: any = null;
 
@@ -154,11 +213,16 @@ export class SupabaseAdapter {
         weeks: household.planning_horizon_weeks,
         totalHouseholdWorkMinutes: p.total_work_minutes,
         totalHouseholdCapacityMinutes: p.total_capacity_minutes,
-        totalHouseholdWeightedWork: (p.diagnostics as any)?.totalHouseholdWeightedWork || p.total_work_minutes,
-        diagnostics: p.diagnostics as any,
-        memberSummaries: p.member_summaries as any,
-        unassignedTasks: p.unassigned_tasks as any,
-        assignments: p.assignments as any,
+        totalHouseholdWeightedWork: (p.diagnostics as any)?.totalHouseholdWeightedWork ?? p.total_work_minutes,
+        diagnostics: {
+          ...(p.diagnostics || {}),
+          totalHouseholdWorkMinutes: p.total_work_minutes,
+          totalHouseholdCapacityMinutes: p.total_capacity_minutes,
+          balanceScore: Number(p.balance_score)
+        },
+        memberSummaries: (p.member_summaries as any) || [],
+        unassignedTasks: (p.unassigned_tasks as any) || [],
+        assignments: (p.assignments as any) || [],
         diffSummary: p.diff_summary || []
       };
     }
@@ -353,8 +417,8 @@ export class SupabaseAdapter {
       if (pError) throw pError;
     }
 
-    // 7. Persist plan snapshot if provided
-    if (planResult && planResult.assignments && planResult.assignments.length > 0) {
+    // 7. Persist plan snapshot if a valid calculated plan exists and ALL required fields are populated
+    if (isValidPlanSnapshot(planResult)) {
       const mappedAssignments = (planResult.assignments || []).map(a => ({
         ...a,
         memberId: memberIdMap.get(a.memberId) || a.memberId,
@@ -374,7 +438,10 @@ export class SupabaseAdapter {
         householdId: savedHouseholdId,
         assignments: mappedAssignments,
         memberSummaries: mappedMemberSummaries,
-        unassignedTasks: mappedUnassigned
+        unassignedTasks: mappedUnassigned,
+        diagnostics: {
+          ...planResult.diagnostics
+        }
       };
       await this.savePlan(userId, savedHouseholdId, planToSave);
     }
@@ -384,21 +451,43 @@ export class SupabaseAdapter {
 
   /**
    * Saves a calculated plan snapshot for diagnostics, history, and differential rebalancing.
+   * Truthfully maps optimizer diagnostics metrics to required non-null plans table columns.
    */
   async savePlan(userId: string, householdId: string, result: OptimizationResult): Promise<string> {
+    if (!isValidPlanSnapshot(result)) {
+      throw new Error(
+        'Cannot persist plan snapshot: missing required non-null plan metrics (total_work_minutes, total_capacity_minutes, or balance_score).'
+      );
+    }
+
+    const totalWorkMinutes =
+      typeof result.diagnostics?.totalHouseholdWorkMinutes === 'number'
+        ? result.diagnostics.totalHouseholdWorkMinutes
+        : (result as any).totalHouseholdWorkMinutes;
+
+    const totalCapacityMinutes =
+      typeof result.diagnostics?.totalHouseholdCapacityMinutes === 'number'
+        ? result.diagnostics.totalHouseholdCapacityMinutes
+        : (result as any).totalHouseholdCapacityMinutes;
+
+    const balanceScore =
+      typeof result.diagnostics?.balanceScore === 'number'
+        ? result.diagnostics.balanceScore
+        : (result as any).balanceScore;
+
     const { data, error } = await this.client
       .from('plans')
       .insert({
         household_id: householdId,
         user_id: userId,
-        optimizer_version: result.optimizerVersion || '0.1.0',
-        balance_score: result.diagnostics.balanceScore,
-        total_work_minutes: result.totalHouseholdWorkMinutes,
-        total_capacity_minutes: result.totalHouseholdCapacityMinutes,
+        optimizer_version: (result as any).optimizerVersion || '0.1.0',
+        balance_score: balanceScore,
+        total_work_minutes: totalWorkMinutes,
+        total_capacity_minutes: totalCapacityMinutes,
         diagnostics: result.diagnostics,
-        member_summaries: result.memberSummaries,
-        unassigned_tasks: result.unassignedTasks,
-        assignments: result.assignments,
+        member_summaries: result.memberSummaries || [],
+        unassigned_tasks: result.unassignedTasks || [],
+        assignments: result.assignments || [],
         diff_summary: result.diffSummary || []
       })
       .select('id')
