@@ -105,6 +105,8 @@ export async function build(options = {}) {
     format: 'esm',
     outfile: distOptimizerBundle,
     target: ['es2022', 'chrome100', 'firefox100', 'safari15', 'edge100'],
+    minify: true,
+    treeShaking: true,
     logLevel: options.logLevel || 'info'
   });
 
@@ -125,6 +127,8 @@ export async function build(options = {}) {
     outfile: distClientBundle,
     target: ['es2022', 'chrome100', 'firefox100', 'safari15', 'edge100'],
     define,
+    minify: true,
+    treeShaking: true,
     logLevel: options.logLevel || 'info'
   });
 

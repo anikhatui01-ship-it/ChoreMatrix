@@ -283,7 +283,7 @@
           </div>
 
           <!-- Table View Container -->
-          <div id="tableView" style="display:none;">
+          <div id="tableView" style="display:none; overflow-x:auto; -webkit-overflow-scrolling:touch;">
             <table>
               <thead>
                 <tr>
@@ -594,30 +594,47 @@ async function persistToCloudIfAuthed() {
   }
 }
 
-function executeOptimization() {
+let isCalculating = false;
+let lastCalculatedHash = '';
+
+function executeOptimization(force = false) {
+  if (isCalculating) return;
+  isCalculating = true;
   syncDOMToState();
+  const stateHash = JSON.stringify(currentRequest);
+  if (!force && stateHash === lastCalculatedHash && currentResult) {
+    flashCalculateStatus();
+    isCalculating = false;
+    return;
+  }
   currentResult = runOptimization(currentRequest);
+  lastCalculatedHash = stateHash;
   if (currentResult) {
     activeWeek = Math.max(0, Math.min(activeWeek, currentResult.weeks - 1));
   }
   renderResults();
   flashCalculateStatus();
   persistToCloudIfAuthed();
+  isCalculating = false;
 }
 
 function executeRebalance() {
+  if (isCalculating) return;
+  isCalculating = true;
   syncDOMToState();
   if (!currentResult || !currentResult.assignments.length) {
     currentResult = runOptimization(currentRequest);
   } else {
     currentResult = rebalanceHousehold(currentRequest, currentResult.assignments);
   }
+  lastCalculatedHash = JSON.stringify(currentRequest);
   if (currentResult) {
     activeWeek = Math.max(0, Math.min(activeWeek, currentResult.weeks - 1));
   }
   renderResults();
   flashCalculateStatus();
   persistToCloudIfAuthed();
+  isCalculating = false;
 }
 
 function renderResults() {
@@ -806,6 +823,7 @@ function attachListeners() {
   });
 
   document.addEventListener('input', e => {
+    lastCalculatedHash = '';
     const t = e.target;
     if (t.matches('[data-member-idx]')) {
       const idx = Number(t.dataset.memberIdx);
@@ -828,6 +846,7 @@ function attachListeners() {
   });
 
   document.addEventListener('change', e => {
+    lastCalculatedHash = '';
     const t = e.target;
     if (t.matches('[data-member-idx]')) {
       const idx = Number(t.dataset.memberIdx);
