@@ -144,8 +144,14 @@
     <!-- Pricing Cards Container rendered from centralized PRICING_CONFIG -->
     <div class="pricing-grid" id="pricingCardsContainer"></div>
 
+    <!-- Statutory Auto-Renewal Policy Notice -->
+    <div class="panel" style="margin-top:24px; font-size:12.5px; color:var(--muted); line-height:1.5;">
+      <strong style="color:var(--ink); font-size:13px; display:block; margin-bottom:4px;">Subscription Auto-Renewal & Cancellation Disclosure:</strong>
+      <div id="autoRenewalPolicyContent">Loading policy terms...</div>
+    </div>
+
     <!-- FAQ Section -->
-    <section class="panel" style="margin-top:32px;">
+    <section class="panel" style="margin-top:24px;">
       <div class="panel-head">
         <h2>Frequently Asked Questions</h2>
       </div>
@@ -208,6 +214,13 @@ if (grid) {
           </ul>
         ` : ''}
 
+        <div style="font-size:11px; color:var(--muted); line-height:1.4; margin:12px 0; padding:8px 10px; background:var(--panel-subtle); border-radius:6px; border:1px solid var(--line);">
+          <strong style="color:var(--ink);">Renewal & Billing Terms:</strong><br>
+          • Charged today: $${tier.checkoutDisclosures.chargedToday.toFixed(2)}<br>
+          • Renewal: ${escapeHtml(tier.checkoutDisclosures.renewalBehavior)}<br>
+          • Cancellation: ${escapeHtml(tier.checkoutDisclosures.cancellationMethod)}
+        </div>
+
         <div style="margin-top:auto;">
           <a href="/app.html" class="btn ${tier.popular ? 'primary' : ''}" style="width:100%;">
             ${escapeHtml(tier.ctaText)}
@@ -217,6 +230,10 @@ if (grid) {
     `;
   }).join('');
 }
+
+// Render statutory auto-renewal policy
+const policyEl = document.getElementById('autoRenewalPolicyContent');
+if (policyEl) policyEl.textContent = PRICING_CONFIG.autoRenewalPolicyNotice;
 
 // Render FAQs from centralized config
 const faqContainer = document.getElementById('pricingFaqContainer');

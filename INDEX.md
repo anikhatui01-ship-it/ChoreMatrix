@@ -33,3 +33,4 @@ This folder is the source-of-truth product documentation for ChoreMatrix.
 - `17-roadmap.md` — staged roadmap
 - `18-launch-checklist.md` — launch gate
 - `19-open-questions.md` — experiments and unresolved questions
+- `20-privacy-security-hardening.md` — privacy, security, tracking, and compliance boundary hardening

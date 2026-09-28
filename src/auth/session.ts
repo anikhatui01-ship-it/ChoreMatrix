@@ -108,13 +108,21 @@ export class AuthService {
   }
 
   /**
-   * Email and password sign-up with environment-aware redirect URL.
+   * Email and password sign-up with environment-aware redirect URL and age gate enforcement.
    */
-  async signUp(email: string, password: string, redirectTo?: string) {
+  async signUp(
+    email: string,
+    password: string,
+    optionsOrRedirectTo?: string | { isAtLeast13?: boolean; redirectTo?: string }
+  ) {
+    const opts = typeof optionsOrRedirectTo === 'string' ? { redirectTo: optionsOrRedirectTo } : optionsOrRedirectTo;
+    if (opts?.isAtLeast13 === false) {
+      throw new Error('ChoreMatrix accounts are currently available only to users aged 13 and older.');
+    }
     if (!this.client) {
       throw new Error('Cloud authentication is unconfigured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.');
     }
-    const targetUrl = redirectTo || getAuthRedirectUrl('/verify-email.html');
+    const targetUrl = opts?.redirectTo || getAuthRedirectUrl('/verify-email.html');
     const { data, error } = await this.client.auth.signUp({
       email,
       password,

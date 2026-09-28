@@ -20836,8 +20836,9 @@ function getSupabaseClient() {
 // src/config/pricing.ts
 var PRICING_CONFIG = {
   isBusinessFinalized: false,
-  provisionalNotice: "Notice: Pricing and trial durations are provisional development values based on monetization hypotheses in 13-monetization.md. Final pricing is subject to business confirmation before commercial launch.",
+  provisionalNotice: "Informational Pricing Only: Subscription payment checkout is currently in development. Pricing and trial durations are provisional development values based on monetization hypotheses in 13-monetization.md. Core optimization and interactive planning remain accessible without entering payment details.",
   defaultTrialDays: 14,
+  autoRenewalPolicyNotice: "Automatic Renewal Disclosure: Future paid subscriptions automatically renew at the applicable recurring rate at the end of each billing cycle or promotional trial period until cancelled. Cancellations can be executed online anytime via Account Settings without phone or manual cancellation barriers. California and other jurisdictions require explicit affirmative consent and clear disclosure of all renewal terms adjacent to the purchase action.",
   tiers: [
     {
       id: "free",
@@ -20845,7 +20846,12 @@ var PRICING_CONFIG = {
       tagline: "Essential workload optimization for a single household.",
       monthlyPrice: 0,
       annualPrice: 0,
+      billingIntervals: ["month"],
       trialDays: 0,
+      monthlyRenewalAmount: 0,
+      annualRenewalAmount: 0,
+      renewalInterval: "monthly",
+      cancellationMethod: "Not applicable (no recurring charges)",
       isProvisional: false,
       features: [
         "1 active household",
@@ -20859,7 +20865,19 @@ var PRICING_CONFIG = {
         "Single planning horizon",
         "Local browser storage only"
       ],
-      ctaText: "Continue free"
+      ctaText: "Continue free",
+      checkoutDisclosures: {
+        chargedToday: 0,
+        trialDurationText: "None (permanently free)",
+        chargedAfterTrialMonthly: 0,
+        chargedAfterTrialAnnual: 0,
+        recurringFrequency: "monthly",
+        renewalBehavior: "Free forever without automated recurring charges.",
+        cancellationMethod: "Delete account at any time in Account Settings.",
+        materialLimitations: ["Local storage only", "Single planning horizon"],
+        taxesNotice: "No tax applicable",
+        jurisdictionNotice: "Free tier requires no payment method."
+      }
     },
     {
       id: "household_pro",
@@ -20868,7 +20886,12 @@ var PRICING_CONFIG = {
       monthlyPrice: 4.99,
       // Hypothesized Option A from 13-monetization.md
       annualPrice: 39,
+      billingIntervals: ["month", "year"],
       trialDays: 14,
+      monthlyRenewalAmount: 4.99,
+      annualRenewalAmount: 39,
+      renewalInterval: "monthly",
+      cancellationMethod: "1-click online cancellation via Account dashboard prior to renewal date",
       isProvisional: true,
       popular: true,
       features: [
@@ -20882,7 +20905,19 @@ var PRICING_CONFIG = {
       limitations: [
         "1 cloud household"
       ],
-      ctaText: "Start 14-day free trial"
+      ctaText: "Start 14-day free trial",
+      checkoutDisclosures: {
+        chargedToday: 0,
+        trialDurationText: "14-day free trial period",
+        chargedAfterTrialMonthly: 4.99,
+        chargedAfterTrialAnnual: 39,
+        recurringFrequency: "monthly",
+        renewalBehavior: "Renews automatically each month or year until cancelled. Notice provided prior to annual renewal.",
+        cancellationMethod: "Online via Account Settings before trial expires to prevent any charge.",
+        materialLimitations: ["1 saved cloud household profile"],
+        taxesNotice: "Applicable state/local sales taxes calculated at checkout.",
+        jurisdictionNotice: "Complies with California ARL and statutory continuous service disclosure standards."
+      }
     },
     {
       id: "household_plus",
@@ -20891,7 +20926,12 @@ var PRICING_CONFIG = {
       monthlyPrice: 7.99,
       // Hypothesized Option B from 13-monetization.md
       annualPrice: 59,
+      billingIntervals: ["month", "year"],
       trialDays: 14,
+      monthlyRenewalAmount: 7.99,
+      annualRenewalAmount: 59,
+      renewalInterval: "monthly",
+      cancellationMethod: "1-click online cancellation via Account dashboard prior to renewal date",
       isProvisional: true,
       features: [
         "Everything in Pro",
@@ -20901,7 +20941,19 @@ var PRICING_CONFIG = {
         "Priority feature feedback"
       ],
       limitations: [],
-      ctaText: "Start 14-day free trial"
+      ctaText: "Start 14-day free trial",
+      checkoutDisclosures: {
+        chargedToday: 0,
+        trialDurationText: "14-day free trial period",
+        chargedAfterTrialMonthly: 7.99,
+        chargedAfterTrialAnnual: 59,
+        recurringFrequency: "monthly",
+        renewalBehavior: "Renews automatically each month or year until cancelled. Notice provided prior to annual renewal.",
+        cancellationMethod: "Online via Account Settings before trial expires to prevent any charge.",
+        materialLimitations: ["None"],
+        taxesNotice: "Applicable state/local sales taxes calculated at checkout.",
+        jurisdictionNotice: "Complies with California ARL and statutory continuous service disclosure standards."
+      }
     }
   ],
   faq: [
@@ -20919,6 +20971,39 @@ var PRICING_CONFIG = {
     }
   ]
 };
+
+// src/config/email.ts
+var MARKETING_EMAILS_ENABLED = false;
+var MARKETING_EMAIL_CONFIG = {
+  marketingEmailsEnabled: false,
+  senderName: void 0,
+  senderEmail: void 0,
+  physicalPostalAddress: void 0,
+  hasUnsubscribeMechanism: false,
+  hasSuppressionList: false
+};
+function canSendMarketingEmail(config = MARKETING_EMAIL_CONFIG) {
+  if (!config.marketingEmailsEnabled) {
+    return false;
+  }
+  if (!config.senderEmail || config.senderEmail.includes("placeholder") || config.senderEmail === "support@chorematrix.com") {
+    return false;
+  }
+  if (!config.physicalPostalAddress || config.physicalPostalAddress.includes("placeholder")) {
+    return false;
+  }
+  if (!config.hasUnsubscribeMechanism || !config.hasSuppressionList) {
+    return false;
+  }
+  return true;
+}
+function sendMarketingEmailGuard(recipient, templateId) {
+  if (!canSendMarketingEmail()) {
+    throw new Error(
+      `[Marketing Email Refusal] Outgoing marketing emails are disabled (MARKETING_EMAILS_ENABLED = false). Dispatch to ${recipient} (template: ${templateId}) blocked.`
+    );
+  }
+}
 
 // src/auth/session.ts
 function getSiteUrl() {
@@ -20997,13 +21082,17 @@ var AuthService = class {
     }
   }
   /**
-   * Email and password sign-up with environment-aware redirect URL.
+   * Email and password sign-up with environment-aware redirect URL and age gate enforcement.
    */
-  async signUp(email, password, redirectTo) {
+  async signUp(email, password, optionsOrRedirectTo) {
+    const opts = typeof optionsOrRedirectTo === "string" ? { redirectTo: optionsOrRedirectTo } : optionsOrRedirectTo;
+    if (opts?.isAtLeast13 === false) {
+      throw new Error("ChoreMatrix accounts are currently available only to users aged 13 and older.");
+    }
     if (!this.client) {
       throw new Error("Cloud authentication is unconfigured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.");
     }
-    const targetUrl = redirectTo || getAuthRedirectUrl("/verify-email.html");
+    const targetUrl = opts?.redirectTo || getAuthRedirectUrl("/verify-email.html");
     const { data, error } = await this.client.auth.signUp({
       email,
       password,
@@ -21644,9 +21733,12 @@ function openCookieModal() {
 }
 export {
   AuthService,
+  MARKETING_EMAILS_ENABLED,
+  MARKETING_EMAIL_CONFIG,
   PRICING_CONFIG,
   SupabaseAdapter,
   authService,
+  canSendMarketingEmail,
   getAuthRedirectUrl,
   getCookieConsent,
   getEnvVar,
@@ -21659,5 +21751,6 @@ export {
   renderFooter,
   renderNavbar,
   saveCookieConsent,
+  sendMarketingEmailGuard,
   supabase
 };
