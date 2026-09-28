@@ -25,6 +25,7 @@ export function renderNavbar(activePage: string = '') {
           <li><a href="/how-it-works.html" class="${activePage === 'how-it-works' ? 'active' : ''}">How It Works</a></li>
           <li><a href="/pricing.html" class="${activePage === 'pricing' ? 'active' : ''}">Pricing</a></li>
           <li><a href="/why-chorematrix.html" class="${activePage === 'why-chorematrix' ? 'active' : ''}">Why ChoreMatrix</a></li>
+          <li><a href="/faq.html" class="${activePage === 'faq' ? 'active' : ''}">FAQ</a></li>
         </ul>
 
         <div class="nav-actions">
@@ -46,7 +47,7 @@ export function renderNavbar(activePage: string = '') {
 
           <div id="navAuthArea" style="display:flex; gap:8px;">
             <a href="/login.html" class="btn small">Log In</a>
-            <a href="/app.html" class="btn small primary">Open App</a>
+            <a href="/signup.html" class="btn small primary">Sign Up</a>
           </div>
         </div>
       </div>

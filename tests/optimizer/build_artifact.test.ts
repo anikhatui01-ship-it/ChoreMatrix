@@ -17,6 +17,7 @@ describe('Production Build Output (dist/)', () => {
     assert.ok(files.includes('how-it-works.html'), 'dist/ must contain how-it-works.html');
     assert.ok(files.includes('pricing.html'), 'dist/ must contain pricing.html');
     assert.ok(files.includes('why-chorematrix.html'), 'dist/ must contain why-chorematrix.html');
+    assert.ok(files.includes('faq.html'), 'dist/ must contain faq.html');
     assert.ok(files.includes('privacy.html'), 'dist/ must contain privacy.html');
     assert.ok(files.includes('account.html'), 'dist/ must contain account.html');
     assert.ok(files.includes('optimizer.bundle.js'), 'dist/ must contain optimizer.bundle.js');

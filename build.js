@@ -92,7 +92,7 @@ export async function build(options = {}) {
 
   // 1. Clean dist directory
   if (fs.existsSync(distDir)) {
-    fs.rmSync(distDir, { recursive: true, force: true });
+    fs.rmSync(distDir, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
   }
   fs.mkdirSync(distDir, { recursive: true });
   fs.mkdirSync(path.join(distDir, 'src', 'styles'), { recursive: true });
@@ -147,6 +147,7 @@ export async function build(options = {}) {
     'how-it-works.html',
     'pricing.html',
     'why-chorematrix.html',
+    'faq.html',
     'privacy.html',
     'terms.html',
     'cookies.html',

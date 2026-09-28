@@ -111,7 +111,7 @@ describe('Environment Variable Injection & Offline Fallback', () => {
       }
     } finally {
       if (fs.existsSync(testDist)) {
-        fs.rmSync(testDist, { recursive: true, force: true });
+        fs.rmSync(testDist, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
       }
     }
   });
@@ -155,7 +155,7 @@ describe('Environment Variable Injection & Offline Fallback', () => {
       }
     } finally {
       if (fs.existsSync(testDist)) {
-        fs.rmSync(testDist, { recursive: true, force: true });
+        fs.rmSync(testDist, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
       }
     }
   });
@@ -195,7 +195,7 @@ describe('Environment Variable Injection & Offline Fallback', () => {
       );
     } finally {
       if (fs.existsSync(testDist)) {
-        fs.rmSync(testDist, { recursive: true, force: true });
+        fs.rmSync(testDist, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
       }
     }
   });
@@ -235,7 +235,7 @@ describe('Environment Variable Injection & Offline Fallback', () => {
       console.error = origError;
 
       if (fs.existsSync(testDist)) {
-        fs.rmSync(testDist, { recursive: true, force: true });
+        fs.rmSync(testDist, { recursive: true, force: true, maxRetries: 10, retryDelay: 100 });
       }
     }
 

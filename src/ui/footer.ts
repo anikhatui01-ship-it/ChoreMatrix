@@ -20,11 +20,6 @@ export function renderFooter() {
             <p style="margin:0 0 12px; line-height:1.45; color:var(--muted); max-width:320px;">
               Deterministic household workload optimizer. Describe your household, members, and constraints to calculate balanced, workable allocations.
             </p>
-            <div style="font-size:11px; color:var(--muted);">
-              <strong>Entity:</strong> [ChoreMatrix Legal Entity Placeholder]<br>
-              <strong>Contact:</strong> <a href="mailto:support@chorematrix.com">support@chorematrix.com</a><br>
-              <strong>Address:</strong> [Registered Business Address Placeholder]
-            </div>
           </div>
 
           <div class="footer-col">
@@ -33,6 +28,7 @@ export function renderFooter() {
               <li><a href="/how-it-works.html">How It Works</a></li>
               <li><a href="/pricing.html">Pricing & Trials</a></li>
               <li><a href="/why-chorematrix.html">Why ChoreMatrix</a></li>
+              <li><a href="/faq.html">FAQ</a></li>
               <li><a href="/app.html">Launch Optimizer</a></li>
             </ul>
           </div>
@@ -64,6 +60,7 @@ export function renderFooter() {
             &copy; ${currentYear} ChoreMatrix. All rights reserved. Mathematical workload planning aid.
           </div>
           <div style="display:flex; gap:16px;">
+            <a href="/faq.html">FAQ</a>
             <a href="/privacy.html">Privacy</a>
             <a href="/terms.html">Terms</a>
             <a href="/data-rights.html">Data Rights</a>

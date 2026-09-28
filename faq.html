@@ -1,0 +1,783 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ChoreMatrix FAQ — Household Workload Optimizer</title>
+<meta name="description" content="Frequently asked questions about ChoreMatrix. Plain-language answers on deterministic workload optimization, capacity-aware balancing, rebalancing, and privacy." />
+<link rel="canonical" href="https://chorematrix.com/faq.html" />
+
+<!-- Open Graph Metadata -->
+<meta property="og:title" content="ChoreMatrix FAQ — Household Workload Optimizer" />
+<meta property="og:description" content="Frequently asked questions about ChoreMatrix. Plain-language answers on deterministic workload optimization, capacity-aware balancing, rebalancing, and privacy." />
+<meta property="og:url" content="https://chorematrix.com/faq.html" />
+<meta property="og:type" content="website" />
+
+<script>
+  (function() {
+    try {
+      var s = localStorage.getItem('chorematrix_theme') || 'system';
+      var d = s === 'dark' || (s === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.setAttribute('data-theme', d ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme-setting', s);
+    } catch(e){}
+  })();
+</script>
+<link rel="stylesheet" href="/src/styles/common.css" />
+<style>
+  .faq-hero {
+    text-align: center;
+    padding: 36px 0 24px;
+    max-width: 760px;
+    margin: 0 auto;
+  }
+  .faq-hero h1 {
+    font-size: 32px;
+    font-weight: 800;
+    margin: 0 0 10px;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+  }
+  .faq-subtitle {
+    font-size: 16px;
+    color: var(--muted);
+    line-height: 1.5;
+    margin: 0;
+  }
+  .faq-section {
+    margin-top: 36px;
+  }
+  .faq-section-header {
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 8px;
+    margin-bottom: 14px;
+  }
+  .faq-section-header h2 {
+    font-size: 18px;
+    font-weight: 800;
+    color: var(--ink);
+    margin: 0;
+    letter-spacing: -0.01em;
+  }
+  .faq-item {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    margin-bottom: 10px;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    overflow: hidden;
+  }
+  .faq-item:hover {
+    border-color: var(--line-subtle);
+  }
+  .faq-item.is-open {
+    border-color: var(--accent);
+    box-shadow: var(--shadow);
+  }
+  .faq-heading {
+    margin: 0;
+    font-size: inherit;
+    font-weight: inherit;
+  }
+  .faq-button {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    padding: 16px 20px;
+    background: transparent;
+    border: none;
+    text-align: left;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--ink);
+    cursor: pointer;
+    border-radius: var(--radius);
+    min-height: 52px;
+    transition: background 0.12s ease;
+  }
+  .faq-button:hover {
+    background: var(--panel-subtle);
+  }
+  .faq-button:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: -2px;
+  }
+  .faq-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 6px;
+    background: var(--panel-subtle);
+    color: var(--muted);
+    flex-shrink: 0;
+    transition: transform 0.18s ease, background 0.18s ease, color 0.18s ease;
+  }
+  .faq-button[aria-expanded="true"] .faq-icon {
+    transform: rotate(180deg);
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+  .faq-panel {
+    border-top: 1px solid var(--line);
+    background: var(--panel-subtle);
+  }
+  .faq-panel[hidden] {
+    display: none;
+  }
+  .faq-panel-inner {
+    padding: 16px 20px 20px;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--muted);
+  }
+  .faq-panel-inner p {
+    margin: 0 0 10px;
+    color: var(--ink);
+  }
+  .faq-panel-inner p:last-child {
+    margin-bottom: 0;
+  }
+  .faq-panel-inner ul {
+    margin: 8px 0;
+    padding-left: 20px;
+    color: var(--ink);
+  }
+  .faq-panel-inner li {
+    margin-bottom: 6px;
+  }
+  .faq-panel-inner strong {
+    color: var(--ink);
+  }
+  .faq-panel-inner code {
+    font-size: 12px;
+    padding: 2px 6px;
+    background: var(--badge-bg);
+    border-radius: 4px;
+    color: var(--badge-text);
+  }
+  @media (max-width: 640px) {
+    .faq-hero h1 { font-size: 26px; }
+    .faq-subtitle { font-size: 15px; }
+    .faq-button { padding: 14px 16px; font-size: 14px; min-height: 48px; }
+    .faq-panel-inner { padding: 14px 16px 18px; font-size: 13.5px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="globalNavbar"></div>
+
+<main class="main-content">
+  <div class="shell" style="max-width:840px;">
+    <!-- Page Header -->
+    <header class="faq-hero">
+      <span class="badge teal" style="margin-bottom:10px;">Knowledge Base & Assistance</span>
+      <h1>Frequently Asked Questions</h1>
+      <p class="faq-subtitle">Everything you need to understand ChoreMatrix and get the most from it.</p>
+    </header>
+
+    <!-- SECTION A — GETTING STARTED -->
+    <section class="faq-section" aria-labelledby="heading-section-a">
+      <div class="faq-section-header">
+        <h2 id="heading-section-a">Section A — Getting Started</h2>
+      </div>
+
+      <div class="faq-accordion-group">
+        <!-- Q1 -->
+        <div class="faq-item" id="faq-item-1">
+          <h3 class="faq-heading">
+            <button type="button" class="faq-button" id="faq-btn-1" aria-expanded="false" aria-controls="faq-panel-1">
+              <span>1. What is ChoreMatrix?</span>
+              <span class="faq-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </button>
+          </h3>
+          <div class="faq-panel" id="faq-panel-1" role="region" aria-labelledby="faq-btn-1" hidden>
+            <div class="faq-panel-inner">
+              <p>ChoreMatrix is a deterministic household workload optimizer. Instead of acting as a passive checklist or a random assignment wheel, ChoreMatrix models your household members, their individual capacities, schedule availability, and task constraints to calculate balanced, workable chore allocations.</p>
+              <p>It replaces arbitrary domestic chore negotiations with clear mathematical schedules that respect everyone's real-world time limitations.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Q2 -->
+        <div class="faq-item" id="faq-item-2">
+          <h3 class="faq-heading">
+            <button type="button" class="faq-button" id="faq-btn-2" aria-expanded="false" aria-controls="faq-panel-2">
+              <span>2. Do I need an account to use ChoreMatrix?</span>
+              <span class="faq-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </button>
+          </h3>
+          <div class="faq-panel" id="faq-panel-2" role="region" aria-labelledby="faq-btn-2" hidden>
+            <div class="faq-panel-inner">
+              <p>No account is required for first-use planning. You can explore the optimizer, test sample household presets, customize members and chores, and calculate full weekly plans directly inside your browser without entering personal information or signing in.</p>
+              <p>Creating a free account is only needed if you want cloud synchronization—saving your household data across devices, preserving custom chore rosters, and managing your configuration persistently.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Q3 -->
+        <div class="faq-item" id="faq-item-3">
+          <h3 class="faq-heading">
+            <button type="button" class="faq-button" id="faq-btn-3" aria-expanded="false" aria-controls="faq-panel-3">
+              <span>3. Does ChoreMatrix work on phones?</span>
+              <span class="faq-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </button>
+          </h3>
+          <div class="faq-panel" id="faq-panel-3" role="region" aria-labelledby="faq-btn-3" hidden>
+            <div class="faq-panel-inner">
+              <p>Yes. ChoreMatrix is built as a fully responsive web application that runs directly in modern mobile browsers on iOS and Android. There is no separate app store download required.</p>
+              <p>On mobile screens, inputs, schedules, and metrics adapt into full-width cards and touch-friendly layouts so you can easily review allocations, adjust member availability, or trigger rebalances on the go.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION B — HOW THE OPTIMIZER WORKS -->
+    <section class="faq-section" aria-labelledby="heading-section-b">
+      <div class="faq-section-header">
+        <h2 id="heading-section-b">Section B — How the Optimizer Works</h2>
+      </div>
+
+      <div class="faq-accordion-group">
+        <!-- Q4 -->
+        <div class="faq-item" id="faq-item-4">
+          <h3 class="faq-heading">
+            <button type="button" class="faq-button" id="faq-btn-4" aria-expanded="false" aria-controls="faq-panel-4">
+              <span>4. How does ChoreMatrix calculate a plan?</span>
+              <span class="faq-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </button>
+          </h3>
+          <div class="faq-panel" id="faq-panel-4" role="region" aria-labelledby="faq-btn-4" hidden>
+            <div class="faq-panel-inner">
+              <p>ChoreMatrix calculates plans using a deterministic constraint-satisfaction and scoring engine. When you request an optimization:</p>
+              <ul>
+                <li>The engine normalizes all task occurrences across your requested planning horizon (1 to 4 weeks).</li>
+                <li>It filters potential candidate assignments against strict hard constraints (availability, eligibility, and fixed days).</li>
+                <li>It evaluates eligible assignments using weighted criteria—penalizing workload imbalance, daily workload spikes, and avoided tasks, while rewarding preferred tasks and balanced cadence.</li>
+                <li>It refines the schedule through systematic local search improvements (2-opt candidate swaps).</li>
+              </ul>
+              <p>Because the engine is deterministic, identical inputs and constraints always produce the exact same verifiable allocation without random drift.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Q5 -->
+        <div class="faq-item" id="faq-item-5">
+          <h3 class="faq-heading">
+            <button type="button" class="faq-button" id="faq-btn-5" aria-expanded="false" aria-controls="faq-panel-5">
+              <span>5. What is Equal Workload?</span>
+              <span class="faq-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </button>
+          </h3>
+          <div class="faq-panel" id="faq-panel-5" role="region" aria-labelledby="faq-btn-5" hidden>
+            <div class="faq-panel-inner">
+              <p>Equal Workload (balanced mode) is an optimization objective designed for households where participants intend to split domestic chores evenly—such as roommates or adult partners with similar schedules.</p>
+              <p>In this mode, the optimizer minimizes the difference in total weighted chore minutes assigned to each person, striving to distribute total chore volume equally across all participants.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Q6 -->
+        <div class="faq-item" id="faq-item-6">
+          <h3 class="faq-heading">
+            <button type="button" class="faq-button" id="faq-btn-6" aria-expanded="false" aria-controls="faq-panel-6">
+              <span>6. What is Capacity-Aware optimization?</span>
+              <span class="faq-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </button>
+          </h3>
+          <div class="faq-panel" id="faq-panel-6" role="region" aria-labelledby="faq-btn-6" hidden>
+            <div class="faq-panel-inner">
+              <p>Capacity-Aware optimization distributes work proportionally according to each member's declared weekly capacity minutes.</p>
+              <p>This mode is essential for families with teenagers, children, or partners working disparate outside hours. For example, if Member A has 300 minutes of weekly chore capacity and Member B has 150 minutes, Capacity-Aware optimization assigns Member A approximately double the weighted chore load of Member B, targeting an equal percentage of capacity utilization rather than an identical number of minutes.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Q7 -->
+        <div class="faq-item" id="faq-item-7">
+          <h3 class="faq-heading">
+            <button type="button" class="faq-button" id="faq-btn-7" aria-expanded="false" aria-controls="faq-panel-7">
+              <span>7. What does "effort" mean?</span>
+              <span class="faq-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </button>
+          </h3>
+          <div class="faq-panel" id="faq-panel-7" role="region" aria-labelledby="faq-btn-7" hidden>
+            <div class="faq-panel-inner">
+              <p>Effort reflects the physical and mental intensity required to complete a task. ChoreMatrix uses an explicit 5-point effort multiplier scale:</p>
+              <ul>
+                <li><strong>Level 1 (1.00x multiplier):</strong> Light, low-friction activities (e.g. wiping down a kitchen counter).</li>
+                <li><strong>Level 2 (1.25x multiplier):</strong> Routine maintenance chores (e.g. emptying the dishwasher).</li>
+                <li><strong>Level 3 (1.50x multiplier):</strong> Standard active chores (e.g. vacuuming the living room, routine cooking).</li>
+                <li><strong>Level 4 (1.85x multiplier):</strong> Demanding physical labor (e.g. scrubbing bathrooms, thorough mopping).</li>
+                <li><strong>Level 5 (2.25x multiplier):</strong> Heavy or exhausting chores (e.g. deep oven cleaning, extensive yard work).</li>
+              </ul>
+              <p>Raw task duration is multiplied by this factor to calculate "weighted minutes," ensuring 30 minutes of deep scrubbing is accurately weighted higher than 30 minutes of folding light laundry.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Q8 -->
+        <div class="faq-item" id="faq-item-8">
+          <h3 class="faq-heading">
+            <button type="button" class="faq-button" id="faq-btn-8" aria-expanded="false" aria-controls="faq-panel-8">
+              <span>8. What are hard constraints?</span>
+              <span class="faq-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </button>
+          </h3>
+          <div class="faq-panel" id="faq-panel-8" role="region" aria-labelledby="faq-btn-8" hidden>
+            <div class="faq-panel-inner">
+              <p>Hard constraints are mandatory scheduling boundaries that the optimizer will never violate. Common examples include:</p>
+              <ul>
+                <li><strong>Unavailable days:</strong> If a member is traveling or working late on Thursdays, the optimizer cannot assign chores to them on Thursdays.</li>
+                <li><strong>Eligibility restrictions:</strong> If a chore is flagged only for adults (e.g. using chemical detergents or power tools), younger members are strictly excluded.</li>
+                <li><strong>Fixed-day tasks:</strong> Chores that must occur on a specific day of the week (such as putting out trash cans on Sunday evening) will only ever be placed on that designated day.</li>
+              </ul>
+              <p>If a hard constraint cannot be satisfied, the chore is flagged as unassigned rather than assigned improperly.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Q9 -->
+        <div class="faq-item" id="faq-item-9">
+          <h3 class="faq-heading">
+            <button type="button" class="faq-button" id="faq-btn-9" aria-expanded="false" aria-controls="faq-panel-9">
+              <span>9. What are soft preferences?</span>
+              <span class="faq-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </button>
+          </h3>
+          <div class="faq-panel" id="faq-panel-9" role="region" aria-labelledby="faq-btn-9" hidden>
+            <div class="faq-panel-inner">
+              <p>Soft preferences represent non-binding inclinations, such as a member's preferred tasks, disliked tasks, or preferred execution days.</p>
+              <p>The optimizer factors preferences into candidate scoring by applying bonuses when preferred tasks are assigned and applying penalties when assigning avoided chores. Preferences guide the engine toward agreeable arrangements, but they will yield when necessary to satisfy hard constraints or maintain workload feasibility.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION C — CALCULATE VS REBALANCE -->
+    <section class="faq-section" aria-labelledby="heading-section-c">
+      <div class="faq-section-header">
+        <h2 id="heading-section-c">Section C — Calculate vs Rebalance</h2>
+      </div>
+
+      <div class="faq-accordion-group">
+        <!-- Q10 -->
+        <div class="faq-item" id="faq-item-10">
+          <h3 class="faq-heading">
+            <button type="button" class="faq-button" id="faq-btn-10" aria-expanded="false" aria-controls="faq-panel-10">
+              <span>10. What is "Calculate Plan"?</span>
+              <span class="faq-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </button>
+          </h3>
+          <div class="faq-panel" id="faq-panel-10" role="region" aria-labelledby="faq-btn-10" hidden>
+            <div class="faq-panel-inner">
+              <p><strong>Calculate Plan</strong> generates an optimized schedule from scratch based on your current household members, capacities, and chore lists.</p>
+              <p>It considers the entire planning horizon without being anchored to past allocations, establishing the most balanced baseline schedule possible. It is best used when setting up your household for the first time or creating a brand-new weekly cycle.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Q11 -->
+        <div class="faq-item" id="faq-item-11">
+          <h3 class="faq-heading">
+            <button type="button" class="faq-button" id="faq-btn-11" aria-expanded="false" aria-controls="faq-panel-11">
+              <span>11. What does "Rebalance" do?</span>
+              <span class="faq-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </button>
+          </h3>
+          <div class="faq-panel" id="faq-panel-11" role="region" aria-labelledby="faq-btn-11" hidden>
+            <div class="faq-panel-inner">
+              <p><strong>Rebalance</strong> performs minimal-disruption rescheduling when circumstances change mid-week or mid-cycle.</p>
+              <p>Instead of throwing out your settled schedule and reassigning everything, the Rebalance engine applies a specific penalty to moving tasks that are already scheduled. It keeps unaffected tasks in place and calculates the smallest necessary adjustments to accommodate the new conditions, accompanied by an itemized diff summary explaining what changed and why.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Q12 -->
+        <div class="faq-item" id="faq-item-12">
+          <h3 class="faq-heading">
+            <button type="button" class="faq-button" id="faq-btn-12" aria-expanded="false" aria-controls="faq-panel-12">
+              <span>12. When should I use Rebalance instead of Calculate Plan?</span>
+              <span class="faq-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </button>
+          </h3>
+          <div class="faq-panel" id="faq-panel-12" role="region" aria-labelledby="faq-btn-12" hidden>
+            <div class="faq-panel-inner">
+              <p>Use Rebalance whenever unexpected schedule adjustments occur in an active plan.</p>
+              <p><strong>Concrete Example:</strong> Suppose a household member falls ill or gets called away on Wednesday. You edit that member's availability to mark Wednesday as an unavailable day, then click <strong>Rebalance</strong>. Rather than rewriting Monday, Tuesday, Thursday, and Friday chores for everyone, ChoreMatrix preserves unaffected tasks and moves only that member's Wednesday responsibilities to available, eligible members.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION D — RESULTS & DIAGNOSTICS -->
+    <section class="faq-section" aria-labelledby="heading-section-d">
+      <div class="faq-section-header">
+        <h2 id="heading-section-d">Section D — Results & Diagnostics</h2>
+      </div>
+
+      <div class="faq-accordion-group">
+        <!-- Q13 -->
+        <div class="faq-item" id="faq-item-13">
+          <h3 class="faq-heading">
+            <button type="button" class="faq-button" id="faq-btn-13" aria-expanded="false" aria-controls="faq-panel-13">
+              <span>13. What does the fairness index mean?</span>
+              <span class="faq-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </button>
+          </h3>
+          <div class="faq-panel" id="faq-panel-13" role="region" aria-labelledby="faq-btn-13" hidden>
+            <div class="faq-panel-inner">
+              <p>The fairness index (or balance score) is a mathematical metric reflecting the spread in capacity utilization across household members. A score of 100 indicates that all members have an identical workload utilization relative to their capacity.</p>
+              <p>This metric does not claim to represent objective moral justice or philosophical fairness for your specific family. It simply measures how evenly the workload is distributed according to the numbers, capacities, and constraints you provided. If tight constraints force one person to carry a higher utilization, the balance score decreases accordingly.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Q14 -->
+        <div class="faq-item" id="faq-item-14">
+          <h3 class="faq-heading">
+            <button type="button" class="faq-button" id="faq-btn-14" aria-expanded="false" aria-controls="faq-panel-14">
+              <span>14. Why can someone show more than 100% capacity?</span>
+              <span class="faq-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </button>
+          </h3>
+          <div class="faq-panel" id="faq-panel-14" role="region" aria-labelledby="faq-btn-14" hidden>
+            <div class="faq-panel-inner">
+              <p>When a member's utilization exceeds 100%, it means they have been assigned more weighted chore minutes than their declared weekly availability. ChoreMatrix surfaces this honestly as an overload diagnostic.</p>
+              <p>Overload typically occurs when household chore demands exceed total available member hours, or when strict eligibility rules leave only one specific member qualified to perform demanding tasks. ChoreMatrix flags the capacity deficit rather than masking the imbalance.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Q15 -->
+        <div class="faq-item" id="faq-item-15">
+          <h3 class="faq-heading">
+            <button type="button" class="faq-button" id="faq-btn-15" aria-expanded="false" aria-controls="faq-panel-15">
+              <span>15. What happens if a task cannot be assigned?</span>
+              <span class="faq-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </button>
+          </h3>
+          <div class="faq-panel" id="faq-panel-15" role="region" aria-labelledby="faq-btn-15" hidden>
+            <div class="faq-panel-inner">
+              <p>If a task cannot be assigned without breaking a hard constraint, ChoreMatrix lists it in an explicit <strong>Unassigned Tasks</strong> diagnostic table.</p>
+              <p>Each unassigned entry includes an explicit diagnostic code (such as <code>ERR_NO_ELIGIBLE_MEMBERS</code> or <code>ERR_ALL_ELIGIBLE_UNAVAILABLE</code>) and specific remediation suggestions. ChoreMatrix never silently invents invalid assignments or forces a chore onto an ineligible person.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Q16 -->
+        <div class="faq-item" id="faq-item-16">
+          <h3 class="faq-heading">
+            <button type="button" class="faq-button" id="faq-btn-16" aria-expanded="false" aria-controls="faq-panel-16">
+              <span>16. Why does ChoreMatrix sometimes say something is infeasible?</span>
+              <span class="faq-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </button>
+          </h3>
+          <div class="faq-panel" id="faq-panel-16" role="region" aria-labelledby="faq-btn-16" hidden>
+            <div class="faq-panel-inner">
+              <p>Infeasibility indicates that the combination of requested constraints mathematically leaves zero valid allocation options.</p>
+              <p>For instance, if a chore is locked to Friday, requires an adult, and all adult members are marked as unavailable on Fridays, no schedule can be generated that satisfies every rule. Infeasibility diagnostics highlight these conflicting constraints so you can adjust task days, expand eligibility, or update availability.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION E — ACCOUNT & DATA -->
+    <section class="faq-section" aria-labelledby="heading-section-e">
+      <div class="faq-section-header">
+        <h2 id="heading-section-e">Section E — Account & Data</h2>
+      </div>
+
+      <div class="faq-accordion-group">
+        <!-- Q17 -->
+        <div class="faq-item" id="faq-item-17">
+          <h3 class="faq-heading">
+            <button type="button" class="faq-button" id="faq-btn-17" aria-expanded="false" aria-controls="faq-panel-17">
+              <span>17. What happens when I create an account?</span>
+              <span class="faq-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </button>
+          </h3>
+          <div class="faq-panel" id="faq-panel-17" role="region" aria-labelledby="faq-btn-17" hidden>
+            <div class="faq-panel-inner">
+              <p>When you create an account, ChoreMatrix establishes an authenticated profile using email verification. Your household configurations, custom chore rosters, and saved schedules are persisted in the cloud database.</p>
+              <p>This allows your data to sync seamlessly whenever you log in from a desktop browser, laptop, or mobile phone.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Q18 -->
+        <div class="faq-item" id="faq-item-18">
+          <h3 class="faq-heading">
+            <button type="button" class="faq-button" id="faq-btn-18" aria-expanded="false" aria-controls="faq-panel-18">
+              <span>18. Where is my household data stored?</span>
+              <span class="faq-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </button>
+          </h3>
+          <div class="faq-panel" id="faq-panel-18" role="region" aria-labelledby="faq-btn-18" hidden>
+            <div class="faq-panel-inner">
+              <p>If you use ChoreMatrix without an account, your configuration and plans reside entirely in your browser's local storage.</p>
+              <p>For authenticated users, household data is stored in the ChoreMatrix cloud database backend managed through Supabase PostgreSQL infrastructure, with traffic encrypted in transit via standard TLS.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Q19 -->
+        <div class="faq-item" id="faq-item-19">
+          <h3 class="faq-heading">
+            <button type="button" class="faq-button" id="faq-btn-19" aria-expanded="false" aria-controls="faq-panel-19">
+              <span>19. Can another user see my household?</span>
+              <span class="faq-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </button>
+          </h3>
+          <div class="faq-panel" id="faq-panel-19" role="region" aria-labelledby="faq-btn-19" hidden>
+            <div class="faq-panel-inner">
+              <p>No. User data is isolated per account. In our database backend, strict PostgreSQL Row Level Security (RLS) policies enforce that queries can only access rows matching the authenticated user's ID (<code>user_id = auth.uid()</code>).</p>
+              <p>No user can access, inspect, or modify another account's household configurations or task allocations.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Q20 -->
+        <div class="faq-item" id="faq-item-20">
+          <h3 class="faq-heading">
+            <button type="button" class="faq-button" id="faq-btn-20" aria-expanded="false" aria-controls="faq-panel-20">
+              <span>20. What happens if I log out?</span>
+              <span class="faq-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </button>
+          </h3>
+          <div class="faq-panel" id="faq-panel-20" role="region" aria-labelledby="faq-btn-20" hidden>
+            <div class="faq-panel-inner">
+              <p>Logging out terminates your authenticated session and clears authentication tokens from browser storage. Protected account and sync screens become inaccessible until you log in again.</p>
+              <p>The ChoreMatrix Account dashboard provides three distinct session termination scopes:</p>
+              <ul>
+                <li><strong>Sign Out This Device:</strong> Closes the session on your current browser while leaving other devices signed in.</li>
+                <li><strong>Sign Out All Other Devices:</strong> Revokes access on all other computers and phones while keeping your current browser active.</li>
+                <li><strong>Sign Out Everywhere:</strong> Invalidates refresh tokens across all devices simultaneously.</li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- Q21 -->
+        <div class="faq-item" id="faq-item-21">
+          <h3 class="faq-heading">
+            <button type="button" class="faq-button" id="faq-btn-21" aria-expanded="false" aria-controls="faq-panel-21">
+              <span>21. Can I delete my account?</span>
+              <span class="faq-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </button>
+          </h3>
+          <div class="faq-panel" id="faq-panel-21" role="region" aria-labelledby="faq-btn-21" hidden>
+            <div class="faq-panel-inner">
+              <p>Yes. You can permanently delete your account and all associated household records at any time directly through the <a href="/account.html">Account Management</a> dashboard under the Danger Zone.</p>
+              <p>Initiating account deletion triggers complete database removal of your profile, saved households, members, tasks, and historical plans. This operation is permanent and irreversible.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION F — PRIVACY -->
+    <section class="faq-section" aria-labelledby="heading-section-f">
+      <div class="faq-section-header">
+        <h2 id="heading-section-f">Section F — Privacy</h2>
+      </div>
+
+      <div class="faq-accordion-group">
+        <!-- Q22 -->
+        <div class="faq-item" id="faq-item-22">
+          <h3 class="faq-heading">
+            <button type="button" class="faq-button" id="faq-btn-22" aria-expanded="false" aria-controls="faq-panel-22">
+              <span>22. What information does ChoreMatrix collect?</span>
+              <span class="faq-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </button>
+          </h3>
+          <div class="faq-panel" id="faq-panel-22" role="region" aria-labelledby="faq-btn-22" hidden>
+            <div class="faq-panel-inner">
+              <p>Following strict data minimization principles, ChoreMatrix collects only what is required to compute schedules:</p>
+              <ul>
+                <li>Your account email address and password credentials.</li>
+                <li>Household configuration names and member nicknames/labels.</li>
+                <li>Member capacities and unavailable days.</li>
+                <li>Chore descriptions, categories, effort ratings, and cadence requirements.</li>
+              </ul>
+              <p>ChoreMatrix does <strong>not</strong> collect home street addresses, GPS locations, phone numbers, contact books, children's birth dates, photos, biometric data, or payment card numbers. Review our full <a href="/privacy.html">Privacy Policy</a> for complete details.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Q23 -->
+        <div class="faq-item" id="faq-item-23">
+          <h3 class="faq-heading">
+            <button type="button" class="faq-button" id="faq-btn-23" aria-expanded="false" aria-controls="faq-panel-23">
+              <span>23. Does ChoreMatrix use AI?</span>
+              <span class="faq-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </button>
+          </h3>
+          <div class="faq-panel" id="faq-panel-23" role="region" aria-labelledby="faq-btn-23" hidden>
+            <div class="faq-panel-inner">
+              <p>No. ChoreMatrix does not use large language models, generative AI, or speculative machine learning in its core optimization engine.</p>
+              <p>The scheduler is built entirely on deterministic combinatorial algorithms and discrete mathematical scoring rules. This guarantees that your schedule is mathematically grounded, explainable, and consistent, without AI hallucinations or unpredictable changes.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Q24 -->
+        <div class="faq-item" id="faq-item-24">
+          <h3 class="faq-heading">
+            <button type="button" class="faq-button" id="faq-btn-24" aria-expanded="false" aria-controls="faq-panel-24">
+              <span>24. Does ChoreMatrix use analytics or advertising tracking?</span>
+              <span class="faq-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </button>
+          </h3>
+          <div class="faq-panel" id="faq-panel-24" role="region" aria-labelledby="faq-btn-24" hidden>
+            <div class="faq-panel-inner">
+              <p>No. ChoreMatrix contains zero advertising trackers, zero social media pixels, and zero cross-site behavioral cookies. Product usage analytics are currently disabled in the application.</p>
+              <p>We do not monetize your attention, track your activity across other websites, or sell household data to third-party ad brokers.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Q25 -->
+        <div class="faq-item" id="faq-item-25">
+          <h3 class="faq-heading">
+            <button type="button" class="faq-button" id="faq-btn-25" aria-expanded="false" aria-controls="faq-panel-25">
+              <span>25. Can I manage cookie preferences?</span>
+              <span class="faq-icon" aria-hidden="true">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </span>
+            </button>
+          </h3>
+          <div class="faq-panel" id="faq-panel-25" role="region" aria-labelledby="faq-btn-25" hidden>
+            <div class="faq-panel-inner">
+              <p>Yes. You can manage your storage preferences at any time using the <strong>Cookie Preferences</strong> link in the footer of any page, or review details on the <a href="/cookies.html">Cookie Policy</a> page.</p>
+              <p>ChoreMatrix only uses strictly necessary storage (such as session authentication and theme settings) and optional UI preferences, with zero third-party marketing storage.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<div id="globalFooter"></div>
+
+<script type="module">
+import { renderNavbar, renderFooter, initCookieBanner } from './src/client.bundle.js';
+
+renderNavbar('faq');
+renderFooter();
+initCookieBanner();
+
+// Accessible Accordion Implementation
+function initFaqAccordion() {
+  const accordionButtons = document.querySelectorAll('.faq-button');
+
+  accordionButtons.forEach(button => {
+    button.addEventListener('click', () => {
+      const isExpanded = button.getAttribute('aria-expanded') === 'true';
+      const targetPanelId = button.getAttribute('aria-controls');
+      const targetPanel = document.getElementById(targetPanelId);
+      const parentItem = button.closest('.faq-item');
+      const section = button.closest('.faq-section');
+
+      // Close all other open items in the same section
+      if (section && !isExpanded) {
+        const openButtons = section.querySelectorAll('.faq-button[aria-expanded="true"]');
+        openButtons.forEach(otherBtn => {
+          if (otherBtn !== button) {
+            otherBtn.setAttribute('aria-expanded', 'false');
+            const otherPanelId = otherBtn.getAttribute('aria-controls');
+            const otherPanel = document.getElementById(otherPanelId);
+            if (otherPanel) otherPanel.hidden = true;
+            const otherItem = otherBtn.closest('.faq-item');
+            if (otherItem) otherItem.classList.remove('is-open');
+          }
+        });
+      }
+
+      // Toggle clicked item
+      if (isExpanded) {
+        button.setAttribute('aria-expanded', 'false');
+        if (targetPanel) targetPanel.hidden = true;
+        if (parentItem) parentItem.classList.remove('is-open');
+      } else {
+        button.setAttribute('aria-expanded', 'true');
+        if (targetPanel) targetPanel.hidden = false;
+        if (parentItem) parentItem.classList.add('is-open');
+      }
+    });
+  });
+
+  // Handle URL hash anchor linking if present
+  if (window.location.hash) {
+    const hashTarget = document.querySelector(window.location.hash);
+    if (hashTarget && hashTarget.classList.contains('faq-item')) {
+      const btn = hashTarget.querySelector('.faq-button');
+      if (btn) {
+        btn.click();
+        hashTarget.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }
+  }
+}
+
+initFaqAccordion();
+</script>
+</body>
+</html>

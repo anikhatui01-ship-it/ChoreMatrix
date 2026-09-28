@@ -309,6 +309,7 @@
       <li><a href="/how-it-works.html">How It Works</a></li>
       <li><a href="/pricing.html">Pricing</a></li>
       <li><a href="/why-chorematrix.html">Why ChoreMatrix</a></li>
+      <li><a href="/faq.html">FAQ</a></li>
     </ul>
 
     <div class="nav-actions">
@@ -328,8 +329,10 @@
         </button>
       </div>
 
-      <a href="/login.html" class="btn small">Log In</a>
-      <a href="/app.html" class="btn small primary">Open App</a>
+      <div id="navAuthArea" style="display:flex; gap:8px;">
+        <a href="/login.html" class="btn small">Log In</a>
+        <a href="/signup.html" class="btn small primary">Sign Up</a>
+      </div>
     </div>
   </div>
 </header>
@@ -514,10 +517,21 @@
 
 <script type="module">
 import { runOptimization, rebalanceHousehold, DAYS_OF_WEEK } from './optimizer.bundle.js';
-import { renderFooter, initCookieBanner } from './src/client.bundle.js';
+import { renderFooter, initCookieBanner, authService } from './src/client.bundle.js';
 
 renderFooter();
 initCookieBanner();
+
+authService.getSession().then(session => {
+  const authArea = document.getElementById('navAuthArea');
+  if (!authArea) return;
+  if (session && session.user) {
+    authArea.innerHTML = `
+      <a href="/app.html" class="btn small">Optimizer</a>
+      <a href="/account.html" class="btn small">Account</a>
+    `;
+  }
+}).catch(() => {});
 
 // Theme switcher initialization
 const THEME_STORAGE_KEY = 'chorematrix_theme';
