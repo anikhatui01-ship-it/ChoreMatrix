@@ -208,6 +208,13 @@ async function checkAccount() {
         // Profile row absent -> graceful fallback to Free Tier
         planField.value = formatPlanTier('free');
       }
+
+      // Check for return from Cashfree subscription checkout
+      const urlParams = new URLSearchParams(window.location.search);
+      const returnSubId = urlParams.get('sub_id') || urlParams.get('subscription_id');
+      if (returnSubId) {
+        showNotice(`✓ Subscription authorization submitted (${returnSubId}). Your plan tier will update automatically once verified by Cashfree.`);
+      }
     } catch (profileErr) {
       console.warn('[Account] Profile fetch warning:', profileErr);
       if (planField) planField.value = 'Free Tier (Essential Optimizer)';
