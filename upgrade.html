@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Upgrade Plan — ChoreMatrix Household Workload Optimizer</title>
+<meta name="description" content="Upgrade your ChoreMatrix plan for an ad-free workspace, 4-week multi-week rotation, and cloud synchronization." />
+<link rel="canonical" href="https://chorematrix.com/upgrade.html" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="alternate icon" href="/favicon.ico" />
+<meta property="og:title" content="Upgrade Plan — ChoreMatrix Household Workload Optimizer" />
+<meta property="og:description" content="Upgrade your ChoreMatrix plan for an ad-free workspace, 4-week multi-week rotation, and cloud synchronization." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://chorematrix.com/upgrade.html" />
+<meta property="og:image" content="https://chorematrix.com/og-image.jpg" />
+<meta property="og:site_name" content="ChoreMatrix" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Upgrade Plan — ChoreMatrix Household Workload Optimizer" />
+<meta name="twitter:description" content="Upgrade your ChoreMatrix plan for an ad-free workspace, 4-week multi-week rotation, and cloud synchronization." />
+<meta name="twitter:image" content="https://chorematrix.com/og-image.jpg" />
+<script>
+  (function() {
+    try {
+      var s = localStorage.getItem('chorematrix_theme') || 'system';
+      var d = s === 'dark' || (s === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.setAttribute('data-theme', d ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme-setting', s);
+    } catch(e){}
+  })();
+</script>
+<link rel="stylesheet" href="/src/styles/common.css" />
+<style>
+  .upgrade-wrap {
+    max-width: 680px;
+    margin: 36px auto;
+  }
+  .upgrade-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 32px;
+    box-shadow: var(--shadow);
+  }
+  .feature-list {
+    list-style: none;
+    padding: 0;
+    margin: 18px 0;
+    display: grid;
+    gap: 10px;
+  }
+  .feature-list li {
+    font-size: 13px;
+    color: var(--ink);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .feature-list li::before {
+    content: "✓";
+    color: var(--primary);
+    font-weight: 800;
+  }
+</style>
+</head>
+<body>
+
+<div id="globalNavbar"></div>
+
+<main class="main-content">
+  <div class="shell">
+    <div class="upgrade-wrap">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <span class="badge" style="background: var(--badge-amber-bg); color: var(--badge-amber-text); margin-bottom: 8px;">
+          Upgrade Preview
+        </span>
+        <h1 style="font-size: 28px; font-weight: 800; margin: 0 0 6px; color: var(--ink);">
+          Upgrade Your ChoreMatrix Plan
+        </h1>
+        <p style="font-size: 14px; color: var(--muted); margin: 0;">
+          Unlock 100% ad-free planning, multi-week rotation, and continuous household synchronization.
+        </p>
+      </div>
+
+      <div id="fallbackNotice" class="notice-banner" style="display: none; margin-bottom: 16px;"></div>
+
+      <div class="upgrade-card" id="upgradeCardContent">
+        <!-- Populated dynamically from centralized PRICING_CONFIG -->
+        <div style="text-align: center; padding: 24px; color: var(--muted);">Loading plan details…</div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<div id="globalFooter"></div>
+
+<script type="module">
+import { PRICING_CONFIG, getTierById, getDefaultPaidTier, renderNavbar, renderFooter, initCookieBanner } from './src/client.bundle.js';
+
+renderNavbar('pricing');
+renderFooter();
+initCookieBanner();
+
+const params = new URLSearchParams(window.location.search);
+const requestedPlanId = params.get('plan');
+
+let selectedTier = getTierById(requestedPlanId);
+const fallbackNoticeEl = document.getElementById('fallbackNotice');
+
+if (!selectedTier || selectedPlanIsFree(selectedTier)) {
+  if (requestedPlanId && requestedPlanId !== 'free') {
+    if (fallbackNoticeEl) {
+      fallbackNoticeEl.textContent = `Notice: Plan "${escapeHtml(requestedPlanId)}" was not recognized. Displaying Household Pro details below.`;
+      fallbackNoticeEl.style.display = 'block';
+    }
+  }
+  selectedTier = getDefaultPaidTier();
+}
+
+function selectedPlanIsFree(tier) {
+  return tier.monthlyPrice === 0;
+}
+
+const cardEl = document.getElementById('upgradeCardContent');
+if (cardEl && selectedTier) {
+  cardEl.innerHTML = `
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
+      <div>
+        <h2 style="font-size: 22px; font-weight: 800; margin: 0 0 4px; color: var(--ink);">
+          ${escapeHtml(selectedTier.name)}
+        </h2>
+        <div style="font-size: 13px; color: var(--muted);">${escapeHtml(selectedTier.tagline)}</div>
+      </div>
+      <div style="text-align: right;">
+        <div style="font-size: 28px; font-weight: 800; color: var(--ink);">
+          $${selectedTier.monthlyPrice.toFixed(2)}
+          <small style="font-size: 13px; color: var(--muted); font-weight: 600;">/ mo</small>
+        </div>
+        <div style="font-size: 11px; color: var(--muted);">or $${selectedTier.annualPrice.toFixed(2)}/yr billed annually</div>
+      </div>
+    </div>
+
+    ${selectedTier.trialDays > 0 ? `
+      <div style="margin-bottom: 16px;">
+        <span class="badge" style="background: var(--badge-teal-bg); color: var(--badge-teal-text);">
+          ⭐ Includes ${selectedTier.trialDays}-Day Free Trial
+        </span>
+      </div>
+    ` : ''}
+
+    <div style="font-size: 13px; font-weight: 700; color: var(--ink); margin-top: 16px;">What's Included:</div>
+    <ul class="feature-list">
+      ${selectedTier.features.map(f => `<li>${escapeHtml(f)}</li>`).join('')}
+    </ul>
+
+    <div style="background: var(--panel-subtle); border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin: 20px 0; font-size: 12px; color: var(--muted); line-height: 1.45;">
+      <strong style="color: var(--ink);">Continuous Service & Renewal Terms:</strong><br>
+      • Charged today: $${selectedTier.checkoutDisclosures.chargedToday.toFixed(2)} (Trial period: ${escapeHtml(selectedTier.checkoutDisclosures.trialDurationText)})<br>
+      • Recurring renewal: $${selectedTier.checkoutDisclosures.chargedAfterTrialMonthly.toFixed(2)}/mo or $${selectedTier.checkoutDisclosures.chargedAfterTrialAnnual.toFixed(2)}/yr<br>
+      • Cancellation: ${escapeHtml(selectedTier.checkoutDisclosures.cancellationMethod)}
+    </div>
+
+    <div style="background: var(--badge-amber-bg); border: 1px solid var(--warn); border-radius: 8px; padding: 14px; margin-bottom: 24px; font-size: 12px; color: var(--ink); line-height: 1.45;">
+      <strong>Upgrade Checkout Coming Soon:</strong><br>
+      Payment processing is currently being finalized. Live credit card checkout and subscription activation will open soon. Core planning and deterministic optimization remain completely accessible without entering payment details.
+    </div>
+
+    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+      <a href="/app.html" class="btn primary" style="flex: 1; text-align: center;">
+        Continue with Free Optimizer
+      </a>
+      <a href="/pricing.html" class="btn" style="flex: 1; text-align: center;">
+        Compare All Plans
+      </a>
+    </div>
+  `;
+}
+
+function escapeHtml(str) {
+  return String(str || '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+}
+</script>
+</body>
+</html>

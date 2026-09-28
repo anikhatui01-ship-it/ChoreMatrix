@@ -2,6 +2,7 @@ User-agent: *
 Allow: /
 Disallow: /app.html
 Disallow: /account.html
+Disallow: /upgrade.html
 Disallow: /reset-password.html
 Disallow: /verify-email.html
 

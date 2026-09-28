@@ -60,3 +60,18 @@ The business model therefore depends on proving at least one repeat use case:
 - household membership changes
 - seasonal work
 - recurring household load optimization
+
+## Advertising & Entitlement Architecture
+
+ChoreMatrix employs a strict product entitlement model for advertisements:
+
+- **Free Plan**: Ads enabled. Served via restrained, calm in-house sponsor notices / pro upgrade placeholders (`HouseAdProvider`). No tracking or external network scripts.
+- **Paid Plans (Household Pro, Household Plus)**: Ads strictly disabled (`DisabledProvider`). This is an authoritative server-profile entitlement (`profile.plan_tier`), never a client-side preference or bypassable via URL query params or localStorage.
+- **Loading State**: Ads remain hidden during plan resolution to prevent flashing ads to paid subscribers.
+- **External Ad Networks**: Strictly disabled in this phase (`ExternalNetworkProvider` inactive). Activation of third-party networks requires:
+  1. Privacy policy review & partner disclosures
+  2. Cookie policy audit and registration
+  3. CMP / consent integration
+  4. Security & DOM isolation audit
+  5. Core Web Vitals performance review
+

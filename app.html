@@ -299,6 +299,9 @@
             </table>
           </div>
         </div>
+
+        <!-- Ad Slot Container (Monetization Foundation: Restrained, Responsive Results Placement) -->
+        <div id="resultsAdSlot" style="margin-top: 16px;"></div>
       </section>
     </div>
   </div>
@@ -308,11 +311,13 @@
 
 <script type="module">
 import { runOptimization, rebalanceHousehold, DAYS_OF_WEEK } from './optimizer.bundle.js';
-import { authService, persistenceAdapter, isSupabaseConfigured, renderNavbar, renderFooter, initCookieBanner } from './src/client.bundle.js';
+import { authService, persistenceAdapter, isSupabaseConfigured, renderNavbar, renderFooter, initCookieBanner, AdSlot } from './src/client.bundle.js';
 
 renderNavbar('app');
 renderFooter();
 initCookieBanner();
+
+const adSlot = new AdSlot('#resultsAdSlot');
 
 // Pre-defined prototype state fixtures
 const PRESETS = {
@@ -379,6 +384,11 @@ async function init() {
     if (currentUser) {
       $('#cloudStatus').innerHTML = `Cloud Sync: <strong>${escapeHtml(currentUser.email)}</strong>`;
       try {
+        await adSlot.init(currentUser, (uid) => persistenceAdapter.getProfile(uid));
+      } catch (e) {
+        await adSlot.init(null);
+      }
+      try {
         const cloudData = await persistenceAdapter.loadActiveHousehold(currentUser.id);
         if (cloudData && cloudData.request) {
           currentRequest = cloudData.request;
@@ -396,7 +406,11 @@ async function init() {
       } catch (err) {
         console.warn('Could not load cloud household:', err);
       }
+    } else {
+      await adSlot.init(null);
     }
+  } else {
+    await adSlot.init(null);
   }
 
   loadPreset('family');

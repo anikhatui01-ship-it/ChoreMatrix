@@ -218,3 +218,30 @@ ChoreMatrix explicitly refuses to collect or ingest any of the following persona
 | **DMCA Safe Harbor** | Not Applicable | No file uploads; no public content hosting | Register agent only if public file uploads are introduced |
 | **Secrets Management** | Implemented | `.env.local` gitignored; service keys excluded; dist audited | Production secret management in hosting dashboard (Vercel) |
 | **Row Level Security** | Implemented | `auth.uid() = user_id` enforced on all household tables | Formal penetration testing prior to public launch |
+| **Ad Monetization** | Implemented (Disabled Provider) | External network provider strictly inactive; house ads only on free tier; paid tiers 100% ad-free | Privacy/Cookie update & CMP integration before external network activation |
+
+---
+
+## K. Advertising Network Activation Prerequisites (Mandatory Gate)
+
+ChoreMatrix has engineered an extensible advertising entitlement architecture (`src/monetization/adSlot.ts`) with strict separation between free tier and paid entitlements. External advertising networks (`ExternalNetworkProvider`) are **strictly disabled by default** and must remain inactive until the following five-point gate is cleared:
+
+1. **Privacy Policy Review**:
+   - Explicit disclosure of external advertising network identity and corporate entity.
+   - Comprehensive disclosure of collected data types (IP address, mobile advertising identifiers, pseudo-anonymous IDs).
+   - Clear explanation of interest-based advertising and opt-out mechanisms.
+2. **Cookie Policy Review**:
+   - Comprehensive inventory of all third-party advertising cookies, storage keys, lifespans, and purposes.
+   - Update of `/cookies.html` prior to script activation.
+3. **Consent Management Integration**:
+   - Integration of a certified Consent Management Platform (CMP) supporting TCF v2.2 or regional opt-in regulations.
+   - Scripts must strictly not execute or drop cookies prior to affirmative consent where legally mandated.
+4. **Third-Party Request & Security Audit**:
+   - Content Security Policy (CSP) headers updated to restrict script-src and connect-src to authorized ad provider domains only.
+   - Security verification ensuring ad scripts have no DOM access to household member names, chores, or private planning data.
+5. **Performance & Core Web Vitals Audit**:
+   - Zero-layout-shift enforcement (fixed reserved ad slot dimensions).
+   - Verification that Largest Contentful Paint (LCP) and Interaction to Next Paint (INP) meet high-performance thresholds.
+
+Until all five criteria are fulfilled, `ExternalNetworkProvider` remains disabled in production code, rendering no external scripts, iframes, or tracking beacons.
+

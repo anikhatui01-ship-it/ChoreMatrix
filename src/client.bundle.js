@@ -20859,13 +20859,15 @@ var PRICING_CONFIG = {
         "Capacity-aware & equal balance modes",
         "Weekly calendar & table schedule views",
         "Basic differential rebalancing",
-        "Full Light, Dark, and System theme support"
+        "Full Light, Dark, and System theme support",
+        "Ad-supported planning"
       ],
       limitations: [
         "Single planning horizon",
         "Local browser storage only"
       ],
       ctaText: "Continue free",
+      adFree: false,
       checkoutDisclosures: {
         chargedToday: 0,
         trialDurationText: "None (permanently free)",
@@ -20896,6 +20898,7 @@ var PRICING_CONFIG = {
       popular: true,
       features: [
         "Everything in Free",
+        "100% ad-free workspace",
         "4-week multi-week rotation heuristics",
         "Cloud sync & secure multi-device sign-in",
         "Aversion & preference scoring (soft preferences)",
@@ -20906,6 +20909,7 @@ var PRICING_CONFIG = {
         "1 cloud household"
       ],
       ctaText: "Start 14-day free trial",
+      adFree: true,
       checkoutDisclosures: {
         chargedToday: 0,
         trialDurationText: "14-day free trial period",
@@ -20935,6 +20939,7 @@ var PRICING_CONFIG = {
       isProvisional: true,
       features: [
         "Everything in Pro",
+        "100% ad-free workspace",
         "Multiple saved households (e.g. shared vacation, roommates)",
         "Priority differential rebalancing",
         "Advanced constraint diagnostics",
@@ -20942,6 +20947,7 @@ var PRICING_CONFIG = {
       ],
       limitations: [],
       ctaText: "Start 14-day free trial",
+      adFree: true,
       checkoutDisclosures: {
         chargedToday: 0,
         trialDurationText: "14-day free trial period",
@@ -20971,6 +20977,18 @@ var PRICING_CONFIG = {
     }
   ]
 };
+function getTierById(tierId) {
+  if (!tierId) return void 0;
+  return PRICING_CONFIG.tiers.find((t) => t.id === tierId);
+}
+function isTierAdFree(tierId) {
+  if (!tierId || tierId === "free") return false;
+  const tier = getTierById(tierId);
+  return Boolean(tier?.adFree);
+}
+function getDefaultPaidTier() {
+  return PRICING_CONFIG.tiers.find((t) => t.id === "household_pro") || PRICING_CONFIG.tiers[1];
+}
 
 // src/config/email.ts
 var MARKETING_EMAILS_ENABLED = false;
@@ -21731,8 +21749,148 @@ function openCookieModal() {
     saveCookieConsent({ preferences: chk ? chk.checked : true });
   });
 }
+
+// src/monetization/adSlot.ts
+var DisabledProvider = class {
+  name = "disabled";
+  render(container) {
+    container.innerHTML = "";
+    container.style.display = "none";
+  }
+  destroy(container) {
+    container.innerHTML = "";
+    container.style.display = "none";
+  }
+};
+var HouseAdProvider = class {
+  name = "house";
+  render(container, context = {}) {
+    container.style.display = "block";
+    container.innerHTML = `
+      <div class="ad-slot-card" role="complementary" aria-label="Sponsorship notice" style="
+        background: var(--panel-subtle);
+        border: 1px dashed var(--line);
+        border-radius: var(--radius);
+        padding: 16px 20px;
+        margin-top: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        flex-wrap: wrap;
+      ">
+        <div style="flex: 1; min-width: 240px;">
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+            <span class="badge" style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; background: var(--secondary); color: var(--muted);">
+              Sponsor Notice \xB7 Free Tier
+            </span>
+            <span style="font-size: 11px; color: var(--muted);">Development Ad Placement Placeholder</span>
+          </div>
+          <div style="font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 2px;">
+            Need 4-week multi-week rotation & cloud sync?
+          </div>
+          <div style="font-size: 12px; color: var(--muted); line-height: 1.4;">
+            Household Pro removes all ads, balances heavy chores across 4 weeks, and saves across devices.
+          </div>
+        </div>
+        <div>
+          <a href="/upgrade.html?plan=household_pro" class="btn small" style="white-space: nowrap; border-color: var(--line-subtle);">
+            View Pro Plan
+          </a>
+        </div>
+      </div>
+    `;
+  }
+  destroy(container) {
+    container.innerHTML = "";
+    container.style.display = "none";
+  }
+};
+var ExternalNetworkProvider = class {
+  name = "external-network-disabled";
+  render(container) {
+    console.warn("[ChoreMatrix AdSlot] External ad network provider is disabled by policy. Falling back to disabled state.");
+    container.innerHTML = "";
+    container.style.display = "none";
+  }
+  destroy(container) {
+    container.innerHTML = "";
+    container.style.display = "none";
+  }
+};
+async function resolveAdEntitlement(user, profileFetcher) {
+  if (!user) {
+    return "free-tier";
+  }
+  if (!profileFetcher) {
+    return "free-tier";
+  }
+  try {
+    const profile = await profileFetcher(user.id);
+    const planTier = profile?.plan_tier || "free";
+    if (isTierAdFree(planTier)) {
+      return "paid-tier";
+    }
+    return "free-tier";
+  } catch (err) {
+    console.warn("[ChoreMatrix AdSlot] Error resolving ad entitlement:", err);
+    return "free-tier";
+  }
+}
+var AdSlot = class {
+  container = null;
+  state = "loading";
+  provider;
+  constructor(target, provider = new HouseAdProvider()) {
+    if (typeof target === "string") {
+      this.container = document.querySelector(target);
+    } else {
+      this.container = target;
+    }
+    this.provider = provider;
+    if (this.container) {
+      this.container.style.display = "none";
+    }
+  }
+  getState() {
+    return this.state;
+  }
+  async init(user, profileFetcher) {
+    this.state = "loading";
+    if (this.container) {
+      this.container.style.display = "none";
+    }
+    const resolvedState = await resolveAdEntitlement(user, profileFetcher);
+    this.applyState(resolvedState);
+  }
+  async refresh(user, profileFetcher) {
+    await this.init(user, profileFetcher);
+  }
+  applyState(newState) {
+    this.state = newState;
+    if (!this.container) return;
+    if (this.state === "free-tier") {
+      this.provider.render(this.container);
+    } else {
+      this.provider.destroy(this.container);
+      this.container.innerHTML = "";
+      this.container.style.display = "none";
+    }
+  }
+  destroy() {
+    if (this.container) {
+      this.provider.destroy(this.container);
+      this.container.innerHTML = "";
+      this.container.style.display = "none";
+    }
+  }
+};
 export {
+  AdSlot,
   AuthService,
+  DisabledProvider,
+  ExternalNetworkProvider,
+  HouseAdProvider,
   MARKETING_EMAILS_ENABLED,
   MARKETING_EMAIL_CONFIG,
   PRICING_CONFIG,
@@ -21741,15 +21899,19 @@ export {
   canSendMarketingEmail,
   getAuthRedirectUrl,
   getCookieConsent,
+  getDefaultPaidTier,
   getEnvVar,
   getSiteUrl,
   getSupabaseClient,
   getSupabaseConfigStatus,
+  getTierById,
   initCookieBanner,
   isSupabaseConfigured,
+  isTierAdFree,
   persistenceAdapter,
   renderFooter,
   renderNavbar,
+  resolveAdEntitlement,
   saveCookieConsent,
   sendMarketingEmailGuard,
   supabase

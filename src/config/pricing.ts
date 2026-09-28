@@ -37,6 +37,7 @@ export interface PricingTier {
   features: string[];
   limitations: string[];
   ctaText: string;
+  adFree: boolean;
   checkoutDisclosures: CheckoutDisclosures;
 }
 
@@ -74,13 +75,15 @@ export const PRICING_CONFIG: PricingConfig = {
         'Capacity-aware & equal balance modes',
         'Weekly calendar & table schedule views',
         'Basic differential rebalancing',
-        'Full Light, Dark, and System theme support'
+        'Full Light, Dark, and System theme support',
+        'Ad-supported planning'
       ],
       limitations: [
         'Single planning horizon',
         'Local browser storage only'
       ],
       ctaText: 'Continue free',
+      adFree: false,
       checkoutDisclosures: {
         chargedToday: 0,
         trialDurationText: 'None (permanently free)',
@@ -110,6 +113,7 @@ export const PRICING_CONFIG: PricingConfig = {
       popular: true,
       features: [
         'Everything in Free',
+        '100% ad-free workspace',
         '4-week multi-week rotation heuristics',
         'Cloud sync & secure multi-device sign-in',
         'Aversion & preference scoring (soft preferences)',
@@ -120,6 +124,7 @@ export const PRICING_CONFIG: PricingConfig = {
         '1 cloud household'
       ],
       ctaText: 'Start 14-day free trial',
+      adFree: true,
       checkoutDisclosures: {
         chargedToday: 0,
         trialDurationText: '14-day free trial period',
@@ -148,6 +153,7 @@ export const PRICING_CONFIG: PricingConfig = {
       isProvisional: true,
       features: [
         'Everything in Pro',
+        '100% ad-free workspace',
         'Multiple saved households (e.g. shared vacation, roommates)',
         'Priority differential rebalancing',
         'Advanced constraint diagnostics',
@@ -155,6 +161,7 @@ export const PRICING_CONFIG: PricingConfig = {
       ],
       limitations: [],
       ctaText: 'Start 14-day free trial',
+      adFree: true,
       checkoutDisclosures: {
         chargedToday: 0,
         trialDurationText: '14-day free trial period',
@@ -184,3 +191,28 @@ export const PRICING_CONFIG: PricingConfig = {
     }
   ]
 };
+
+/**
+ * Returns a tier by ID from centralized pricing config.
+ */
+export function getTierById(tierId: string | null | undefined): PricingTier | undefined {
+  if (!tierId) return undefined;
+  return PRICING_CONFIG.tiers.find(t => t.id === tierId);
+}
+
+/**
+ * Returns whether a given plan tier ID is entitled to an ad-free experience.
+ * Authoritative check based on centralized tier configuration.
+ */
+export function isTierAdFree(tierId: string | null | undefined): boolean {
+  if (!tierId || tierId === 'free') return false;
+  const tier = getTierById(tierId);
+  return Boolean(tier?.adFree);
+}
+
+/**
+ * Returns default paid plan tier for upgrade flows.
+ */
+export function getDefaultPaidTier(): PricingTier {
+  return PRICING_CONFIG.tiers.find(t => t.id === 'household_pro') || PRICING_CONFIG.tiers[1];
+}

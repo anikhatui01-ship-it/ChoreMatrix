@@ -235,8 +235,8 @@ if (grid) {
         </div>
 
         <div style="margin-top:auto;">
-          <a href="/app.html" class="btn ${tier.popular ? 'primary' : ''}" style="width:100%;">
-            ${escapeHtml(tier.ctaText)}
+          <a href="${isFree ? '/app.html' : `/upgrade.html?plan=${encodeURIComponent(tier.id)}`}" class="btn ${tier.popular ? 'primary' : ''}" style="width:100%;">
+            ${escapeHtml(isFree ? 'Launch Optimizer' : tier.ctaText)}
           </a>
         </div>
       </div>

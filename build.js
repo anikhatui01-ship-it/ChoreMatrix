@@ -158,6 +158,7 @@ export async function build(options = {}) {
     'reset-password.html',
     'verify-email.html',
     'account.html',
+    'upgrade.html',
     'app.html',
     '404.html'
   ];

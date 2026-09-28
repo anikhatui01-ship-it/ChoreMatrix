@@ -12,3 +12,4 @@ export * from './persistence/types.ts';
 export * from './ui/nav.ts';
 export * from './ui/footer.ts';
 export * from './ui/cookieBanner.ts';
+export * from './monetization/adSlot.ts';
