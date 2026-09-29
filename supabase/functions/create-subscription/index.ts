@@ -187,17 +187,21 @@ serve(async (req: Request) => {
     // 6. Record initialized subscription in database using Service Role
     if (supabaseServiceKey) {
       const dbClient = createClient(supabaseUrl, supabaseServiceKey);
-      await dbClient.from('cashfree_subscriptions').insert({
-        user_id: user.id,
-        subscription_id: subscriptionId,
-        plan_id: planId,
-        plan_tier: planMeta.tier,
-        billing_interval: planMeta.interval,
-        status: 'INITIALIZED',
-        subscription_session_id: sessionId
-      }).catch(err => {
-        console.warn('[DB Error recording subscription]', err.message);
-      });
+      const { data, error } = await dbClient
+        .from('cashfree_subscriptions')
+        .insert({
+          user_id: user.id,
+          subscription_id: subscriptionId,
+          plan_id: planId,
+          plan_tier: planMeta.tier,
+          billing_interval: planMeta.interval,
+          status: 'INITIALIZED',
+          subscription_session_id: sessionId
+        });
+
+      if (error) {
+        throw error;
+      }
     }
 
     // 7. Return to frontend (Never expose secretKey)

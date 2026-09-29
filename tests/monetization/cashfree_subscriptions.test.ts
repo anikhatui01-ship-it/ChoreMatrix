@@ -994,6 +994,19 @@ describe('Cashfree Sandbox Subscriptions & Webhook Integration Suite', () => {
       assert.ok(content.includes('timingSafeEqual'), 'Must use timing-safe comparison');
     });
 
+    it('verifies all supabase edge functions use proper query builder handling without invalid .catch()', () => {
+      const edgeFnDirs = ['cashfree-create-subscription', 'create-subscription', 'cashfree-webhook'];
+      for (const dir of edgeFnDirs) {
+        const fnFile = path.join(rootDir, 'supabase', 'functions', dir, 'index.ts');
+        if (fs.existsSync(fnFile)) {
+          const fnContent = fs.readFileSync(fnFile, 'utf8');
+          const hasInvalidCatch = /\.from\([^)]+\)[\s\S]*?\.catch\(/.test(fnContent);
+          assert.strictEqual(hasInvalidCatch, false, `${dir}/index.ts must not chain .catch() after .from() query builder`);
+          assert.ok(!fnContent.includes('.insert(') || !fnContent.includes('.insert(') && !fnContent.includes('.catch(') || !/\.insert\([^)]*\)\s*\.catch\(/.test(fnContent), `${dir}/index.ts must not chain .catch() on .insert()`);
+        }
+      }
+    });
+
     it('1. unauthenticated upgrade attempt: upgrade.html verifies authentication and redirects to login preserving plan and interval', () => {
       const upgradePath = path.join(rootDir, 'upgrade.html');
       assert.ok(fs.existsSync(upgradePath), 'upgrade.html must exist');
