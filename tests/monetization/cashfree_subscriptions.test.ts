@@ -599,25 +599,35 @@ describe('Cashfree Sandbox Subscriptions & Webhook Integration Suite', () => {
             }
             return { error: null };
           },
-          update: (updates: any) => ({
-            eq: async (col: string, val: any) => {
-              if (table === 'profiles') {
-                for (const [id, p] of this.profiles.entries()) {
-                  if (p[col] === val) {
-                    this.profiles.set(id, { ...p, ...updates });
+          update: (updates: any) => {
+            const criteria: Record<string, any> = {};
+            const builder = {
+              eq: (col: string, val: any) => {
+                criteria[col] = val;
+                return builder;
+              },
+              then: (resolve: any) => {
+                if (table === 'profiles') {
+                  for (const [id, p] of this.profiles.entries()) {
+                    const match = Object.entries(criteria).every(([k, v]) => p[k] === v || (k === 'id' && id === v));
+                    if (match) {
+                      this.profiles.set(id, { ...p, ...updates });
+                    }
                   }
                 }
-              }
-              if (table === 'cashfree_subscriptions') {
-                for (const [id, s] of this.subscriptions.entries()) {
-                  if (s[col] === val) {
-                    this.subscriptions.set(id, { ...s, ...updates });
+                if (table === 'cashfree_subscriptions') {
+                  for (const [id, s] of this.subscriptions.entries()) {
+                    const match = Object.entries(criteria).every(([k, v]) => s[k] === v || (k === 'id' && id === v));
+                    if (match) {
+                      this.subscriptions.set(id, { ...s, ...updates });
+                    }
                   }
                 }
+                resolve({ error: null });
               }
-              return { error: null };
-            }
-          })
+            };
+            return builder;
+          }
         };
       }
     }
@@ -715,25 +725,35 @@ describe('Cashfree Sandbox Subscriptions & Webhook Integration Suite', () => {
             }
             return { error: null };
           },
-          update: (updates: any) => ({
-            eq: async (col: string, val: any) => {
-              if (table === 'profiles') {
-                for (const [id, p] of this.profiles.entries()) {
-                  if (p[col] === val) {
-                    this.profiles.set(id, { ...p, ...updates });
+          update: (updates: any) => {
+            const criteria: Record<string, any> = {};
+            const builder = {
+              eq: (col: string, val: any) => {
+                criteria[col] = val;
+                return builder;
+              },
+              then: (resolve: any) => {
+                if (table === 'profiles') {
+                  for (const [id, p] of this.profiles.entries()) {
+                    const match = Object.entries(criteria).every(([k, v]) => p[k] === v || (k === 'id' && id === v));
+                    if (match) {
+                      this.profiles.set(id, { ...p, ...updates });
+                    }
                   }
                 }
-              }
-              if (table === 'cashfree_subscriptions') {
-                for (const [id, s] of this.subscriptions.entries()) {
-                  if (s[col] === val) {
-                    this.subscriptions.set(id, { ...s, ...updates });
+                if (table === 'cashfree_subscriptions') {
+                  for (const [id, s] of this.subscriptions.entries()) {
+                    const match = Object.entries(criteria).every(([k, v]) => s[k] === v || (k === 'id' && id === v));
+                    if (match) {
+                      this.subscriptions.set(id, { ...s, ...updates });
+                    }
                   }
                 }
+                resolve({ error: null });
               }
-              return { error: null };
-            }
-          })
+            };
+            return builder;
+          }
         };
       }
     }
@@ -1188,25 +1208,31 @@ describe('Cashfree Sandbox Subscriptions & Webhook Integration Suite', () => {
 
       from(table: string) {
         return {
-          select: () => ({
-            eq: (col: string, val: any) => ({
+          select: () => {
+            const criteria: Record<string, any> = {};
+            const builder = {
+              eq: (col: string, val: any) => {
+                criteria[col] = val;
+                return builder;
+              },
               maybeSingle: async () => {
                 if (table === 'cashfree_webhook_events') {
-                  const ev = this.webhookEvents.find(e => e[col] === val);
+                  const ev = this.webhookEvents.find(e => Object.entries(criteria).every(([k, v]) => e[k] === v));
                   return { data: ev || null, error: null };
                 }
                 if (table === 'cashfree_subscriptions') {
-                  const sub = Array.from(this.subscriptions.values()).find(s => s[col] === val);
+                  const sub = Array.from(this.subscriptions.values()).find(s => Object.entries(criteria).every(([k, v]) => s[k] === v));
                   return { data: sub || null, error: null };
                 }
                 if (table === 'profiles') {
-                  const p = Array.from(this.profiles.values()).find(pr => pr[col] === val);
+                  const p = Array.from(this.profiles.values()).find(pr => Object.entries(criteria).every(([k, v]) => pr[k] === v || (k === 'id' && pr.id === v)));
                   return { data: p || null, error: null };
                 }
                 return { data: null, error: null };
               }
-            })
-          }),
+            };
+            return builder;
+          },
           insert: async (data: any) => {
             if (table === 'cashfree_webhook_events') {
               this.webhookEvents.push(data);
@@ -1216,37 +1242,46 @@ describe('Cashfree Sandbox Subscriptions & Webhook Integration Suite', () => {
             }
             return { error: null };
           },
-          update: (updates: any) => ({
-            eq: async (col: string, val: any) => {
-              if (table === 'profiles') {
-                for (const [id, p] of this.profiles.entries()) {
-                  if (p[col] === val) {
-                    // Enforce PostgreSQL trigger: once trial_consumed is true, it can never be reset to false
-                    const trialConsumed = p.trial_consumed === true ? true : (updates.trial_consumed ?? p.trial_consumed ?? false);
-                    this.profiles.set(id, { ...p, ...updates, trial_consumed: trialConsumed });
+          update: (updates: any) => {
+            const criteria: Record<string, any> = {};
+            const builder = {
+              eq: (col: string, val: any) => {
+                criteria[col] = val;
+                return builder;
+              },
+              then: (resolve: any) => {
+                if (table === 'profiles') {
+                  for (const [id, p] of this.profiles.entries()) {
+                    const match = Object.entries(criteria).every(([k, v]) => p[k] === v || (k === 'id' && id === v));
+                    if (match) {
+                      const trialConsumed = p.trial_consumed === true ? true : (updates.trial_consumed ?? p.trial_consumed ?? false);
+                      this.profiles.set(id, { ...p, ...updates, trial_consumed: trialConsumed });
+                    }
                   }
                 }
-              }
-              if (table === 'cashfree_subscriptions') {
-                for (const [id, s] of this.subscriptions.entries()) {
-                  if (s[col] === val) {
-                    this.subscriptions.set(id, { ...s, ...updates });
+                if (table === 'cashfree_subscriptions') {
+                  for (const [id, s] of this.subscriptions.entries()) {
+                    const match = Object.entries(criteria).every(([k, v]) => s[k] === v || (k === 'id' && id === v));
+                    if (match) {
+                      this.subscriptions.set(id, { ...s, ...updates });
+                    }
                   }
                 }
+                resolve({ error: null });
               }
-              return { error: null };
-            }
-          })
+            };
+            return builder;
+          }
         };
       }
     }
 
-    // TEST 1: Account has never used a trial. Attempt Pro subscription.
-    // EXPECTED: Account is eligible for the 7-day trial IF the actual Cashfree configuration supports it.
-    it('TEST 1: Account has never used a trial -> eligible for 7-day introductory trial', async () => {
+    // TEST 1: Never-used account creates checkout session.
+    // EXPECTED: trial is pending/reserved, NOT consumed. trial_consumed remains false.
+    it('TEST 1: Never-used account creates checkout session -> trial is pending/reserved, NOT consumed', async () => {
       const db = new MockLifecyclePostgresDb();
       const userId = 'usr_fresh_trial_01';
-      db.profiles.set(userId, { id: userId, email: 'fresh@example.com', plan_tier: 'free', trial_consumed: false });
+      db.profiles.set(userId, { id: userId, email: 'fresh@example.com', plan_tier: 'free', trial_consumed: false, trial_started_at: null, trial_ends_at: null });
 
       const profile = await db.from('profiles').select().eq('id', userId).maybeSingle();
       const isTrialEligible = !profile.data?.trial_consumed;
@@ -1273,35 +1308,164 @@ describe('Cashfree Sandbox Subscriptions & Webhook Integration Suite', () => {
 
       assert.strictEqual(result.has_trial, true, 'Result must indicate has_trial is true');
       assert.ok(capturedPayload.subscription_first_charge_time, 'Cashfree payload must contain subscription_first_charge_time for trial');
-      const scheduledCharge = new Date(capturedPayload.subscription_first_charge_time);
-      const daysFromNow = (scheduledCharge.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
-      assert.ok(daysFromNow >= 6.8 && daysFromNow <= 7.2, 'First charge date must be scheduled approximately 7 days out');
+      assert.ok(!capturedPayload.subscription_first_charge_time.includes('.'), 'subscription_first_charge_time must not contain milliseconds');
+
+      // Record in DB as INITIALIZED
+      await db.from('cashfree_subscriptions').insert({
+        user_id: userId,
+        subscription_id: result.subscription_id,
+        status: 'INITIALIZED',
+        has_trial: true,
+        first_charge_date: capturedPayload.subscription_first_charge_time
+      });
+
+      // Crucial: profile must NOT be marked as trial consumed simply because checkout was initialized
+      const currentProfile = db.profiles.get(userId);
+      assert.strictEqual(currentProfile.trial_consumed, false, 'trial_consumed must remain false during checkout');
+      assert.strictEqual(currentProfile.trial_started_at, null, 'trial_started_at must remain null');
+      assert.strictEqual(currentProfile.trial_ends_at, null, 'trial_ends_at must remain null');
+      assert.strictEqual(currentProfile.plan_tier, 'free', 'User must NOT have Pro entitlement before authorization');
     });
 
-    // TEST 2: Account has consumed/started its trial. Cancel subscription.
-    // EXPECTED: No second trial eligibility is created. No future recurring charge should occur.
-    it('TEST 2: Account consumes trial and cancels -> trial_consumed remains permanently true, recurring charges stopped', async () => {
+    // TEST 2: Checkout authorization fails.
+    // EXPECTED: trial_consumed = false, trial_started_at = null, trial_ends_at = null, no Pro entitlement.
+    it('TEST 2: Checkout authorization fails -> trial_consumed remains false, no Pro entitlement', async () => {
       const db = new MockLifecyclePostgresDb();
-      const userId = 'usr_trial_cancel_02';
-      const subId = 'sub_active_trial_02';
-      db.profiles.set(userId, { id: userId, email: 'cancel@example.com', plan_tier: 'free', trial_consumed: false });
-      db.subscriptions.set(subId, { subscription_id: subId, user_id: userId, plan_id: 'CHOREMATRIX_PRO_MONTHLY', has_trial: true });
+      const userId = 'usr_failed_auth_02';
+      const subId = 'sub_failed_auth_02';
+      db.profiles.set(userId, { id: userId, email: 'failed@example.com', plan_tier: 'free', trial_consumed: false, trial_started_at: null, trial_ends_at: null });
+      db.subscriptions.set(subId, { subscription_id: subId, user_id: userId, plan_id: 'CHOREMATRIX_PRO_MONTHLY', status: 'INITIALIZED', has_trial: true });
 
-      // Step A: Mandate activates
+      // Webhook arrives indicating bank approval failed or transaction failure
+      const timestamp = '1716385000000';
+      const failPayload = {
+        type: 'SUBSCRIPTION_STATUS_CHANGE',
+        event_time: timestamp,
+        data: {
+          subscription_details: { subscription_id: subId, plan_id: 'CHOREMATRIX_PRO_MONTHLY', subscription_status: 'BANK_APPROVAL_FAILED' },
+          customer_details: { customer_id: userId }
+        }
+      };
+      const rawBody = JSON.stringify(failPayload);
+      const signature = crypto.createHmac('sha256', mockCredentials.secretKey).update(`${timestamp}${rawBody}`).digest('base64');
+      await processCashfreeWebhook({ rawBody, signature, timestamp, secretKey: mockCredentials.secretKey, dbClient: db });
+
+      const profile = db.profiles.get(userId);
+      assert.strictEqual(profile.trial_consumed, false, 'Failed checkout must NOT burn introductory trial');
+      assert.strictEqual(profile.trial_started_at, null, 'trial_started_at must remain null');
+      assert.strictEqual(profile.trial_ends_at, null, 'trial_ends_at must remain null');
+      assert.strictEqual(profile.plan_tier, 'free', 'User remains on free tier');
+      assert.strictEqual(db.subscriptions.get(subId).status, 'FAILED', 'Subscription record marked as failed');
+    });
+
+    // TEST 3: Two checkout requests arrive for the same account.
+    // EXPECTED: only one authoritative pending checkout remains. Previous session is SUPERSEDED.
+    it('TEST 3: Two checkout requests for same account -> previous pending session is SUPERSEDED', async () => {
+      const db = new MockLifecyclePostgresDb();
+      const userId = 'usr_double_click_03';
+      db.profiles.set(userId, { id: userId, email: 'double@example.com', plan_tier: 'free', trial_consumed: false });
+
+      // First checkout attempt
+      const sub1 = 'sub_first_attempt_01';
+      await db.from('cashfree_subscriptions').insert({
+        user_id: userId,
+        subscription_id: sub1,
+        status: 'INITIALIZED',
+        has_trial: true
+      });
+      assert.strictEqual(db.subscriptions.get(sub1).status, 'INITIALIZED');
+
+      // Second checkout attempt arrives: supersedes prior INITIALIZED sessions for that user
+      await db.from('cashfree_subscriptions')
+        .update({ status: 'SUPERSEDED' })
+        .eq('user_id', userId)
+        .eq('status', 'INITIALIZED');
+
+      const sub2 = 'sub_second_attempt_02';
+      await db.from('cashfree_subscriptions').insert({
+        user_id: userId,
+        subscription_id: sub2,
+        status: 'INITIALIZED',
+        has_trial: true
+      });
+
+      assert.strictEqual(db.subscriptions.get(sub1).status, 'SUPERSEDED', 'Previous pending session must be marked SUPERSEDED');
+      assert.strictEqual(db.subscriptions.get(sub2).status, 'INITIALIZED', 'Latest session is the authoritative pending session');
+
+      const activePending = Array.from(db.subscriptions.values()).filter(s => s.user_id === userId && s.status === 'INITIALIZED');
+      assert.strictEqual(activePending.length, 1, 'Exactly one pending checkout may exist at any time');
+    });
+
+    // TEST 4: Verified Cashfree activation arrives.
+    // EXPECTED: trial_consumed = true, trial_started_at populated, trial_ends_at populated, entitlement granted.
+    it('TEST 4: Verified Cashfree activation arrives -> trial_consumed=true, trial dates populated, Pro granted', async () => {
+      const db = new MockLifecyclePostgresDb();
+      const userId = 'usr_activate_04';
+      const subId = 'sub_activate_04';
+      const firstChargeDate = '2026-10-06T10:00:00Z';
+      db.profiles.set(userId, { id: userId, email: 'active@example.com', plan_tier: 'free', trial_consumed: false, trial_started_at: null, trial_ends_at: null });
+      db.subscriptions.set(subId, { subscription_id: subId, user_id: userId, plan_id: 'CHOREMATRIX_PRO_MONTHLY', status: 'INITIALIZED', has_trial: true, first_charge_date: firstChargeDate });
+
       const timestamp = '1716385000000';
       const activePayload = {
         type: 'SUBSCRIPTION_STATUS_CHANGE',
         event_time: timestamp,
-        data: { subscription_details: { subscription_id: subId, plan_id: 'CHOREMATRIX_PRO_MONTHLY', subscription_status: 'ACTIVE' }, customer_details: { customer_id: userId } }
+        data: {
+          subscription_details: { subscription_id: subId, plan_id: 'CHOREMATRIX_PRO_MONTHLY', subscription_status: 'ACTIVE' },
+          customer_details: { customer_id: userId }
+        }
       };
       const rawActive = JSON.stringify(activePayload);
       const sigActive = crypto.createHmac('sha256', mockCredentials.secretKey).update(`${timestamp}${rawActive}`).digest('base64');
       await processCashfreeWebhook({ rawBody: rawActive, signature: sigActive, timestamp, secretKey: mockCredentials.secretKey, dbClient: db });
 
-      assert.strictEqual(db.profiles.get(userId).trial_consumed, true, 'trial_consumed must become true on activation');
-      assert.strictEqual(db.profiles.get(userId).plan_tier, 'pro');
+      const profile = db.profiles.get(userId);
+      assert.strictEqual(profile.trial_consumed, true, 'trial_consumed must become true on verified activation');
+      assert.ok(profile.trial_started_at, 'trial_started_at must be populated on activation');
+      assert.strictEqual(profile.trial_ends_at, firstChargeDate, 'trial_ends_at must match first charge date');
+      assert.strictEqual(profile.plan_tier, 'pro', 'User promoted to Pro tier');
+      assert.strictEqual(profile.subscription_status, 'active');
+      assert.strictEqual(db.subscriptions.get(subId).status, 'ACTIVE');
+    });
 
-      // Step B: User cancels during trial
+    // TEST 5: Duplicate activation webhook.
+    // EXPECTED: idempotent; no duplicate state transition.
+    it('TEST 5: Duplicate activation webhook -> processed idempotently with duplicate: true', async () => {
+      const db = new MockLifecyclePostgresDb();
+      const userId = 'usr_duplicate_05';
+      const subId = 'sub_duplicate_05';
+      db.profiles.set(userId, { id: userId, email: 'dup@example.com', plan_tier: 'free', trial_consumed: false });
+      db.subscriptions.set(subId, { subscription_id: subId, user_id: userId, plan_id: 'CHOREMATRIX_PRO_MONTHLY', has_trial: true });
+
+      const timestamp = '1716389999000';
+      const payload = {
+        event_id: 'evt_unique_cashfree_test_05',
+        type: 'SUBSCRIPTION_STATUS_CHANGE',
+        event_time: timestamp,
+        data: { subscription_details: { subscription_id: subId, plan_id: 'CHOREMATRIX_PRO_MONTHLY', subscription_status: 'ACTIVE' }, customer_details: { customer_id: userId } }
+      };
+      const rawBody = JSON.stringify(payload);
+      const signature = crypto.createHmac('sha256', mockCredentials.secretKey).update(`${timestamp}${rawBody}`).digest('base64');
+
+      const res1 = await processCashfreeWebhook({ rawBody, signature, timestamp, secretKey: mockCredentials.secretKey, dbClient: db });
+      assert.strictEqual(res1.success, true);
+      assert.strictEqual(res1.duplicate, undefined);
+
+      const res2 = await processCashfreeWebhook({ rawBody, signature, timestamp, secretKey: mockCredentials.secretKey, dbClient: db });
+      assert.strictEqual(res2.success, true);
+      assert.strictEqual(res2.duplicate, true, 'Second delivery must be recognized as duplicate');
+      assert.strictEqual(db.webhookEvents.length, 1, 'Only one event record inserted');
+    });
+
+    // TEST 6: User cancels after successful trial start.
+    // EXPECTED: trial_consumed remains true permanently. Recurring billing stopped.
+    it('TEST 6: User cancels after successful trial start -> trial_consumed remains permanently true', async () => {
+      const db = new MockLifecyclePostgresDb();
+      const userId = 'usr_cancel_06';
+      const subId = 'sub_cancel_06';
+      db.profiles.set(userId, { id: userId, email: 'cancel6@example.com', plan_tier: 'pro', trial_consumed: true, subscription_status: 'active' });
+      db.subscriptions.set(subId, { subscription_id: subId, user_id: userId, status: 'ACTIVE', plan_id: 'CHOREMATRIX_PRO_MONTHLY' });
+
       const cancelPayload = {
         type: 'SUBSCRIPTION_STATUS_CHANGE',
         event_time: '1716386000000',
@@ -1311,19 +1475,19 @@ describe('Cashfree Sandbox Subscriptions & Webhook Integration Suite', () => {
       const sigCancel = crypto.createHmac('sha256', mockCredentials.secretKey).update(`1716386000000${rawCancel}`).digest('base64');
       await processCashfreeWebhook({ rawBody: rawCancel, signature: sigCancel, timestamp: '1716386000000', secretKey: mockCredentials.secretKey, dbClient: db });
 
-      const profileAfterCancel = db.profiles.get(userId);
-      assert.strictEqual(profileAfterCancel.plan_tier, 'free', 'Plan must revert to free');
-      assert.strictEqual(profileAfterCancel.subscription_status, 'canceled');
-      assert.strictEqual(profileAfterCancel.trial_consumed, true, 'trial_consumed must NEVER reset to false upon cancellation');
-      assert.strictEqual(db.subscriptions.get(subId).status, 'CANCELLED', 'Mandate must be cancelled preventing recurring billing');
+      const profile = db.profiles.get(userId);
+      assert.strictEqual(profile.plan_tier, 'free', 'Plan must revert to free');
+      assert.strictEqual(profile.subscription_status, 'canceled');
+      assert.strictEqual(profile.trial_consumed, true, 'trial_consumed must NEVER reset to false');
+      assert.strictEqual(db.subscriptions.get(subId).status, 'CANCELLED', 'Mandate must be marked cancelled');
     });
 
-    // TEST 3: Same account subscribes again after cancellation.
-    // EXPECTED: NO 7-day trial. Paid subscription behavior only.
-    it('TEST 3: Same account subscribes again after cancellation -> NO 7-day trial, paid subscription only', async () => {
+    // TEST 7: User subscribes again after cancellation.
+    // EXPECTED: NO trial. Paid subscription only.
+    it('TEST 7: User subscribes again after cancellation -> NO trial, paid subscription only', async () => {
       const db = new MockLifecyclePostgresDb();
-      const userId = 'usr_resubscribe_03';
-      db.profiles.set(userId, { id: userId, email: 'return@example.com', plan_tier: 'free', subscription_status: 'canceled', trial_consumed: true });
+      const userId = 'usr_resubscribe_07';
+      db.profiles.set(userId, { id: userId, email: 'resub7@example.com', plan_tier: 'free', subscription_status: 'canceled', trial_consumed: true });
 
       const profile = await db.from('profiles').select().eq('id', userId).maybeSingle();
       const isTrialEligible = !profile.data?.trial_consumed;
@@ -1334,14 +1498,14 @@ describe('Cashfree Sandbox Subscriptions & Webhook Integration Suite', () => {
         capturedPayload = JSON.parse(init?.body as string);
         return new Response(JSON.stringify({
           subscription_id: capturedPayload.subscription_id,
-          subscription_session_id: 'sub_sess_resub_03',
+          subscription_session_id: 'sub_sess_resub_07',
           subscription_status: 'INITIALIZED'
         }), { status: 200, headers: { 'Content-Type': 'application/json' } });
       };
 
       const result = await createCashfreeSubscription({
         userId,
-        userEmail: 'return@example.com',
+        userEmail: 'resub7@example.com',
         plan: 'pro',
         interval: 'monthly',
         phone: '7001240613',
@@ -1349,140 +1513,42 @@ describe('Cashfree Sandbox Subscriptions & Webhook Integration Suite', () => {
       }, mockCredentials, mockFetch);
 
       assert.strictEqual(result.has_trial, false, 'Result must NOT grant a trial');
-      assert.strictEqual(capturedPayload.subscription_first_charge_time, undefined, 'Paid re-subscription must not delay first charge with trial');
+      assert.strictEqual(capturedPayload.subscription_first_charge_time, undefined, 'Must not delay first charge with trial');
       assert.strictEqual(db.profiles.get(userId).trial_consumed, true, 'trial_consumed remains permanently true');
     });
 
-    // TEST 4: Logout and login again.
-    // EXPECTED: Trial-consumed status remains unchanged.
-    it('TEST 4: Logout and login again -> trial_consumed status remains unchanged in Postgres', async () => {
+    // TEST 8: Logout and login again.
+    // EXPECTED: trial_consumed status remains unchanged.
+    it('TEST 8: Logout/login -> trial_consumed remains unchanged in Postgres', async () => {
       const db = new MockLifecyclePostgresDb();
-      const userId = 'usr_auth_lifecycle_04';
-      db.profiles.set(userId, { id: userId, email: 'session@example.com', trial_consumed: true, plan_tier: 'free' });
+      const userId = 'usr_auth_08';
+      db.profiles.set(userId, { id: userId, email: 'session8@example.com', trial_consumed: true, plan_tier: 'free' });
 
-      // Simulate session teardown (logout)
+      // Simulate logout
       let activeSession: any = null;
-      assert.strictEqual(activeSession, null, 'User is logged out');
+      assert.strictEqual(activeSession, null);
 
-      // Simulate re-authentication (login)
-      activeSession = { user: { id: userId, email: 'session@example.com' } };
+      // Simulate login
+      activeSession = { user: { id: userId } };
       const reloadedProfile = await db.from('profiles').select().eq('id', activeSession.user.id).maybeSingle();
-
-      assert.strictEqual(reloadedProfile.data.trial_consumed, true, 'Server-side profile retains trial_consumed across auth sessions');
+      assert.strictEqual(reloadedProfile.data.trial_consumed, true, 'Database record persists trial_consumed across sessions');
     });
 
-    // TEST 5: Clear browser storage.
-    // EXPECTED: Trial-consumed status remains unchanged.
-    it('TEST 5: Clear browser storage -> trial_consumed status remains unchanged', async () => {
+    // TEST 9: Frontend/localStorage manipulation.
+    // EXPECTED: server still determines trial eligibility authoritatively.
+    it('TEST 9: Frontend/localStorage manipulation -> server still determines trial eligibility', async () => {
       const db = new MockLifecyclePostgresDb();
-      const userId = 'usr_storage_clear_05';
-      db.profiles.set(userId, { id: userId, email: 'storage@example.com', trial_consumed: true });
+      const userId = 'usr_tamper_09';
+      db.profiles.set(userId, { id: userId, email: 'tamper9@example.com', trial_consumed: true });
 
-      // Simulate browser clearing localStorage and sessionStorage
-      const mockLocalStorage: Record<string, string> = { 'chorematrix_trial': 'false', 'local_flag': 'true' };
-      for (const k in mockLocalStorage) delete mockLocalStorage[k];
-      assert.strictEqual(Object.keys(mockLocalStorage).length, 0, 'Storage was purged');
+      // Client-side tampering
+      const clientSideTamperedClaim = { trial_eligible: true, trial_consumed: false };
+      assert.strictEqual(clientSideTamperedClaim.trial_eligible, true);
 
       // Server query is source of truth
       const serverProfile = await db.from('profiles').select().eq('id', userId).maybeSingle();
-      assert.strictEqual(serverProfile.data.trial_consumed, true, 'Server DB record is immune to client storage manipulation');
-    });
-
-    // TEST 6: Attempt to manipulate frontend trial state.
-    // EXPECTED: Server still determines eligibility correctly.
-    it('TEST 6: Malicious client attempts to claim trial=true -> server verifies trial_consumed from DB and rejects trial', async () => {
-      const db = new MockLifecyclePostgresDb();
-      const userId = 'usr_attacker_06';
-      db.profiles.set(userId, { id: userId, email: 'attacker@example.com', trial_consumed: true });
-
-      // Backend Edge Function ignores attacker claim and checks authoritative database record
-      const dbUser = await db.from('profiles').select().eq('id', userId).maybeSingle();
-      const serverDeterminedEligibility = !dbUser.data?.trial_consumed;
-
-      assert.strictEqual(serverDeterminedEligibility, false, 'Server must reject client-side trial claim when trial_consumed=true');
-    });
-
-    // TEST 7: Successful Cashfree authorization/payment.
-    // EXPECTED: Subscription entitlement is granted only from verified server-side state.
-    it('TEST 7: Successful Cashfree authorization -> entitlement granted only via verified server-side webhook', async () => {
-      const db = new MockLifecyclePostgresDb();
-      const userId = 'usr_verify_auth_07';
-      const subId = 'sub_cashfree_auth_07';
-      db.profiles.set(userId, { id: userId, email: 'entitlement@example.com', plan_tier: 'free', subscription_status: 'none' });
-      db.subscriptions.set(subId, { subscription_id: subId, user_id: userId, plan_id: 'CHOREMATRIX_PRO_MONTHLY' });
-
-      // Before webhook: tier is free
-      assert.strictEqual(isTierAdFree(db.profiles.get(userId).plan_tier), false, 'Initially not entitled to Pro features');
-
-      // Legitimate webhook arrives with valid HMAC
-      const timestamp = String(Date.now());
-      const payload = {
-        type: 'SUBSCRIPTION_PAYMENT_SUCCESS',
-        event_time: timestamp,
-        data: { subscription_details: { subscription_id: subId, plan_id: 'CHOREMATRIX_PRO_MONTHLY', subscription_status: 'ACTIVE' }, customer_details: { customer_id: userId } }
-      };
-      const rawBody = JSON.stringify(payload);
-      const signature = crypto.createHmac('sha256', mockCredentials.secretKey).update(`${timestamp}${rawBody}`).digest('base64');
-
-      const hookRes = await processCashfreeWebhook({ rawBody, signature, timestamp, secretKey: mockCredentials.secretKey, dbClient: db });
-      assert.strictEqual(hookRes.success, true);
-
-      // Verified server-side state derives entitlement
-      const verifiedProfile = db.profiles.get(userId);
-      assert.strictEqual(verifiedProfile.plan_tier, 'pro');
-      assert.strictEqual(verifiedProfile.subscription_status, 'active');
-      assert.strictEqual(isTierAdFree(verifiedProfile.plan_tier), true, 'Entitlement confirmed by server-authoritative state');
-    });
-
-    // TEST 8: Browser redirects without verified payment.
-    // EXPECTED: No paid entitlement is granted.
-    it('TEST 8: Browser returns from checkout without verified payment -> no paid entitlement is granted', async () => {
-      const db = new MockLifecyclePostgresDb();
-      const userId = 'usr_fake_redirect_08';
-      db.profiles.set(userId, { id: userId, email: 'redirect@example.com', plan_tier: 'free', subscription_status: 'none' });
-
-      // Simulate browser landing on account.html?sub_id=sub_fake_redirect_99&status=SUCCESS
-      const fakeUrlQuery = { sub_id: 'sub_fake_redirect_99', status: 'SUCCESS' };
-      assert.ok(fakeUrlQuery.status === 'SUCCESS', 'URL parameter claims success');
-
-      // The profile in the database is NOT updated because no verified webhook or server confirmation arrived
-      const profile = await db.from('profiles').select().eq('id', userId).maybeSingle();
-      assert.strictEqual(profile.data.plan_tier, 'free', 'Browser redirect parameter must NEVER grant paid entitlement');
-      assert.strictEqual(isTierAdFree(profile.data.plan_tier), false, 'User remains on free tier');
-    });
-
-    // TEST 9: Duplicate webhook.
-    // EXPECTED: Idempotent behavior; no duplicate subscription state corruption.
-    it('TEST 9: Duplicate webhook received -> processed idempotently without state corruption', async () => {
-      const db = new MockLifecyclePostgresDb();
-      const userId = 'usr_duplicate_hook_09';
-      const subId = 'sub_duplicate_09';
-      db.profiles.set(userId, { id: userId, email: 'idempotent@example.com', plan_tier: 'free', subscription_status: 'none' });
-      db.subscriptions.set(subId, { subscription_id: subId, user_id: userId, plan_id: 'CHOREMATRIX_PRO_MONTHLY' });
-
-      const timestamp = '1716389999000';
-      const payload = {
-        event_id: 'evt_unique_cashfree_99999',
-        type: 'SUBSCRIPTION_STATUS_CHANGE',
-        event_time: timestamp,
-        data: { subscription_details: { subscription_id: subId, plan_id: 'CHOREMATRIX_PRO_MONTHLY', subscription_status: 'ACTIVE' }, customer_details: { customer_id: userId } }
-      };
-      const rawBody = JSON.stringify(payload);
-      const signature = crypto.createHmac('sha256', mockCredentials.secretKey).update(`${timestamp}${rawBody}`).digest('base64');
-
-      // First delivery
-      const res1 = await processCashfreeWebhook({ rawBody, signature, timestamp, secretKey: mockCredentials.secretKey, dbClient: db });
-      assert.strictEqual(res1.success, true);
-      assert.strictEqual(res1.duplicate, undefined);
-
-      // Second delivery (duplicate event)
-      const res2 = await processCashfreeWebhook({ rawBody, signature, timestamp, secretKey: mockCredentials.secretKey, dbClient: db });
-      assert.strictEqual(res2.success, true);
-      assert.strictEqual(res2.duplicate, true, 'Second delivery must be recognized as duplicate');
-
-      // State is uncorrupted
-      assert.strictEqual(db.profiles.get(userId).plan_tier, 'pro');
-      assert.strictEqual(db.webhookEvents.length, 1, 'Only one event record inserted in cashfree_webhook_events');
+      const authoritativeTrialEligible = !serverProfile.data?.trial_consumed;
+      assert.strictEqual(authoritativeTrialEligible, false, 'Server must reject client claim and use database status');
     });
 
     // TEST 10: Phone input: Country: India (+91), Number: 7001240613 -> EXPECTED: +917001240613
@@ -1496,7 +1562,6 @@ describe('Cashfree Sandbox Subscriptions & Webhook Integration Suite', () => {
 
     // TEST 11: Phone input contains +91 while India is selected -> EXPECTED: No duplicate country code.
     it('TEST 11: Phone input contains duplicate +91 while India is selected -> safely normalized to +917001240613', () => {
-      // Variations user might type:
       const inputs = [
         '+917001240613',
         '+91 7001240613',

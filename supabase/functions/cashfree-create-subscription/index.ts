@@ -164,6 +164,15 @@ serve(async (req: Request) => {
       .eq('id', user.id)
       .maybeSingle();
 
+    if (profile?.subscription_status === 'active') {
+      return new Response(JSON.stringify({
+        error: 'Your account already has an active subscription. Manage your subscription in Account Settings.'
+      }), {
+        status: 409,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     // Introductory trial is strictly ONE-TIME per ChoreMatrix account
     const isTrialEligible = !profile?.trial_consumed;
 
@@ -201,7 +210,7 @@ serve(async (req: Request) => {
 
     let firstChargeTime: string | null = null;
     if (isTrialEligible) {
-      firstChargeTime = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      firstChargeTime = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().replace(/\.\d{3}Z$/, 'Z');
       requestPayload.subscription_first_charge_time = firstChargeTime;
     }
 
@@ -261,7 +270,17 @@ serve(async (req: Request) => {
       });
     }
 
-    // 7. Record initialized subscription in database using Service Role
+    // 7. Supersede any existing un-authorized INITIALIZED sessions for this user
+    await dbClient
+      .from('cashfree_subscriptions')
+      .update({
+        status: 'SUPERSEDED',
+        updated_at: new Date().toISOString()
+      })
+      .eq('user_id', user.id)
+      .eq('status', 'INITIALIZED');
+
+    // 8. Record initialized subscription in database using Service Role
     const { error: dbError } = await dbClient
       .from('cashfree_subscriptions')
       .insert({
@@ -282,7 +301,7 @@ serve(async (req: Request) => {
       throw dbError;
     }
 
-    // 8. Return to frontend (Never expose secretKey)
+    // 9. Return to frontend (Never expose secretKey)
     return new Response(JSON.stringify({
       subscription_id: subscriptionId,
       subscription_session_id: sessionId,

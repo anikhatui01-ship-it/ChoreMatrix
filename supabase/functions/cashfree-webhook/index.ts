@@ -205,23 +205,42 @@ serve(async (req: Request) => {
       const mapping = mapPlanId(targetPlanId);
       const tier = mapping?.tier || 'pro';
       const interval = mapping?.interval || 'monthly';
+      const isTrial = Boolean(localSub?.has_trial);
+
+      const profileUpdate: any = {
+        plan_tier: tier,
+        billing_interval: interval,
+        subscription_status: 'active',
+        cashfree_subscription_id: subscriptionId,
+        trial_consumed: true,
+        updated_at: nowIso
+      };
+
+      if (isTrial) {
+        profileUpdate.trial_started_at = nowIso;
+        profileUpdate.trial_ends_at =
+          localSub?.first_charge_date ||
+          new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().replace(/\.\d{3}Z$/, 'Z');
+      }
 
       await dbClient
         .from('profiles')
-        .update({
-          plan_tier: tier,
-          billing_interval: interval,
-          subscription_status: 'active',
-          cashfree_subscription_id: subscriptionId,
-          trial_consumed: true,
-          updated_at: nowIso
-        })
+        .update(profileUpdate)
         .eq('id', targetUserId);
 
       await dbClient
         .from('cashfree_subscriptions')
         .update({ status: 'ACTIVE', updated_at: nowIso })
         .eq('subscription_id', subscriptionId);
+
+      // Invalidate any other pending INITIALIZED rows for this user
+      if (targetUserId) {
+        await dbClient
+          .from('cashfree_subscriptions')
+          .update({ status: 'SUPERSEDED', updated_at: nowIso })
+          .eq('user_id', targetUserId)
+          .eq('status', 'INITIALIZED');
+      }
 
       console.log(`[Cashfree Webhook] User ${targetUserId} activated on ${tier} (${interval})`);
     }
@@ -249,27 +268,31 @@ serve(async (req: Request) => {
 
       console.log(`[Cashfree Webhook] User ${targetUserId} downgraded to free tier`);
     }
-    // C. Payment Failed / Past Due
+    // C. Payment Failed / Past Due / Authorization Failed
     else if (
       rawStatus === 'FAILED' ||
       rawStatus === 'PAYMENT_FAILED' ||
+      rawStatus === 'BANK_APPROVAL_FAILED' ||
       rawStatus === 'ON_HOLD' ||
       eventType === 'SUBSCRIPTION_PAYMENT_FAILED'
     ) {
-      await dbClient
-        .from('profiles')
-        .update({
-          subscription_status: 'past_due',
-          updated_at: nowIso
-        })
-        .eq('id', targetUserId);
-
       await dbClient
         .from('cashfree_subscriptions')
         .update({ status: 'FAILED', updated_at: nowIso })
         .eq('subscription_id', subscriptionId);
 
-      console.log(`[Cashfree Webhook] User ${targetUserId} marked as past_due`);
+      // Only mark profile past_due if subscription was active
+      if (localSub?.status === 'ACTIVE') {
+        await dbClient
+          .from('profiles')
+          .update({
+            subscription_status: 'past_due',
+            updated_at: nowIso
+          })
+          .eq('id', targetUserId);
+      }
+
+      console.log(`[Cashfree Webhook] Subscription ${subscriptionId} status updated to FAILED`);
     }
 
     return new Response(JSON.stringify({ success: true, event_id: eventId, status: rawStatus }), {

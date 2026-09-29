@@ -200,7 +200,9 @@ export async function createCashfreeSubscription(
   };
 
   if (params.isTrialEligible) {
-    const trialFirstChargeTime = params.firstChargeTime || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    const trialFirstChargeTime =
+      params.firstChargeTime ||
+      new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().replace(/\.\d{3}Z$/, 'Z');
     requestBody.subscription_first_charge_time = trialFirstChargeTime;
   }
 
@@ -373,18 +375,28 @@ export async function processCashfreeWebhook(
     const planMapping = mapCashfreePlanToTier(targetPlanId);
     const assignedTier = planMapping?.tier || 'pro';
     const assignedInterval = planMapping?.interval || 'monthly';
+    const isTrial = Boolean(currentSubRecord?.has_trial);
+
+    const profileUpdate: any = {
+      plan_tier: assignedTier,
+      billing_interval: assignedInterval,
+      subscription_status: 'active',
+      cashfree_subscription_id: subscriptionId,
+      trial_consumed: true,
+      updated_at: nowIso
+    };
+
+    if (isTrial) {
+      profileUpdate.trial_started_at = nowIso;
+      profileUpdate.trial_ends_at =
+        currentSubRecord?.first_charge_date ||
+        new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().replace(/\.\d{3}Z$/, 'Z');
+    }
 
     // Update public.profiles (marks introductory trial consumed permanently)
     await dbClient
       .from('profiles')
-      .update({
-        plan_tier: assignedTier,
-        billing_interval: assignedInterval,
-        subscription_status: 'active',
-        cashfree_subscription_id: subscriptionId,
-        trial_consumed: true,
-        updated_at: nowIso
-      })
+      .update(profileUpdate)
       .eq('id', targetUserId);
 
     // Update public.cashfree_subscriptions
@@ -395,6 +407,15 @@ export async function processCashfreeWebhook(
         updated_at: nowIso
       })
       .eq('subscription_id', subscriptionId);
+
+    // Invalidate any other pending INITIALIZED rows for this user
+    if (targetUserId) {
+      await dbClient
+        .from('cashfree_subscriptions')
+        .update({ status: 'SUPERSEDED', updated_at: nowIso })
+        .eq('user_id', targetUserId)
+        .eq('status', 'INITIALIZED');
+    }
 
     return {
       success: true,
@@ -440,21 +461,25 @@ export async function processCashfreeWebhook(
     };
   }
 
-  // C. Payment Failure / On Hold
+  // C. Payment Failure / On Hold / Authorization Failure
   if (
     rawStatus === 'FAILED' ||
     rawStatus === 'PAYMENT_FAILED' ||
+    rawStatus === 'BANK_APPROVAL_FAILED' ||
     rawStatus === 'ON_HOLD' ||
     eventType === 'SUBSCRIPTION_PAYMENT_FAILED'
   ) {
-    // Mark status as past_due without fake upgrades
-    await dbClient
-      .from('profiles')
-      .update({
-        subscription_status: 'past_due',
-        updated_at: nowIso
-      })
-      .eq('id', targetUserId);
+    // Only mark past_due if subscription or profile was previously active
+    const wasActive = currentSubRecord?.status === 'ACTIVE';
+    if (wasActive || eventType === 'SUBSCRIPTION_PAYMENT_FAILED') {
+      await dbClient
+        .from('profiles')
+        .update({
+          subscription_status: 'past_due',
+          updated_at: nowIso
+        })
+        .eq('id', targetUserId);
+    }
 
     await dbClient
       .from('cashfree_subscriptions')
