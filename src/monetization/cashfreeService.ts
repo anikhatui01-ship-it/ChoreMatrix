@@ -32,6 +32,8 @@ export interface CreateSubscriptionParams {
   interval?: string;
   phone?: string;
   customSubscriptionId?: string;
+  isTrialEligible?: boolean;
+  firstChargeTime?: string;
 }
 
 export interface CreateSubscriptionResult {
@@ -41,6 +43,7 @@ export interface CreateSubscriptionResult {
   plan_id: string;
   plan_tier: 'pro' | 'plus';
   billing_interval: 'monthly' | 'annually';
+  has_trial?: boolean;
 }
 
 export interface WebhookProcessingParams {
@@ -180,7 +183,7 @@ export async function createCashfreeSubscription(
   const endpoint = `${(baseUrl || CASHFREE_CONFIG.sandboxBaseUrl).replace(/\/+$/, '')}/subscriptions`;
 
   // 4. Call Cashfree Create Subscription API
-  const requestBody = {
+  const requestBody: any = {
     subscription_id: subscriptionId,
     customer_details: {
       customer_id: userId,
@@ -195,6 +198,11 @@ export async function createCashfreeSubscription(
       return_url: returnUrl
     }
   };
+
+  if (params.isTrialEligible) {
+    const trialFirstChargeTime = params.firstChargeTime || new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+    requestBody.subscription_first_charge_time = trialFirstChargeTime;
+  }
 
   const response = await customFetch(endpoint, {
     method: 'POST',
@@ -235,7 +243,8 @@ export async function createCashfreeSubscription(
     auth_link: responseData.auth_link || responseData.data?.auth_link || null,
     plan_id: resolvedPlanId,
     plan_tier: planMapping.tier,
-    billing_interval: planMapping.interval
+    billing_interval: planMapping.interval,
+    has_trial: Boolean(params.isTrialEligible)
   };
 }
 
@@ -365,7 +374,7 @@ export async function processCashfreeWebhook(
     const assignedTier = planMapping?.tier || 'pro';
     const assignedInterval = planMapping?.interval || 'monthly';
 
-    // Update public.profiles
+    // Update public.profiles (marks introductory trial consumed permanently)
     await dbClient
       .from('profiles')
       .update({
@@ -373,6 +382,7 @@ export async function processCashfreeWebhook(
         billing_interval: assignedInterval,
         subscription_status: 'active',
         cashfree_subscription_id: subscriptionId,
+        trial_consumed: true,
         updated_at: nowIso
       })
       .eq('id', targetUserId);

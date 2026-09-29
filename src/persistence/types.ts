@@ -13,6 +13,8 @@ export interface ProfileRow {
   plan_tier: string;
   billing_interval?: BillingInterval | null;
   subscription_status?: SubscriptionStatus | null;
+  trial_consumed?: boolean;
+  trial_started_at?: string | null;
   trial_ends_at: string | null;
   current_period_start?: string | null;
   current_period_end?: string | null;
@@ -24,6 +26,8 @@ export interface BillingDetails {
   plan_tier: string;
   billing_interval: BillingInterval;
   subscription_status: SubscriptionStatus;
+  trial_consumed?: boolean;
+  trial_started_at?: string | null;
   trial_ends_at: string | null;
   current_period_start: string | null;
   current_period_end: string | null;

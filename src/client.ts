@@ -15,3 +15,4 @@ export * from './ui/footer.ts';
 export * from './ui/cookieBanner.ts';
 export * from './monetization/adSlot.ts';
 export * from './monetization/cashfreeCheckout.ts';
+export * from './monetization/phoneUtils.ts';

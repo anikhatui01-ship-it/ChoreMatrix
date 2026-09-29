@@ -108,8 +108,18 @@ serve(async (req: Request) => {
 
     // 3. Supabase Client using Service Role Key
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    const dbClient = createClient(supabaseUrl, supabaseServiceKey);
+    const supabaseServiceKey =
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ||
+      Deno.env.get('SUPABASE_SECRET_KEY') ||
+      Deno.env.get('SB_SECRET_KEY') ||
+      '';
+    const dbClient = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false
+      }
+    });
 
     // 4. Idempotency Check: Query cashfree_webhook_events
     const { data: existing } = await dbClient
@@ -203,6 +213,7 @@ serve(async (req: Request) => {
           billing_interval: interval,
           subscription_status: 'active',
           cashfree_subscription_id: subscriptionId,
+          trial_consumed: true,
           updated_at: nowIso
         })
         .eq('id', targetUserId);

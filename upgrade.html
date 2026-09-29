@@ -122,6 +122,10 @@ import {
   getDefaultPaidTier,
   getCashfreePlanId,
   initiateCashfreeSubscription,
+  COUNTRIES,
+  DEFAULT_COUNTRY,
+  normalizePhoneNumber,
+  persistenceAdapter,
   authService,
   renderNavbar,
   renderFooter,
@@ -155,8 +159,25 @@ function selectedPlanIsFree(tier) {
   return tier.monthlyPrice === 0;
 }
 
-const cardEl = document.getElementById('upgradeCardContent');
-if (cardEl && selectedTier) {
+async function renderUpgradeCard() {
+  const cardEl = document.getElementById('upgradeCardContent');
+  if (!cardEl || !selectedTier) return;
+
+  // Check user authentication and server-side trial consumption status
+  let user = null;
+  let userProfile = null;
+  try {
+    user = await authService.getUser();
+    if (user) {
+      userProfile = await persistenceAdapter.getProfile(user.id);
+    }
+  } catch (err) {
+    console.warn('[Upgrade Page] Profile status check error:', err);
+  }
+
+  const isTrialConsumed = Boolean(userProfile?.trial_consumed);
+  const isTrialEligible = !isTrialConsumed && selectedTier.trialDays > 0;
+
   const displayPrice = isAnnual ? selectedTier.annualPrice : selectedTier.monthlyPrice;
   const intervalUnit = isAnnual ? '/ yr' : '/ mo';
   const subIntervalText = isAnnual
@@ -185,24 +206,32 @@ if (cardEl && selectedTier) {
       </div>
     </div>
 
-    ${selectedTier.trialDays > 0 ? `
+    ${isTrialEligible ? `
       <div style="margin-bottom: 16px;">
         <span class="badge" style="background: var(--badge-teal-bg); color: var(--badge-teal-text);">
-          ⭐ Includes ${selectedTier.trialDays}-Day Free Trial
+          ⭐ Includes ${selectedTier.trialDays}-Day Introductory Trial
         </span>
       </div>
-    ` : ''}
+    ` : (isTrialConsumed ? `
+      <div style="margin-bottom: 16px;">
+        <span class="badge" style="background: var(--panel-subtle); color: var(--muted); border: 1px solid var(--line);">
+          Standard Subscription (Introductory trial already used for this account)
+        </span>
+      </div>
+    ` : '')}
 
     <div style="font-size: 13px; font-weight: 700; color: var(--ink); margin-top: 16px;">What's Included:</div>
     <ul class="feature-list">
       ${selectedTier.features.map(f => `<li>${escapeHtml(f)}</li>`).join('')}
     </ul>
 
+    <!-- Transparent Continuous Service & Mandate Authorization Terms -->
     <div style="background: var(--panel-subtle); border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin: 20px 0; font-size: 12px; color: var(--muted); line-height: 1.45;">
       <strong style="color: var(--ink);">Continuous Service & Renewal Terms:</strong><br>
-      • Charged today: $${selectedTier.checkoutDisclosures.chargedToday.toFixed(2)} (Trial period: ${escapeHtml(selectedTier.checkoutDisclosures.trialDurationText)})<br>
-      • Recurring renewal: ${renewalText}<br>
-      • Cancellation: ${escapeHtml(selectedTier.checkoutDisclosures.cancellationMethod)}
+      • Payment Method Authorization Today: USD $1.00 mandate verification hold (deducted by Cashfree to authorize payment method).<br>
+      • Recurring Subscription: ${renewalText} billed automatically starting on your first scheduled billing date (${isTrialEligible ? 'after 7-day trial' : 'on standard cycle'}) until cancelled.<br>
+      • Online Cancellation: Cancel online anytime via Account Settings prior to scheduled billing to prevent future charges.<br>
+      • Trial Eligibility: Introductory 7-day trial is strictly one-time per ChoreMatrix account. Subsequent subscriptions renew immediately.
     </div>
 
     <div style="background: var(--badge-amber-bg); border: 1px solid var(--warn); border-radius: 8px; padding: 14px; margin-bottom: 20px; font-size: 12px; color: var(--ink); line-height: 1.45;">
@@ -210,21 +239,40 @@ if (cardEl && selectedTier) {
       Payment processing is currently being finalized for production. Live credit card checkout and subscription activation will open soon. Cashfree SANDBOX subscription checkout is active below for testing.
     </div>
 
-    <!-- Mobile number field required by Cashfree Subscriptions -->
+    <!-- Country calling-code selector + national mobile number input -->
     <div style="margin-bottom: 20px; text-align: left;">
-      <label for="txtCustomerPhone" style="display: block; font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 6px;">
+      <label style="display: block; font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 6px;">
         Mobile number
       </label>
-      <input
-        id="txtCustomerPhone"
-        type="tel"
-        inputmode="numeric"
-        autocomplete="tel"
-        placeholder="e.g. 9876543210"
-        style="width: 100%; padding: 11px 14px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; background: var(--panel); color: var(--ink); box-sizing: border-box;"
-      />
-      <div style="font-size: 11px; color: var(--muted); margin-top: 4px;">
-        Required by Cashfree for mandate authorization notifications (10–15 digits).
+      <div style="display: flex; gap: 8px; align-items: stretch;">
+        <div style="flex: 0 0 150px;">
+          <label for="selCountryCode" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0;">Country</label>
+          <select
+            id="selCountryCode"
+            aria-label="Country Calling Code"
+            style="width: 100%; height: 100%; padding: 11px 8px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; background: var(--panel); color: var(--ink); box-sizing: border-box; cursor: pointer;"
+          >
+            ${(COUNTRIES || []).map(c => `
+              <option value="${c.code}" ${c.code === 'IN' ? 'selected' : ''}>
+                ${escapeHtml(c.name)} (${c.dialCode})
+              </option>
+            `).join('')}
+          </select>
+        </div>
+        <div style="flex: 1;">
+          <label for="txtCustomerPhone" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0;">National Mobile Number</label>
+          <input
+            id="txtCustomerPhone"
+            type="tel"
+            inputmode="numeric"
+            autocomplete="tel"
+            placeholder="e.g. ${DEFAULT_COUNTRY?.placeholder || '7001240613'}"
+            style="width: 100%; padding: 11px 14px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; background: var(--panel); color: var(--ink); box-sizing: border-box;"
+          />
+        </div>
+      </div>
+      <div style="font-size: 11px; color: var(--muted); margin-top: 5px;">
+        Enter your national number only. Calling code is added automatically for Cashfree mandate notifications (10–15 total digits).
       </div>
     </div>
 
@@ -247,6 +295,16 @@ if (cardEl && selectedTier) {
       </a>
     </div>
   `;
+
+  // Attach dynamic placeholder updates when country changes
+  const countrySelect = document.getElementById('selCountryCode');
+  const phoneInput = document.getElementById('txtCustomerPhone');
+  if (countrySelect && phoneInput) {
+    countrySelect.addEventListener('change', () => {
+      const selected = (COUNTRIES || []).find(c => c.code === countrySelect.value) || DEFAULT_COUNTRY;
+      phoneInput.placeholder = `e.g. ${selected.placeholder}`;
+    });
+  }
 
   // Attach Cashfree upgrade trigger
   const upgradeBtn = document.getElementById('btnCashfreeUpgrade');
@@ -274,12 +332,12 @@ if (cardEl && selectedTier) {
       clearAllErrors();
 
       // 1. Verify user is authenticated with a valid session
-      const user = await authService.getUser();
+      const currentUser = await authService.getUser();
       const currentPlan = selectedTier?.id || 'pro';
       const currentInterval = isAnnual ? 'annual' : 'monthly';
       const returnUrl = `/upgrade.html?plan=${encodeURIComponent(currentPlan)}&interval=${encodeURIComponent(currentInterval)}`;
 
-      if (!user) {
+      if (!currentUser) {
         displayCheckoutError('Please sign in or create an account to upgrade your subscription plan. Redirecting to sign in…');
         setTimeout(() => {
           window.location.href = `/login.html?redirect=${encodeURIComponent(returnUrl)}`;
@@ -287,12 +345,14 @@ if (cardEl && selectedTier) {
         return;
       }
 
-      // 2. Validate clean 10–15 digit mobile number
-      const phoneInput = document.getElementById('txtCustomerPhone');
+      // 2. Validate clean 10–15 digit mobile number and normalize with country code
+      const countryCode = countrySelect ? countrySelect.value : 'IN';
       const rawPhone = phoneInput ? phoneInput.value : '';
       const cleanPhone = rawPhone.replace(/\D/g, '');
-      if (!cleanPhone || cleanPhone.length < 10 || cleanPhone.length > 15) {
-        displayCheckoutError('Please enter a valid mobile number (10 to 15 digits) before proceeding to checkout.');
+      const normResult = normalizePhoneNumber(countryCode, rawPhone);
+
+      if (!normResult.isValid) {
+        displayCheckoutError(normResult.error || 'Please enter a valid mobile number (10 to 15 digits) before proceeding to checkout.');
         if (phoneInput) phoneInput.focus();
         return;
       }
@@ -303,11 +363,11 @@ if (cardEl && selectedTier) {
       upgradeBtn.textContent = 'Connecting to Cashfree Sandbox…';
 
       try {
-        console.log('[Upgrade Page] Initiating subscription upgrade for:', selectedTier.id, isAnnual ? 'annual' : 'monthly');
+        console.log('[Upgrade Page] Initiating subscription upgrade for:', selectedTier.id, isAnnual ? 'annual' : 'monthly', 'phone:', normResult.e164);
         const result = await initiateCashfreeSubscription({
           plan: selectedTier.id,
           interval: isAnnual ? 'annual' : 'monthly',
-          phone: cleanPhone
+          phone: normResult.e164
         });
 
         if (!result.success) {
@@ -327,6 +387,8 @@ if (cardEl && selectedTier) {
     });
   }
 }
+
+renderUpgradeCard();
 
 function showFeedback(msg, type = 'error') {
   if (!feedbackEl) return;

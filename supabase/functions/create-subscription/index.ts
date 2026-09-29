@@ -65,8 +65,15 @@ serve(async (req: Request) => {
 
     const token = authHeader.replace(/^Bearer\s+/i, '');
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY') || '';
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    const supabaseAnonKey =
+      Deno.env.get('SUPABASE_ANON_KEY') ||
+      Deno.env.get('SUPABASE_PUBLISHABLE_KEY') ||
+      '';
+    const supabaseServiceKey =
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ||
+      Deno.env.get('SUPABASE_SECRET_KEY') ||
+      Deno.env.get('SB_SECRET_KEY') ||
+      '';
 
     const authClient = createClient(supabaseUrl, supabaseAnonKey, {
       auth: { persistSession: false }
@@ -81,7 +88,12 @@ serve(async (req: Request) => {
     }
 
     // 2. Parse request body
-    const body = await req.json().catch(() => ({}));
+    let body: any = {};
+    try {
+      body = await req.json();
+    } catch {
+      body = {};
+    }
     const { plan, interval } = body;
     const rawPhone = body.customer_phone || body.phone || '';
     const cleanPhone = String(rawPhone).replace(/\D/g, '');
@@ -127,12 +139,62 @@ serve(async (req: Request) => {
       });
     }
 
-    // 4. Generate subscription ID (alphanumeric and underscores, max 40 chars)
+    if (!supabaseServiceKey) {
+      console.error('[create-subscription] Server-side secret key (SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SECRET_KEY) not found in environment.');
+      return new Response(JSON.stringify({
+        error: 'Database configuration error: Server-side secret key not configured.'
+      }), {
+        status: 503,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    // 4. Verify trial eligibility server-side using privileged client
+    const dbClient = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false
+      }
+    });
+
+    const { data: profile } = await dbClient
+      .from('profiles')
+      .select('id, trial_consumed, plan_tier, subscription_status')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    // Introductory trial is strictly ONE-TIME per ChoreMatrix account
+    const isTrialEligible = !profile?.trial_consumed;
+
+    // 5. Generate subscription ID (alphanumeric and underscores, max 40 chars)
     const cleanUid = user.id.replace(/[^a-zA-Z0-9]/g, '').slice(0, 16);
     const subscriptionId = `sub_${cleanUid}_${Date.now()}`;
     const returnUrl = `${returnUrlBase.replace(/\/+$/, '')}/account.html?sub_id={subscription_id}`;
 
-    // 5. Call Cashfree Create Subscription API
+    // 6. Call Cashfree Create Subscription API
+    const requestPayload: any = {
+      subscription_id: subscriptionId,
+      customer_details: {
+        customer_id: user.id,
+        customer_name: customerName,
+        customer_email: user.email,
+        customer_phone: cleanPhone
+      },
+      plan_details: {
+        plan_id: planId
+      },
+      subscription_meta: {
+        return_url: returnUrl
+      }
+    };
+
+    let firstChargeTime: string | null = null;
+    if (isTrialEligible) {
+      firstChargeTime = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
+      requestPayload.subscription_first_charge_time = firstChargeTime;
+    }
+
     const cashfreeRes = await fetch(`${cashfreeBaseUrl.replace(/\/+$/, '')}/subscriptions`, {
       method: 'POST',
       headers: {
@@ -141,21 +203,7 @@ serve(async (req: Request) => {
         'x-client-id': appId,
         'x-client-secret': secretKey
       },
-      body: JSON.stringify({
-        subscription_id: subscriptionId,
-        customer_details: {
-          customer_id: user.id,
-          customer_name: customerName,
-          customer_email: user.email,
-          customer_phone: cleanPhone
-        },
-        plan_details: {
-          plan_id: planId
-        },
-        subscription_meta: {
-          return_url: returnUrl
-        }
-      })
+      body: JSON.stringify(requestPayload)
     });
 
     if (!cashfreeRes.ok) {
@@ -163,14 +211,20 @@ serve(async (req: Request) => {
       console.error('[Cashfree Error]', cashfreeRes.status, errText);
       return new Response(JSON.stringify({
         error: 'Cashfree subscription creation rejected by gateway.',
-        status: cashfreeRes.status
+        status: cashfreeRes.status,
+        details: errText
       }), {
         status: 502,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
-    const data = await cashfreeRes.json().catch(() => ({}));
+    let data: any = {};
+    try {
+      data = await cashfreeRes.json();
+    } catch {
+      data = {};
+    }
     const sessionId =
       data.subscription_session_id ||
       data.data?.subscription_session_id ||
@@ -184,34 +238,38 @@ serve(async (req: Request) => {
       });
     }
 
-    // 6. Record initialized subscription in database using Service Role
-    if (supabaseServiceKey) {
-      const dbClient = createClient(supabaseUrl, supabaseServiceKey);
-      const { data, error } = await dbClient
-        .from('cashfree_subscriptions')
-        .insert({
-          user_id: user.id,
-          subscription_id: subscriptionId,
-          plan_id: planId,
-          plan_tier: planMeta.tier,
-          billing_interval: planMeta.interval,
-          status: 'INITIALIZED',
-          subscription_session_id: sessionId
-        });
+    // 7. Record initialized subscription in database using Service Role
+    const { error: dbError } = await dbClient
+      .from('cashfree_subscriptions')
+      .insert({
+        user_id: user.id,
+        subscription_id: subscriptionId,
+        plan_id: planId,
+        plan_tier: planMeta.tier,
+        billing_interval: planMeta.interval,
+        status: 'INITIALIZED',
+        subscription_session_id: sessionId,
+        customer_phone: cleanPhone,
+        has_trial: isTrialEligible,
+        first_charge_date: firstChargeTime
+      });
 
-      if (error) {
-        throw error;
-      }
+    if (dbError) {
+      console.error('[create-subscription] DB insert error:', dbError);
+      throw dbError;
     }
 
-    // 7. Return to frontend (Never expose secretKey)
+    // 8. Return to frontend (Never expose secretKey)
     return new Response(JSON.stringify({
       subscription_id: subscriptionId,
       subscription_session_id: sessionId,
       auth_link: data.auth_link || data.data?.auth_link || null,
       plan_id: planId,
       plan_tier: planMeta.tier,
-      billing_interval: planMeta.interval
+      billing_interval: planMeta.interval,
+      is_trial_eligible: isTrialEligible,
+      has_trial: isTrialEligible,
+      trial_days: isTrialEligible ? 7 : 0
     }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
