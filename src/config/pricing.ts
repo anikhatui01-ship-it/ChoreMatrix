@@ -56,7 +56,7 @@ export interface PricingConfig {
 
 export const PRICING_CONFIG: PricingConfig = {
   isBusinessFinalized: false,
-  provisionalNotice: 'Informational Pricing Only: Subscription payment checkout is currently in development. Pricing and trial durations are development values. Core optimization and interactive planning remain accessible without entering payment details.',
+  provisionalNotice: 'Informational Pricing & Sandbox Checkout: Subscription payment checkout is powered by Paddle Sandbox for testing. Core optimization and interactive planning remain accessible without entering payment details.',
   defaultTrialDays: 7,
   autoRenewalPolicyNotice: 'Automatic Renewal Disclosure: Future paid subscriptions automatically renew at the applicable recurring rate ($5.99/mo or $59.99/yr for Pro; $9.99/mo or $99.99/yr for Plus) at the end of each billing cycle or promotional trial period until cancelled. Cancellations can be executed online anytime via Account Settings without phone or manual cancellation barriers. California and other jurisdictions require explicit affirmative consent and clear disclosure of all renewal terms adjacent to the purchase action.',
   tiers: [
@@ -190,7 +190,7 @@ export const PRICING_CONFIG: PricingConfig = {
     },
     {
       question: 'Is payment processing active today?',
-      answer: 'No. Payment processing is currently disabled during this phase of ChoreMatrix. Tiers and features reflect active roadmap capabilities.'
+      answer: 'Paddle Sandbox subscription checkout is active for development testing. Live payment processing will open soon. Test cards can be used without incurring real charges.'
     }
   ]
 };

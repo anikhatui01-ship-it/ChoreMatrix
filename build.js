@@ -83,6 +83,57 @@ export function getClientSafeEnv(options = {}) {
     safeEnv.VITE_PUBLIC_SITE_URL = candidateSiteUrl.replace(/\/+$/, '');
   }
 
+  // Client-safe Paddle variables (Client token and price IDs only; NEVER secret keys)
+  const candidatePaddleToken = (
+    options.env?.VITE_PADDLE_CLIENT_TOKEN ??
+    fileEnv.VITE_PADDLE_CLIENT_TOKEN ??
+    process.env.VITE_PADDLE_CLIENT_TOKEN ??
+    ''
+  ).trim();
+
+  const candidatePaddleEnv = (
+    options.env?.VITE_PADDLE_ENV ??
+    options.env?.VITE_PADDLE_ENVIRONMENT ??
+    fileEnv.VITE_PADDLE_ENV ??
+    fileEnv.VITE_PADDLE_ENVIRONMENT ??
+    process.env.VITE_PADDLE_ENV ??
+    process.env.VITE_PADDLE_ENVIRONMENT ??
+    ''
+  ).trim();
+
+  const candidatePaddleTrialPrice = (
+    options.env?.VITE_PADDLE_PRO_MONTHLY_TRIAL_PRICE_ID ??
+    options.env?.VITE_PADDLE_TRIAL_PRICE_ID ??
+    fileEnv.VITE_PADDLE_PRO_MONTHLY_TRIAL_PRICE_ID ??
+    fileEnv.VITE_PADDLE_TRIAL_PRICE_ID ??
+    process.env.VITE_PADDLE_PRO_MONTHLY_TRIAL_PRICE_ID ??
+    process.env.VITE_PADDLE_TRIAL_PRICE_ID ??
+    ''
+  ).trim();
+
+  const candidatePaddleStdPrice = (
+    options.env?.VITE_PADDLE_PRO_MONTHLY_STANDARD_PRICE_ID ??
+    options.env?.VITE_PADDLE_STANDARD_PRICE_ID ??
+    fileEnv.VITE_PADDLE_PRO_MONTHLY_STANDARD_PRICE_ID ??
+    fileEnv.VITE_PADDLE_STANDARD_PRICE_ID ??
+    process.env.VITE_PADDLE_PRO_MONTHLY_STANDARD_PRICE_ID ??
+    process.env.VITE_PADDLE_STANDARD_PRICE_ID ??
+    ''
+  ).trim();
+
+  if (candidatePaddleToken && !candidatePaddleToken.includes('placeholder')) {
+    safeEnv.VITE_PADDLE_CLIENT_TOKEN = candidatePaddleToken;
+  }
+  if (candidatePaddleEnv && !candidatePaddleEnv.includes('placeholder')) {
+    safeEnv.VITE_PADDLE_ENV = candidatePaddleEnv;
+  }
+  if (candidatePaddleTrialPrice && !candidatePaddleTrialPrice.includes('placeholder')) {
+    safeEnv.VITE_PADDLE_PRO_MONTHLY_TRIAL_PRICE_ID = candidatePaddleTrialPrice;
+  }
+  if (candidatePaddleStdPrice && !candidatePaddleStdPrice.includes('placeholder')) {
+    safeEnv.VITE_PADDLE_PRO_MONTHLY_STANDARD_PRICE_ID = candidatePaddleStdPrice;
+  }
+
   return safeEnv;
 }
 

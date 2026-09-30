@@ -4,14 +4,12 @@
 # working directory name when running `supabase init`.
 project_id = "ftuenrkqiyacvyuajdtl"
 
-[functions.cashfree-create-subscription]
+[functions.paddle-cancel-subscription]
 verify_jwt = true
 
-[functions.create-subscription]
-verify_jwt = true
-
-[functions.cashfree-webhook]
+[functions.paddle-webhook]
 verify_jwt = false
+
 
 [api]
 enabled = true

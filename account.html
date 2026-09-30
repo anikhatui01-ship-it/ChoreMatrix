@@ -64,9 +64,10 @@
 
         <div class="field">
           <label>Current Plan</label>
-          <div style="display:flex; align-items:center; gap:8px;">
-            <input type="text" id="accPlan" readonly value="Free Tier (Essential Optimizer)" style="font-weight:700; color:var(--accent);" />
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <input type="text" id="accPlan" readonly value="Free Tier (Essential Optimizer)" style="font-weight:700; color:var(--accent); flex:1;" />
             <a href="/pricing.html" class="btn small">View Plans</a>
+            <button type="button" class="btn small danger" id="btnCancelSub" style="display:none;">Cancel Subscription</button>
           </div>
         </div>
 
@@ -204,16 +205,25 @@ async function checkAccount() {
         if (profile.email && emailField && !emailField.value) {
           emailField.value = profile.email;
         }
+        const cancelBtn = document.getElementById('btnCancelSub');
+        if (profile.plan_tier && profile.plan_tier !== 'free' && (profile.subscription_status === 'active' || profile.subscription_status === 'trialing')) {
+          if (cancelBtn) cancelBtn.style.display = 'inline-block';
+        } else {
+          if (cancelBtn) cancelBtn.style.display = 'none';
+        }
       } else if (planField) {
         // Profile row absent -> graceful fallback to Free Tier
         planField.value = formatPlanTier('free');
+        const cancelBtn = document.getElementById('btnCancelSub');
+        if (cancelBtn) cancelBtn.style.display = 'none';
       }
 
-      // Check for return from Cashfree subscription checkout
+      // Check for return from subscription checkout
       const urlParams = new URLSearchParams(window.location.search);
-      const returnSubId = urlParams.get('sub_id') || urlParams.get('subscription_id');
-      if (returnSubId) {
-        showNotice(`✓ Subscription authorization submitted (${returnSubId}). Your plan tier will update automatically once verified by Cashfree.`);
+      const returnSubId = urlParams.get('sub_id') || urlParams.get('subscription_id') || urlParams.get('paddle_subscription_id');
+      const checkoutStatus = urlParams.get('payment_status') || urlParams.get('status');
+      if (returnSubId || checkoutStatus === 'submitted' || checkoutStatus === 'completed') {
+        showNotice(`✓ Subscription authorization submitted${returnSubId ? ` (${returnSubId})` : ''}. Your plan tier will update automatically once verified by Paddle.`);
       }
     } catch (profileErr) {
       console.warn('[Account] Profile fetch warning:', profileErr);
@@ -308,6 +318,50 @@ document.getElementById('changePassForm')?.addEventListener('submit', async (e) 
     document.getElementById('changePassForm')?.reset();
   } catch (err) {
     showError(err.message || 'Failed to update password.');
+  }
+});
+
+// 4b. Cancel Subscription
+document.getElementById('btnCancelSub')?.addEventListener('click', async () => {
+  if (!confirm('Are you sure you want to cancel your subscription? You will retain access until the end of your billing cycle and your account will revert to the Free tier.')) {
+    return;
+  }
+  const cancelBtn = document.getElementById('btnCancelSub');
+  if (cancelBtn) {
+    cancelBtn.disabled = true;
+    cancelBtn.textContent = 'Cancelling…';
+  }
+  try {
+    const session = await authService.getSession();
+    const token = session?.access_token;
+    if (!token) throw new Error('Authentication session expired. Please sign in again.');
+
+    const supabaseUrl = (window.__ENV__?.VITE_SUPABASE_URL || '').replace(/\/+$/, '');
+    const directEndpoint = `${supabaseUrl}/functions/v1/paddle-cancel-subscription`;
+
+    const res = await fetch(directEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({})
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to cancel subscription.');
+    }
+
+    showNotice('✓ Subscription cancelled successfully. Your account has reverted to the Free tier.');
+    await checkAccount();
+  } catch (err) {
+    showError(err.message || 'Error cancelling subscription.');
+  } finally {
+    if (cancelBtn) {
+      cancelBtn.disabled = false;
+      cancelBtn.textContent = 'Cancel Subscription';
+    }
   }
 });
 

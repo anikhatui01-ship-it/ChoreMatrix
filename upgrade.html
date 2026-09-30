@@ -29,7 +29,7 @@
   })();
 </script>
 <link rel="stylesheet" href="/src/styles/common.css" />
-<script src="https://sdk.cashfree.com/js/v3/cashfree.js"></script>
+<script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
 <style>
   .upgrade-wrap {
     max-width: 680px;
@@ -92,10 +92,10 @@
     <div class="upgrade-wrap">
       <div style="text-align: center; margin-bottom: 24px;">
         <span class="badge" style="background: var(--badge-amber-bg); color: var(--badge-amber-text); margin-bottom: 8px;">
-          Cashfree Sandbox Subscriptions
+          Paddle Subscriptions (Sandbox Mode)
         </span>
         <h1 style="font-size: 28px; font-weight: 800; margin: 0 0 6px; color: var(--ink);">
-          Upgrade Your ChoreMatrix Plan
+          Upgrade to ChoreMatrix Pro
         </h1>
         <p style="font-size: 14px; color: var(--muted); margin: 0;">
           Unlock 100% ad-free planning, multi-week rotation, and continuous household synchronization.
@@ -120,11 +120,9 @@ import {
   PRICING_CONFIG,
   getTierById,
   getDefaultPaidTier,
-  getCashfreePlanId,
-  initiateCashfreeSubscription,
-  COUNTRIES,
-  DEFAULT_COUNTRY,
-  normalizePhoneNumber,
+  PADDLE_CONFIG,
+  getPaddlePriceId,
+  initiatePaddleSubscription,
   persistenceAdapter,
   authService,
   renderNavbar,
@@ -183,11 +181,11 @@ async function renderUpgradeCard() {
   const subIntervalText = isAnnual
     ? `Billed annually (${escapeHtml(selectedTier.annualSavingText)})`
     : `or $${selectedTier.annualPrice.toFixed(2)}/yr billed annually (${escapeHtml(selectedTier.annualSavingText)})`;
-  const renewalText = isAnnual
-    ? `$${selectedTier.checkoutDisclosures.chargedAfterTrialAnnual.toFixed(2)}/yr`
-    : `$${selectedTier.checkoutDisclosures.chargedAfterTrialMonthly.toFixed(2)}/mo`;
 
-  const cashfreePlanId = getCashfreePlanId(selectedTier.id, isAnnual ? 'annually' : 'monthly') || 'CHOREMATRIX_PRO_MONTHLY';
+  const paddlePriceId = getPaddlePriceId(isTrialEligible);
+  const checkoutButtonLabel = isTrialEligible
+    ? 'Start 7-Day Free Trial'
+    : `Subscribe to ChoreMatrix Pro — $${displayPrice.toFixed(2)}/mo`;
 
   cardEl.innerHTML = `
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
@@ -208,17 +206,17 @@ async function renderUpgradeCard() {
 
     ${isTrialEligible ? `
       <div style="margin-bottom: 16px;">
-        <span class="badge" style="background: var(--badge-teal-bg); color: var(--badge-teal-text);">
-          ⭐ Includes ${selectedTier.trialDays}-Day Introductory Trial
+        <span class="badge" style="background: var(--badge-teal-bg); color: var(--badge-teal-text); font-weight: 700; font-size: 13px; padding: 4px 10px;">
+          ⭐ 7-day free trial for eligible new users
         </span>
       </div>
-    ` : (isTrialConsumed ? `
+    ` : `
       <div style="margin-bottom: 16px;">
-        <span class="badge" style="background: var(--panel-subtle); color: var(--muted); border: 1px solid var(--line);">
-          Standard Subscription (Introductory trial already used for this account)
+        <span class="badge" style="background: var(--panel-subtle); color: var(--muted); border: 1px solid var(--line); font-weight: 600; font-size: 12px; padding: 4px 10px;">
+          No trial available (Introductory trial already used for this account)
         </span>
       </div>
-    ` : '')}
+    `}
 
     <div style="font-size: 13px; font-weight: 700; color: var(--ink); margin-top: 16px;">What's Included:</div>
     <ul class="feature-list">
@@ -228,61 +226,29 @@ async function renderUpgradeCard() {
     <!-- Transparent Continuous Service & Mandate Authorization Terms -->
     <div style="background: var(--panel-subtle); border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin: 20px 0; font-size: 12px; color: var(--muted); line-height: 1.45;">
       <strong style="color: var(--ink);">Continuous Service & Renewal Terms:</strong><br>
-      • Payment Method Authorization Today: USD $1.00 mandate verification hold (deducted by Cashfree to authorize payment method).<br>
-      • Recurring Subscription: ${renewalText} billed automatically starting on your first scheduled billing date (${isTrialEligible ? 'after 7-day trial' : 'on standard cycle'}) until cancelled.<br>
-      • Online Cancellation: Cancel online anytime via Account Settings prior to scheduled billing to prevent future charges.<br>
-      • Trial Eligibility: Introductory 7-day trial is strictly one-time per ChoreMatrix account. Subsequent subscriptions renew immediately.
+      • Charged today: $${selectedTier.checkoutDisclosures.chargedToday.toFixed(2)}<br>
+      ${isTrialEligible ? `
+        • 7-Day Free Trial: Payment method collected during checkout to authorize subscription. USD $0.00 charged today.<br>
+        • Recurring Renewal: USD $5.99/month billed automatically starting after the 7-day trial (${isAnnual ? `$${selectedTier.checkoutDisclosures.chargedAfterTrialAnnual.toFixed(2)}/yr` : `$${selectedTier.checkoutDisclosures.chargedAfterTrialMonthly.toFixed(2)}/mo`}) unless cancelled.<br>
+      ` : `
+        • Immediate Billing: USD $5.99/month billed automatically today and every month (${isAnnual ? `$${selectedTier.checkoutDisclosures.chargedAfterTrialAnnual.toFixed(2)}/yr` : `$${selectedTier.checkoutDisclosures.chargedAfterTrialMonthly.toFixed(2)}/mo`}) until cancelled.<br>
+      `}
+      • Online Cancellation: Cancel online anytime via Account Settings prior to scheduled billing or trial expiration to prevent charges.<br>
+      • One-Trial Policy: Introductory 7-day trial is strictly one-time per ChoreMatrix account. Subsequent subscriptions renew immediately at $5.99/month.
     </div>
 
     <div style="background: var(--badge-amber-bg); border: 1px solid var(--warn); border-radius: 8px; padding: 14px; margin-bottom: 20px; font-size: 12px; color: var(--ink); line-height: 1.45;">
       <strong>Upgrade Checkout Coming Soon:</strong><br>
-      Payment processing is currently being finalized for production. Live credit card checkout and subscription activation will open soon. Cashfree SANDBOX subscription checkout is active below for testing.
-    </div>
-
-    <!-- Country calling-code selector + national mobile number input -->
-    <div style="margin-bottom: 20px; text-align: left;">
-      <label style="display: block; font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 6px;">
-        Mobile number
-      </label>
-      <div style="display: flex; gap: 8px; align-items: stretch;">
-        <div style="flex: 0 0 150px;">
-          <label for="selCountryCode" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0;">Country</label>
-          <select
-            id="selCountryCode"
-            aria-label="Country Calling Code"
-            style="width: 100%; height: 100%; padding: 11px 8px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; background: var(--panel); color: var(--ink); box-sizing: border-box; cursor: pointer;"
-          >
-            ${(COUNTRIES || []).map(c => `
-              <option value="${c.code}" ${c.code === 'IN' ? 'selected' : ''}>
-                ${escapeHtml(c.name)} (${c.dialCode})
-              </option>
-            `).join('')}
-          </select>
-        </div>
-        <div style="flex: 1;">
-          <label for="txtCustomerPhone" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0;">National Mobile Number</label>
-          <input
-            id="txtCustomerPhone"
-            type="tel"
-            inputmode="numeric"
-            autocomplete="tel"
-            placeholder="e.g. ${DEFAULT_COUNTRY?.placeholder || '7001240613'}"
-            style="width: 100%; padding: 11px 14px; border: 1px solid var(--line); border-radius: 8px; font-size: 14px; background: var(--panel); color: var(--ink); box-sizing: border-box;"
-          />
-        </div>
-      </div>
-      <div style="font-size: 11px; color: var(--muted); margin-top: 5px;">
-        Enter your national number only. Calling code is added automatically for Cashfree mandate notifications (10–15 total digits).
-      </div>
+      Payment processing is currently being finalized for production. Live credit card checkout and subscription activation will open soon. Paddle Sandbox test mode subscription checkout is active below for testing. Live card charges will not be incurred.
     </div>
 
     <div style="margin-bottom: 20px;">
-      <button type="button" id="btnCashfreeUpgrade" class="btn primary" style="width: 100%; font-size: 15px; font-weight: 700; padding: 12px 18px; text-align: center;">
-        Upgrade to ${escapeHtml(selectedTier.name)} with Cashfree (Sandbox)
+      <button type="button" id="btnPaddleUpgrade" class="btn primary" style="width: 100%; font-size: 15px; font-weight: 700; padding: 12px 18px; text-align: center;">
+        ${escapeHtml(checkoutButtonLabel)}
       </button>
       <div id="inlineCheckoutError" style="display: none; margin-top: 12px; padding: 12px 14px; background: #fef2f2; border: 1px solid #ef4444; border-radius: 8px; color: #991b1b; font-size: 13px; font-weight: 600; line-height: 1.45; text-align: left; word-break: break-word;"></div>
       <div style="font-size: 11px; color: var(--muted); text-align: center; margin-top: 6px;">
-        Cashfree Sandbox Plan: <code>${escapeHtml(cashfreePlanId)}</code> · Return Domain: <code>https://chorematrix.online</code>
+        Paddle Sandbox Price: <code>${escapeHtml(paddlePriceId)}</code> (${isTrialEligible ? '7-Day Trial Price' : 'Standard Price'})
       </div>
     </div>
 
@@ -296,18 +262,8 @@ async function renderUpgradeCard() {
     </div>
   `;
 
-  // Attach dynamic placeholder updates when country changes
-  const countrySelect = document.getElementById('selCountryCode');
-  const phoneInput = document.getElementById('txtCustomerPhone');
-  if (countrySelect && phoneInput) {
-    countrySelect.addEventListener('change', () => {
-      const selected = (COUNTRIES || []).find(c => c.code === countrySelect.value) || DEFAULT_COUNTRY;
-      phoneInput.placeholder = `e.g. ${selected.placeholder}`;
-    });
-  }
-
-  // Attach Cashfree upgrade trigger
-  const upgradeBtn = document.getElementById('btnCashfreeUpgrade');
+  // Attach Paddle upgrade trigger
+  const upgradeBtn = document.getElementById('btnPaddleUpgrade');
   const inlineErrorEl = document.getElementById('inlineCheckoutError');
 
   function displayCheckoutError(msg) {
@@ -345,42 +301,32 @@ async function renderUpgradeCard() {
         return;
       }
 
-      // 2. Validate clean 10–15 digit mobile number and normalize with country code
-      const countryCode = countrySelect ? countrySelect.value : 'IN';
-      const rawPhone = phoneInput ? phoneInput.value : '';
-      const cleanPhone = rawPhone.replace(/\D/g, '');
-      const normResult = normalizePhoneNumber(countryCode, rawPhone);
-
-      if (!normResult.isValid) {
-        displayCheckoutError(normResult.error || 'Please enter a valid mobile number (10 to 15 digits) before proceeding to checkout.');
-        if (phoneInput) phoneInput.focus();
-        return;
-      }
-
-      // 3. Set button loading state
+      // 2. Set button loading state
       const originalText = upgradeBtn.textContent;
       upgradeBtn.disabled = true;
-      upgradeBtn.textContent = 'Connecting to Cashfree Sandbox…';
+      upgradeBtn.textContent = 'Opening Paddle Checkout…';
 
       try {
-        console.log('[Upgrade Page] Initiating subscription upgrade for:', selectedTier.id, isAnnual ? 'annual' : 'monthly', 'phone:', normResult.e164);
-        const result = await initiateCashfreeSubscription({
+        console.log('[Upgrade Page] Initiating Paddle checkout for:', currentUser.id, 'price:', paddlePriceId);
+        const result = await initiatePaddleSubscription({
+          email: currentUser.email,
+          userId: currentUser.id,
           plan: selectedTier.id,
-          interval: isAnnual ? 'annual' : 'monthly',
-          phone: normResult.e164
+          interval: isAnnual ? 'annual' : 'monthly'
         });
 
         if (!result.success) {
-          displayCheckoutError(result.error || 'Unable to initiate Cashfree checkout session.');
+          displayCheckoutError(result.error || 'Unable to open Paddle checkout overlay.');
           upgradeBtn.disabled = false;
           upgradeBtn.textContent = originalText;
         } else {
-          showFeedback('Cashfree checkout session initialized. Redirecting to payment authorization…', 'info');
-          upgradeBtn.textContent = 'Redirecting to Cashfree…';
+          showFeedback('Paddle checkout opened. Please complete your details in the checkout modal.', 'info');
+          upgradeBtn.disabled = false;
+          upgradeBtn.textContent = originalText;
         }
       } catch (err) {
         console.error('[Upgrade Checkout Exception]', err);
-        displayCheckoutError(err.message || 'An unexpected error occurred while launching Cashfree checkout.');
+        displayCheckoutError(err.message || 'An unexpected error occurred while launching Paddle checkout.');
         upgradeBtn.disabled = false;
         upgradeBtn.textContent = originalText;
       }
