@@ -5,7 +5,11 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import {
   PADDLE_CONFIG,
+  CANONICAL_PLAN_MATRIX,
+  PADDLE_PLANS,
   getPaddlePriceId,
+  isPaddlePriceId,
+  mapPaddlePriceToTier,
   PADDLE_SUBSCRIPTION_STATUSES
 } from '../../src/config/paddle.ts';
 import {
@@ -164,7 +168,7 @@ describe('Paddle Sandbox Subscriptions & Entitlements Test Suite', () => {
   // =========================================================================
   it('1. First-time trial: selects Price A (7-day trial) when eligible', () => {
     const isTrialEligible = true;
-    const priceId = getPaddlePriceId(isTrialEligible);
+    const priceId = getPaddlePriceId('pro', 'monthly', isTrialEligible);
     assert.strictEqual(priceId, PADDLE_CONFIG.prices.trial, 'Eligible user must receive Price A (trial)');
     assert.ok(priceId.startsWith('pri_'), 'Price ID must follow Paddle format');
   });
@@ -190,7 +194,8 @@ describe('Paddle Sandbox Subscriptions & Entitlements Test Suite', () => {
         id: 'sub_trialing_001',
         customer_id: 'ctm_customer_001',
         status: 'trialing',
-        custom_data: { user_id: 'user_123' }
+        custom_data: { user_id: 'user_123' },
+        items: [{ price: { id: PADDLE_CONFIG.prices.trial } }]
       }
     };
 
@@ -223,7 +228,8 @@ describe('Paddle Sandbox Subscriptions & Entitlements Test Suite', () => {
         id: 'sub_authoritative_trial',
         customer_id: 'ctm_authoritative',
         status: 'trialing',
-        custom_data: { user_id: 'user_123' }
+        custom_data: { user_id: 'user_123' },
+        items: [{ price: { id: PADDLE_CONFIG.prices.trial } }]
       }
     };
 
@@ -236,7 +242,7 @@ describe('Paddle Sandbox Subscriptions & Entitlements Test Suite', () => {
   // =========================================================================
   it('5. Second trial attempt is rejected: user with trial_consumed=true gets Price B', () => {
     const isTrialEligible = false; // user has already consumed trial
-    const priceId = getPaddlePriceId(isTrialEligible);
+    const priceId = getPaddlePriceId('pro', 'monthly', isTrialEligible);
     assert.strictEqual(priceId, PADDLE_CONFIG.prices.standard, 'Trial-consumed user must receive Price B (standard)');
     assert.notStrictEqual(priceId, PADDLE_CONFIG.prices.trial, 'Trial-consumed user must NEVER receive Price A (trial)');
   });
@@ -259,7 +265,8 @@ describe('Paddle Sandbox Subscriptions & Entitlements Test Suite', () => {
         id: 'sub_paid_001',
         customer_id: 'ctm_paid_001',
         status: 'active',
-        custom_data: { user_id: 'user_trial_consumed' }
+        custom_data: { user_id: 'user_trial_consumed' },
+        items: [{ price: { id: PADDLE_CONFIG.prices.standard } }]
       }
     };
 
@@ -398,7 +405,8 @@ describe('Paddle Sandbox Subscriptions & Entitlements Test Suite', () => {
         id: 'sub_dup_001',
         customer_id: 'ctm_dup_001',
         status: 'active',
-        custom_data: { user_id: 'user_123' }
+        custom_data: { user_id: 'user_123' },
+        items: [{ price: { id: PADDLE_CONFIG.prices.standard } }]
       }
     };
 
@@ -469,7 +477,8 @@ describe('Paddle Sandbox Subscriptions & Entitlements Test Suite', () => {
         id: expectedSubId,
         customer_id: expectedCustId,
         status: 'active',
-        custom_data: { user_id: 'user_123' }
+        custom_data: { user_id: 'user_123' },
+        items: [{ price: { id: PADDLE_CONFIG.prices.standard } }]
       }
     };
 
@@ -491,7 +500,8 @@ describe('Paddle Sandbox Subscriptions & Entitlements Test Suite', () => {
         id: 'sub_provider_test',
         customer_id: 'ctm_provider_test',
         status: 'active',
-        custom_data: { user_id: 'user_123' }
+        custom_data: { user_id: 'user_123' },
+        items: [{ price: { id: PADDLE_CONFIG.prices.standard } }]
       }
     };
 
@@ -960,6 +970,7 @@ describe('Paddle Sandbox Subscriptions & Entitlements Test Suite', () => {
           effective_at: scheduledDate
         },
         custom_data: { user_id: 'usr_scheduled_test' },
+        items: [{ price: { id: PADDLE_CONFIG.prices.standard } }],
         current_billing_period: {
           starts_at: '2026-09-30T06:02:52.567Z',
           ends_at: scheduledDate
@@ -1351,5 +1362,234 @@ describe('Paddle Sandbox Subscriptions & Entitlements Test Suite', () => {
     assert.strictEqual(buttonState.text, 'Cancellation Scheduled');
     assert.strictEqual(buttonState.noticeVisible, true);
     assert.ok(buttonState.noticeText.includes('Cancellation scheduled'));
+  });
+
+  // =========================================================================
+  // 41. Canonical Plan Matrix: verifies structure and exact Paddle IDs
+  // =========================================================================
+  it('41. Canonical Plan Matrix: defines exact 4-plan matrix with required fields', () => {
+    const plans = ['pro_monthly', 'pro_annual', 'plus_monthly', 'plus_annual'] as const;
+
+    for (const key of plans) {
+      const plan = CANONICAL_PLAN_MATRIX[key];
+      assert.ok(plan, `Matrix must contain ${key}`);
+      assert.ok(plan.tier === 'pro' || plan.tier === 'plus', `Valid tier for ${key}`);
+      assert.ok(plan.interval === 'monthly' || plan.interval === 'annual', `Valid interval for ${key}`);
+      assert.strictEqual(typeof plan.displayAmount, 'number', `Numeric display amount for ${key}`);
+      assert.ok(plan.productId.startsWith('pro_'), `Valid Paddle product ID for ${key}`);
+      assert.ok(plan.trialPriceId.startsWith('pri_'), `Valid trial price ID for ${key}`);
+      assert.ok(plan.noTrialPriceId.startsWith('pri_'), `Valid no-trial price ID for ${key}`);
+      assert.strictEqual(plan.trialDurationDays, 7, `7-day trial for ${key}`);
+    }
+
+    // Exact catalog verification
+    assert.strictEqual(CANONICAL_PLAN_MATRIX.pro_monthly.trialPriceId, 'pri_01m3q8bcndadvqgz9jbr26pmw3');
+    assert.strictEqual(CANONICAL_PLAN_MATRIX.pro_monthly.noTrialPriceId, 'pri_01m3q8bcwn953t664zt4e9071z');
+    assert.strictEqual(CANONICAL_PLAN_MATRIX.pro_monthly.displayAmount, 5.99);
+
+    assert.strictEqual(CANONICAL_PLAN_MATRIX.pro_annual.trialPriceId, 'pri_01m3rc2rxpbwq45kpjbdc124ph');
+    assert.strictEqual(CANONICAL_PLAN_MATRIX.pro_annual.noTrialPriceId, 'pri_01m3rcv82ahy3nvcbgtpkvpemp');
+    assert.strictEqual(CANONICAL_PLAN_MATRIX.pro_annual.displayAmount, 59.99);
+
+    assert.strictEqual(CANONICAL_PLAN_MATRIX.plus_monthly.trialPriceId, 'pri_01m3rc7qwjvt2ehz4p9xcsbhfq');
+    assert.strictEqual(CANONICAL_PLAN_MATRIX.plus_monthly.noTrialPriceId, 'pri_01m3rcz5jsr2058j5e2v8zka84');
+    assert.strictEqual(CANONICAL_PLAN_MATRIX.plus_monthly.displayAmount, 9.99);
+
+    assert.strictEqual(CANONICAL_PLAN_MATRIX.plus_annual.trialPriceId, 'pri_01m3rc5nmgzwske72g5h6dsh32');
+    assert.strictEqual(CANONICAL_PLAN_MATRIX.plus_annual.noTrialPriceId, 'pri_01m3rcx7d36mj5bw7wwrkg87mh');
+    assert.strictEqual(CANONICAL_PLAN_MATRIX.plus_annual.displayAmount, 99.99);
+  });
+
+  // =========================================================================
+  // 42. Explicit test of all 8 plan/interval/trial states
+  // =========================================================================
+  it('42. Explicit 8-state price selection: returns exact expected price ID for each combination', () => {
+    // 1. pro / monthly / eligible -> Pro Monthly Trial Price
+    const state1 = getPaddlePriceId('pro', 'monthly', true);
+    assert.strictEqual(state1, 'pri_01m3q8bcndadvqgz9jbr26pmw3', '1. pro/monthly/eligible must return Pro Monthly Trial Price');
+
+    // 2. pro / monthly / consumed -> Pro Monthly No-Trial Price
+    const state2 = getPaddlePriceId('pro', 'monthly', false);
+    assert.strictEqual(state2, 'pri_01m3q8bcwn953t664zt4e9071z', '2. pro/monthly/consumed must return Pro Monthly Standard Price');
+
+    // 3. pro / annual / eligible -> Pro Annual Trial Price
+    const state3 = getPaddlePriceId('pro', 'annual', true);
+    assert.strictEqual(state3, 'pri_01m3rc2rxpbwq45kpjbdc124ph', '3. pro/annual/eligible must return Pro Annual Trial Price');
+
+    // 4. pro / annual / consumed -> Pro Annual No-Trial Price
+    const state4 = getPaddlePriceId('pro', 'annual', false);
+    assert.strictEqual(state4, 'pri_01m3rcv82ahy3nvcbgtpkvpemp', '4. pro/annual/consumed must return Pro Annual Standard Price');
+
+    // 5. plus / monthly / eligible -> Plus Monthly Trial Price
+    const state5 = getPaddlePriceId('plus', 'monthly', true);
+    assert.strictEqual(state5, 'pri_01m3rc7qwjvt2ehz4p9xcsbhfq', '5. plus/monthly/eligible must return Plus Monthly Trial Price');
+
+    // 6. plus / monthly / consumed -> Plus Monthly No-Trial Price
+    const state6 = getPaddlePriceId('plus', 'monthly', false);
+    assert.strictEqual(state6, 'pri_01m3rcz5jsr2058j5e2v8zka84', '6. plus/monthly/consumed must return Plus Monthly Standard Price');
+
+    // 7. plus / annual / eligible -> Plus Annual Trial Price
+    const state7 = getPaddlePriceId('plus', 'annual', true);
+    assert.strictEqual(state7, 'pri_01m3rc5nmgzwske72g5h6dsh32', '7. plus/annual/eligible must return Plus Annual Trial Price');
+
+    // 8. plus / annual / consumed -> Plus Annual No-Trial Price
+    const state8 = getPaddlePriceId('plus', 'annual', false);
+    assert.strictEqual(state8, 'pri_01m3rcx7d36mj5bw7wwrkg87mh', '8. plus/annual/consumed must return Plus Annual Standard Price');
+  });
+
+  // =========================================================================
+  // 43. Invalid-input tests: explicit failure, NEVER fallback to Pro Monthly
+  // =========================================================================
+  it('43. Invalid-input tests: throws explicit error and never falls back silently to Pro Monthly', () => {
+    // A. plus + invalid interval
+    assert.throws(
+      () => getPaddlePriceId('plus', 'biweekly'),
+      /Invalid interval "biweekly"/,
+      'Must throw explicit error on invalid interval for Plus'
+    );
+    assert.throws(
+      () => getPaddlePriceId('plus', 'quarterly'),
+      /Invalid interval "quarterly"/,
+      'Must throw explicit error on quarterly interval for Plus'
+    );
+
+    // B. invalid plan
+    assert.throws(
+      () => getPaddlePriceId('enterprise', 'monthly'),
+      /Invalid plan "enterprise"/,
+      'Must throw explicit error on invalid plan'
+    );
+    assert.throws(
+      () => getPaddlePriceId('gold', 'annual'),
+      /Invalid plan "gold"/,
+      'Must throw explicit error on unrecognized plan'
+    );
+
+    // C. missing plan
+    assert.throws(
+      () => getPaddlePriceId('', 'monthly'),
+      /Missing plan parameter/,
+      'Must throw on empty plan string'
+    );
+    assert.throws(
+      () => (getPaddlePriceId as any)(null, 'monthly'),
+      /Missing plan parameter/,
+      'Must throw on null plan'
+    );
+    assert.throws(
+      () => (getPaddlePriceId as any)(undefined, 'annual'),
+      /Missing plan parameter/,
+      'Must throw on undefined plan'
+    );
+
+    // D. missing interval
+    assert.throws(
+      () => getPaddlePriceId('pro', ''),
+      /Missing interval parameter/,
+      'Must throw on empty interval string'
+    );
+    assert.throws(
+      () => (getPaddlePriceId as any)('plus', null),
+      /Missing interval parameter/,
+      'Must throw on null interval'
+    );
+    assert.throws(
+      () => (getPaddlePriceId as any)('pro', undefined),
+      /Missing interval parameter/,
+      'Must throw on undefined interval'
+    );
+
+    // E. unknown Paddle price ID
+    const unknownPriceId = 'pri_01unknown_test_id_99999';
+    assert.strictEqual(isPaddlePriceId(unknownPriceId), false, 'Unknown price ID must not be recognized');
+    assert.strictEqual(mapPaddlePriceToTier(unknownPriceId), null, 'Unknown price ID must return null, NEVER default to Pro Monthly');
+    assert.strictEqual(mapPaddlePriceToTier(''), null, 'Empty string must return null');
+    assert.strictEqual(mapPaddlePriceToTier(null), null, 'null must return null');
+  });
+
+  // =========================================================================
+  // 44. Webhook Entitlement Mapping: validates Plus and Annual tier provisioning
+  // =========================================================================
+  it('44. Webhook entitlement mapping: assigns correct tier and interval from incoming price ID', async () => {
+    const mock = createMockSupabase();
+
+    // A. Plus Monthly Trial Webhook
+    const plusMonthlyPayload = {
+      event_id: 'evt_plus_monthly_trial',
+      event_type: 'subscription.trialing',
+      data: {
+        id: 'sub_plus_month_001',
+        customer_id: 'ctm_plus_001',
+        status: 'trialing',
+        custom_data: { user_id: 'user_123' },
+        items: [{ price: { id: CANONICAL_PLAN_MATRIX.plus_monthly.trialPriceId } }]
+      }
+    };
+    const plusRes = await handlePaddleWebhookEvent(plusMonthlyPayload, mock as any);
+    assert.strictEqual(plusRes.processed, true);
+    assert.strictEqual(mock.profile.plan_tier, 'plus', 'Must grant Plus tier for Plus price');
+    assert.strictEqual(mock.profile.billing_interval, 'monthly');
+    assert.strictEqual(mock.subscriptions['sub_plus_month_001'].plan_tier, 'plus');
+    assert.strictEqual(mock.subscriptions['sub_plus_month_001'].billing_interval, 'monthly');
+
+    // B. Pro Annual Active Webhook
+    const proAnnualPayload = {
+      event_id: 'evt_pro_annual_active',
+      event_type: 'subscription.activated',
+      data: {
+        id: 'sub_pro_annual_001',
+        customer_id: 'ctm_pro_ann_001',
+        status: 'active',
+        custom_data: { user_id: 'user_123' },
+        items: [{ price: { id: CANONICAL_PLAN_MATRIX.pro_annual.noTrialPriceId } }]
+      }
+    };
+    const proAnnRes = await handlePaddleWebhookEvent(proAnnualPayload, mock as any);
+    assert.strictEqual(proAnnRes.processed, true);
+    assert.strictEqual(mock.profile.plan_tier, 'pro');
+    assert.strictEqual(mock.profile.billing_interval, 'annual');
+    assert.strictEqual(mock.subscriptions['sub_pro_annual_001'].billing_interval, 'annual');
+
+    // C. Plus Annual Active Webhook
+    const plusAnnualPayload = {
+      event_id: 'evt_plus_annual_active',
+      event_type: 'subscription.activated',
+      data: {
+        id: 'sub_plus_ann_001',
+        customer_id: 'ctm_plus_ann_001',
+        status: 'active',
+        custom_data: { user_id: 'user_123' },
+        items: [{ price: { id: CANONICAL_PLAN_MATRIX.plus_annual.noTrialPriceId } }]
+      }
+    };
+    const plusAnnRes = await handlePaddleWebhookEvent(plusAnnualPayload, mock as any);
+    assert.strictEqual(plusAnnRes.processed, true);
+    assert.strictEqual(mock.profile.plan_tier, 'plus');
+    assert.strictEqual(mock.profile.billing_interval, 'annual');
+    assert.strictEqual(mock.subscriptions['sub_plus_ann_001'].plan_tier, 'plus');
+    assert.strictEqual(mock.subscriptions['sub_plus_ann_001'].billing_interval, 'annual');
+
+    // D. Unknown Price ID Security Check: Refuses elevated entitlement
+    const unmappedMock = createMockSupabase({
+      id: 'attacker_unmapped_usr',
+      plan_tier: 'free',
+      subscription_status: 'none',
+      trial_consumed: false
+    });
+    const unknownPricePayload = {
+      event_id: 'evt_unknown_spoof_price',
+      event_type: 'subscription.activated',
+      data: {
+        id: 'sub_spoof_001',
+        customer_id: 'ctm_spoof',
+        status: 'active',
+        custom_data: { user_id: 'attacker_unmapped_usr' },
+        items: [{ price: { id: 'pri_malicious_unrecognized_price_id' } }]
+      }
+    };
+    const spoofRes = await handlePaddleWebhookEvent(unknownPricePayload, unmappedMock as any);
+    assert.strictEqual(spoofRes.success, false, 'Must reject unknown price ID');
+    assert.ok(spoofRes.error?.includes('Unknown or unmapped Paddle price ID'));
+    assert.strictEqual(unmappedMock.profile.plan_tier, 'free', 'Profile must remain free tier on unknown price ID');
   });
 });

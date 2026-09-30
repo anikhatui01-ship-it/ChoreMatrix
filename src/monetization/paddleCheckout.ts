@@ -10,7 +10,7 @@
  */
 
 import { supabase, isSupabaseConfigured } from '../config/supabase.ts';
-import { PADDLE_CONFIG, getPaddlePriceId } from '../config/paddle.ts';
+import { PADDLE_CONFIG, getPaddlePriceId, isPaddlePriceId } from '../config/paddle.ts';
 
 declare global {
   interface Window {
@@ -197,7 +197,28 @@ export async function initiatePaddleSubscription(
 
   // Authoritative trial eligibility determination
   const isTrialEligible = !isTrialConsumed;
-  const selectedPriceId = options.priceId || getPaddlePriceId(isTrialEligible);
+  let selectedPriceId: string;
+
+  if (options.priceId) {
+    if (!isPaddlePriceId(options.priceId)) {
+      const err = `Invalid or unmapped Paddle price ID "${options.priceId}". Checkout aborted.`;
+      console.error('[Paddle Checkout]', err);
+      return { success: false, error: err };
+    }
+    selectedPriceId = options.priceId.trim();
+  } else {
+    try {
+      selectedPriceId = getPaddlePriceId(
+        options.plan || '',
+        options.interval || '',
+        isTrialEligible
+      );
+    } catch (planErr: any) {
+      const err = `Plan selection error: ${planErr.message || String(planErr)}`;
+      console.error('[Paddle Checkout]', err);
+      return { success: false, error: err };
+    }
+  }
 
   try {
     await initializePaddleInstance((event) => {

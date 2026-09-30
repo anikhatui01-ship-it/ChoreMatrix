@@ -12,7 +12,7 @@
  */
 
 import crypto from 'node:crypto';
-import { PADDLE_CONFIG } from '../config/paddle.ts';
+import { PADDLE_CONFIG, mapPaddlePriceToTier } from '../config/paddle.ts';
 
 export interface PaddleCredentials {
   apiKey?: string;
@@ -35,6 +35,8 @@ export interface WebhookProcessingResult {
   subscription_id?: string;
   subscription_status?: string;
   plan_tier?: string;
+  billing_interval?: string;
+  error?: string;
   message?: string;
 }
 
@@ -261,9 +263,22 @@ export async function processPaddleWebhook(
   const priceId = primaryItem.price?.id || primaryItem.price_id || '';
   const productId = primaryItem.price?.product_id || primaryItem.product_id || PADDLE_CONFIG.productId;
 
+  const mappedTier = mapPaddlePriceToTier(priceId);
+
   // 9. Apply authoritative state transitions
   // A. Subscription Trialing (Introductory 7-day free trial started)
   if (eventType === 'subscription.trialing' || (eventType === 'subscription.created' && rawStatus === 'trialing')) {
+    if (!mappedTier) {
+      const err = `Security warning: Unknown or unmapped Paddle price ID "${priceId}". Entitlement refused.`;
+      console.error('[Paddle Webhook]', err);
+      return {
+        success: false,
+        event_id: eventId,
+        subscription_id: subscriptionId,
+        error: err
+      };
+    }
+
     // Anti-Abuse Check: If user already consumed trial, do not grant trial entitlement
     if (userProfile?.trial_consumed) {
       console.warn(`[Paddle Webhook] Duplicate trial attempt blocked for user ${targetUserId}.`);
@@ -277,12 +292,12 @@ export async function processPaddleWebhook(
 
     const trialEndsAt = currentPeriod.ends_at || new Date(Date.now() + 7 * 86400 * 1000).toISOString();
 
-    // Authoritatively mark trial consumed and grant Pro entitlement
+    // Authoritatively mark trial consumed and grant entitlement
     await dbClient
       .from('profiles')
       .update({
-        plan_tier: 'pro',
-        billing_interval: 'monthly',
+        plan_tier: mappedTier.tier,
+        billing_interval: mappedTier.interval,
         subscription_status: 'trialing',
         payment_provider: 'paddle',
         paddle_subscription_id: subscriptionId,
@@ -301,9 +316,9 @@ export async function processPaddleWebhook(
       customer_id: customerId || '',
       price_id: priceId,
       product_id: productId,
-      plan_tier: 'pro',
+      plan_tier: mappedTier.tier,
       status: 'trialing',
-      billing_interval: 'monthly',
+      billing_interval: mappedTier.interval,
       has_trial: true,
       trial_ends_at: trialEndsAt,
       current_period_start: currentPeriod.starts_at || nowIso,
@@ -316,7 +331,8 @@ export async function processPaddleWebhook(
       event_id: eventId,
       subscription_id: subscriptionId,
       subscription_status: 'trialing',
-      plan_tier: 'pro'
+      plan_tier: mappedTier.tier,
+      billing_interval: mappedTier.interval
     };
   }
 
@@ -327,9 +343,20 @@ export async function processPaddleWebhook(
     eventType === 'subscription.resumed' ||
     (eventType === 'transaction.completed' && subscriptionId)
   ) {
+    if (!mappedTier) {
+      const err = `Security warning: Unknown or unmapped Paddle price ID "${priceId}". Entitlement refused.`;
+      console.error('[Paddle Webhook]', err);
+      return {
+        success: false,
+        event_id: eventId,
+        subscription_id: subscriptionId,
+        error: err
+      };
+    }
+
     const profileUpdate: any = {
-      plan_tier: 'pro',
-      billing_interval: 'monthly',
+      plan_tier: mappedTier.tier,
+      billing_interval: mappedTier.interval,
       subscription_status: 'active',
       payment_provider: 'paddle',
       paddle_subscription_id: subscriptionId,
@@ -352,9 +379,9 @@ export async function processPaddleWebhook(
       customer_id: customerId || '',
       price_id: priceId,
       product_id: productId,
-      plan_tier: 'pro',
+      plan_tier: mappedTier.tier,
       status: 'active',
-      billing_interval: 'monthly',
+      billing_interval: mappedTier.interval,
       has_trial: Boolean(data.trial_period),
       current_period_start: currentPeriod.starts_at || nowIso,
       current_period_end: currentPeriod.ends_at || null,
@@ -367,7 +394,8 @@ export async function processPaddleWebhook(
       event_id: eventId,
       subscription_id: subscriptionId,
       subscription_status: 'active',
-      plan_tier: 'pro'
+      plan_tier: mappedTier.tier,
+      billing_interval: mappedTier.interval
     };
   }
 
@@ -376,20 +404,36 @@ export async function processPaddleWebhook(
     const scheduledChange = data.scheduled_change;
     const scheduledChangeEffectiveAt = scheduledChange?.effective_at || null;
 
-    await dbClient.from('paddle_subscriptions').upsert({
+    const subRecord: any = {
       user_id: targetUserId,
       subscription_id: subscriptionId,
       customer_id: customerId || '',
       price_id: priceId,
       product_id: productId,
-      plan_tier: 'pro',
       status: rawStatus || 'active',
-      billing_interval: 'monthly',
       scheduled_change: scheduledChangeEffectiveAt,
       current_period_start: currentPeriod.starts_at || null,
       current_period_end: currentPeriod.ends_at || null,
       updated_at: nowIso
-    });
+    };
+
+    if (mappedTier) {
+      subRecord.plan_tier = mappedTier.tier;
+      subRecord.billing_interval = mappedTier.interval;
+
+      if (rawStatus === 'active' || rawStatus === 'trialing') {
+        await dbClient
+          .from('profiles')
+          .update({
+            plan_tier: mappedTier.tier,
+            billing_interval: mappedTier.interval,
+            updated_at: nowIso
+          })
+          .eq('id', targetUserId);
+      }
+    }
+
+    await dbClient.from('paddle_subscriptions').upsert(subRecord);
 
     // If scheduled to cancel at end of period, user keeps Pro access until period end
     if (scheduledChange?.action === 'cancel') {
@@ -400,7 +444,9 @@ export async function processPaddleWebhook(
       success: true,
       event_id: eventId,
       subscription_id: subscriptionId,
-      subscription_status: rawStatus || 'updated'
+      subscription_status: rawStatus || 'updated',
+      plan_tier: mappedTier?.tier,
+      billing_interval: mappedTier?.interval
     };
   }
 

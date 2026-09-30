@@ -101,7 +101,7 @@ export function getClientSafeEnv(options = {}) {
     ''
   ).trim();
 
-  const candidatePaddleTrialPrice = (
+  const candidatePaddleProMonthlyTrialPrice = (
     options.env?.VITE_PADDLE_PRO_MONTHLY_TRIAL_PRICE_ID ??
     options.env?.VITE_PADDLE_TRIAL_PRICE_ID ??
     fileEnv.VITE_PADDLE_PRO_MONTHLY_TRIAL_PRICE_ID ??
@@ -111,7 +111,7 @@ export function getClientSafeEnv(options = {}) {
     ''
   ).trim();
 
-  const candidatePaddleStdPrice = (
+  const candidatePaddleProMonthlyStdPrice = (
     options.env?.VITE_PADDLE_PRO_MONTHLY_STANDARD_PRICE_ID ??
     options.env?.VITE_PADDLE_STANDARD_PRICE_ID ??
     fileEnv.VITE_PADDLE_PRO_MONTHLY_STANDARD_PRICE_ID ??
@@ -121,17 +121,77 @@ export function getClientSafeEnv(options = {}) {
     ''
   ).trim();
 
+  const candidatePaddleProAnnualTrialPrice = (
+    options.env?.VITE_PADDLE_PRO_ANNUAL_TRIAL_PRICE_ID ??
+    fileEnv.VITE_PADDLE_PRO_ANNUAL_TRIAL_PRICE_ID ??
+    process.env.VITE_PADDLE_PRO_ANNUAL_TRIAL_PRICE_ID ??
+    ''
+  ).trim();
+
+  const candidatePaddleProAnnualStdPrice = (
+    options.env?.VITE_PADDLE_PRO_ANNUAL_STANDARD_PRICE_ID ??
+    fileEnv.VITE_PADDLE_PRO_ANNUAL_STANDARD_PRICE_ID ??
+    process.env.VITE_PADDLE_PRO_ANNUAL_STANDARD_PRICE_ID ??
+    ''
+  ).trim();
+
+  const candidatePaddlePlusMonthlyTrialPrice = (
+    options.env?.VITE_PADDLE_PLUS_MONTHLY_TRIAL_PRICE_ID ??
+    fileEnv.VITE_PADDLE_PLUS_MONTHLY_TRIAL_PRICE_ID ??
+    process.env.VITE_PADDLE_PLUS_MONTHLY_TRIAL_PRICE_ID ??
+    ''
+  ).trim();
+
+  const candidatePaddlePlusMonthlyStdPrice = (
+    options.env?.VITE_PADDLE_PLUS_MONTHLY_STANDARD_PRICE_ID ??
+    fileEnv.VITE_PADDLE_PLUS_MONTHLY_STANDARD_PRICE_ID ??
+    process.env.VITE_PADDLE_PLUS_MONTHLY_STANDARD_PRICE_ID ??
+    ''
+  ).trim();
+
+  const candidatePaddlePlusAnnualTrialPrice = (
+    options.env?.VITE_PADDLE_PLUS_ANNUAL_TRIAL_PRICE_ID ??
+    fileEnv.VITE_PADDLE_PLUS_ANNUAL_TRIAL_PRICE_ID ??
+    process.env.VITE_PADDLE_PLUS_ANNUAL_TRIAL_PRICE_ID ??
+    ''
+  ).trim();
+
+  const candidatePaddlePlusAnnualStdPrice = (
+    options.env?.VITE_PADDLE_PLUS_ANNUAL_STANDARD_PRICE_ID ??
+    fileEnv.VITE_PADDLE_PLUS_ANNUAL_STANDARD_PRICE_ID ??
+    process.env.VITE_PADDLE_PLUS_ANNUAL_STANDARD_PRICE_ID ??
+    ''
+  ).trim();
+
   if (candidatePaddleToken && !candidatePaddleToken.includes('placeholder')) {
     safeEnv.VITE_PADDLE_CLIENT_TOKEN = candidatePaddleToken;
   }
   if (candidatePaddleEnv && !candidatePaddleEnv.includes('placeholder')) {
     safeEnv.VITE_PADDLE_ENV = candidatePaddleEnv;
   }
-  if (candidatePaddleTrialPrice && !candidatePaddleTrialPrice.includes('placeholder')) {
-    safeEnv.VITE_PADDLE_PRO_MONTHLY_TRIAL_PRICE_ID = candidatePaddleTrialPrice;
+  if (candidatePaddleProMonthlyTrialPrice && !candidatePaddleProMonthlyTrialPrice.includes('placeholder')) {
+    safeEnv.VITE_PADDLE_PRO_MONTHLY_TRIAL_PRICE_ID = candidatePaddleProMonthlyTrialPrice;
   }
-  if (candidatePaddleStdPrice && !candidatePaddleStdPrice.includes('placeholder')) {
-    safeEnv.VITE_PADDLE_PRO_MONTHLY_STANDARD_PRICE_ID = candidatePaddleStdPrice;
+  if (candidatePaddleProMonthlyStdPrice && !candidatePaddleProMonthlyStdPrice.includes('placeholder')) {
+    safeEnv.VITE_PADDLE_PRO_MONTHLY_STANDARD_PRICE_ID = candidatePaddleProMonthlyStdPrice;
+  }
+  if (candidatePaddleProAnnualTrialPrice && !candidatePaddleProAnnualTrialPrice.includes('placeholder')) {
+    safeEnv.VITE_PADDLE_PRO_ANNUAL_TRIAL_PRICE_ID = candidatePaddleProAnnualTrialPrice;
+  }
+  if (candidatePaddleProAnnualStdPrice && !candidatePaddleProAnnualStdPrice.includes('placeholder')) {
+    safeEnv.VITE_PADDLE_PRO_ANNUAL_STANDARD_PRICE_ID = candidatePaddleProAnnualStdPrice;
+  }
+  if (candidatePaddlePlusMonthlyTrialPrice && !candidatePaddlePlusMonthlyTrialPrice.includes('placeholder')) {
+    safeEnv.VITE_PADDLE_PLUS_MONTHLY_TRIAL_PRICE_ID = candidatePaddlePlusMonthlyTrialPrice;
+  }
+  if (candidatePaddlePlusMonthlyStdPrice && !candidatePaddlePlusMonthlyStdPrice.includes('placeholder')) {
+    safeEnv.VITE_PADDLE_PLUS_MONTHLY_STANDARD_PRICE_ID = candidatePaddlePlusMonthlyStdPrice;
+  }
+  if (candidatePaddlePlusAnnualTrialPrice && !candidatePaddlePlusAnnualTrialPrice.includes('placeholder')) {
+    safeEnv.VITE_PADDLE_PLUS_ANNUAL_TRIAL_PRICE_ID = candidatePaddlePlusAnnualTrialPrice;
+  }
+  if (candidatePaddlePlusAnnualStdPrice && !candidatePaddlePlusAnnualStdPrice.includes('placeholder')) {
+    safeEnv.VITE_PADDLE_PLUS_ANNUAL_STANDARD_PRICE_ID = candidatePaddlePlusAnnualStdPrice;
   }
 
   return safeEnv;

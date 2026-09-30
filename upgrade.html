@@ -178,16 +178,27 @@ async function renderUpgradeCard() {
   const isTrialConsumed = Boolean(userProfile?.trial_consumed);
   const isTrialEligible = !isTrialConsumed && selectedTier.trialDays > 0;
 
+  const planInterval = isAnnual ? 'annual' : 'monthly';
   const displayPrice = isAnnual ? selectedTier.annualPrice : selectedTier.monthlyPrice;
   const intervalUnit = isAnnual ? '/ yr' : '/ mo';
   const subIntervalText = isAnnual
     ? `Billed annually (${escapeHtml(selectedTier.annualSavingText)})`
     : `or $${selectedTier.annualPrice.toFixed(2)}/yr billed annually (${escapeHtml(selectedTier.annualSavingText)})`;
+  const renewalAmount = isAnnual ? selectedTier.annualRenewalAmount : selectedTier.monthlyRenewalAmount;
+  const renewalRateText = `$${renewalAmount.toFixed(2)}${intervalUnit}`;
 
-  const paddlePriceId = getPaddlePriceId(isTrialEligible);
+  let paddlePriceId = '';
+  try {
+    paddlePriceId = getPaddlePriceId(selectedTier.id, planInterval, isTrialEligible);
+  } catch (err) {
+    console.error('[Upgrade Page] Price ID lookup error:', err);
+    displayCheckoutError(`Plan configuration error: ${err.message || String(err)}`);
+    return;
+  }
+
   const checkoutButtonLabel = isTrialEligible
-    ? 'Start 7-Day Free Trial'
-    : `Subscribe to ChoreMatrix Pro — $${displayPrice.toFixed(2)}/mo`;
+    ? `Start 7-Day Free Trial — ChoreMatrix ${escapeHtml(selectedTier.name)}`
+    : `Subscribe to ChoreMatrix ${escapeHtml(selectedTier.name)} — $${displayPrice.toFixed(2)}${intervalUnit}`;
 
   cardEl.innerHTML = `
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
@@ -228,15 +239,15 @@ async function renderUpgradeCard() {
     <!-- Transparent Continuous Service & Mandate Authorization Terms -->
     <div style="background: var(--panel-subtle); border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin: 20px 0; font-size: 12px; color: var(--muted); line-height: 1.45;">
       <strong style="color: var(--ink);">Continuous Service & Renewal Terms:</strong><br>
-      • Charged today: $${selectedTier.checkoutDisclosures.chargedToday.toFixed(2)}<br>
+      • Charged today: $${isTrialEligible ? selectedTier.checkoutDisclosures.chargedToday.toFixed(2) : displayPrice.toFixed(2)}<br>
       ${isTrialEligible ? `
         • 7-Day Free Trial: Payment method collected during checkout to authorize subscription. USD $0.00 charged today.<br>
-        • Recurring Renewal: USD $5.99/month billed automatically starting after the 7-day trial (${isAnnual ? `$${selectedTier.checkoutDisclosures.chargedAfterTrialAnnual.toFixed(2)}/yr` : `$${selectedTier.checkoutDisclosures.chargedAfterTrialMonthly.toFixed(2)}/mo`}) unless cancelled.<br>
+        • Recurring Renewal: USD ${renewalRateText} billed automatically starting after the 7-day trial (${isAnnual ? `$${selectedTier.checkoutDisclosures.chargedAfterTrialAnnual.toFixed(2)}/yr` : `$${selectedTier.checkoutDisclosures.chargedAfterTrialMonthly.toFixed(2)}/mo`}) unless cancelled.<br>
       ` : `
-        • Immediate Billing: USD $5.99/month billed automatically today and every month (${isAnnual ? `$${selectedTier.checkoutDisclosures.chargedAfterTrialAnnual.toFixed(2)}/yr` : `$${selectedTier.checkoutDisclosures.chargedAfterTrialMonthly.toFixed(2)}/mo`}) until cancelled.<br>
+        • Immediate Billing: USD ${renewalRateText} billed automatically today and every ${isAnnual ? 'year' : 'month'} until cancelled.<br>
       `}
       • Online Cancellation: Cancel online anytime via Account Settings prior to scheduled billing or trial expiration to prevent charges.<br>
-      • One-Trial Policy: Introductory 7-day trial is strictly one-time per ChoreMatrix account. Subsequent subscriptions renew immediately at $5.99/month.
+      • One-Trial Policy: Introductory 7-day trial is strictly one-time per ChoreMatrix account. Subsequent subscriptions renew immediately at ${renewalRateText}.
     </div>
 
     <div style="background: var(--badge-amber-bg); border: 1px solid var(--warn); border-radius: 8px; padding: 14px; margin-bottom: 20px; font-size: 12px; color: var(--ink); line-height: 1.45;">
@@ -314,7 +325,8 @@ async function renderUpgradeCard() {
           email: currentUser.email,
           userId: currentUser.id,
           plan: selectedTier.id,
-          interval: isAnnual ? 'annual' : 'monthly'
+          interval: isAnnual ? 'annual' : 'monthly',
+          priceId: paddlePriceId
         });
 
         if (!result.success) {

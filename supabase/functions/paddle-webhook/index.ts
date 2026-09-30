@@ -18,6 +18,27 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import crypto from 'node:crypto';
 import { Buffer } from 'node:buffer';
 
+const CANONICAL_PRICE_ENTITLEMENT_MAP: Record<string, { tier: 'pro' | 'plus'; interval: 'monthly' | 'annual' }> = {
+  // Pro Monthly
+  'pri_01m3q8bcndadvqgz9jbr26pmw3': { tier: 'pro', interval: 'monthly' }, // trial
+  'pri_01m3q8bcwn953t664zt4e9071z': { tier: 'pro', interval: 'monthly' }, // standard
+  // Pro Annual
+  'pri_01m3rc2rxpbwq45kpjbdc124ph': { tier: 'pro', interval: 'annual' },  // trial
+  'pri_01m3rcv82ahy3nvcbgtpkvpemp': { tier: 'pro', interval: 'annual' },  // standard
+  // Plus Monthly
+  'pri_01m3rc7qwjvt2ehz4p9xcsbhfq': { tier: 'plus', interval: 'monthly' }, // trial
+  'pri_01m3rcz5jsr2058j5e2v8zka84': { tier: 'plus', interval: 'monthly' }, // standard
+  // Plus Annual
+  'pri_01m3rc5nmgzwske72g5h6dsh32': { tier: 'plus', interval: 'annual' },  // trial
+  'pri_01m3rcx7d36mj5bw7wwrkg87mh': { tier: 'plus', interval: 'annual' }   // standard
+};
+
+function resolvePriceEntitlement(priceId: string | null | undefined): { tier: 'pro' | 'plus'; interval: 'monthly' | 'annual' } | null {
+  if (!priceId) return null;
+  const clean = priceId.trim();
+  return CANONICAL_PRICE_ENTITLEMENT_MAP[clean] || null;
+}
+
 function parseSignatureHeader(header: string | null): { ts: string; h1: string } | null {
   if (!header) return null;
   const parts = header.split(';');
@@ -200,9 +221,19 @@ serve(async (req: Request) => {
     const priceId = primaryItem.price?.id || primaryItem.price_id || '';
     const productId = primaryItem.price?.product_id || primaryItem.product_id || '';
 
+    const entitlement = resolvePriceEntitlement(priceId);
+
     // 7. Authoritative State Transitions
     // A. Trialing: Introductory 7-day free trial active
     if (eventType === 'subscription.trialing' || (eventType === 'subscription.created' && rawStatus === 'trialing')) {
+      if (!entitlement) {
+        console.error(`[Paddle Webhook Security] Refusing trial entitlement: Unknown or unmapped price ID "${priceId}" for subscription ${subscriptionId}`);
+        return new Response(JSON.stringify({ success: false, event_id: eventId, error: `Unknown price ID "${priceId}". Entitlement refused.` }), {
+          status: 422,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
       if (userProfile?.trial_consumed) {
         console.warn(`[Paddle Webhook] User ${targetUserId} already consumed trial. Denying repeat trial.`);
         return new Response(JSON.stringify({ success: true, event_id: eventId, warning: 'Duplicate trial denied' }), {
@@ -216,8 +247,8 @@ serve(async (req: Request) => {
       const { error: profileErr } = await dbClient
         .from('profiles')
         .update({
-          plan_tier: 'pro',
-          billing_interval: 'monthly',
+          plan_tier: entitlement.tier,
+          billing_interval: entitlement.interval,
           subscription_status: 'trialing',
           payment_provider: 'paddle',
           paddle_subscription_id: subscriptionId,
@@ -237,9 +268,9 @@ serve(async (req: Request) => {
         customer_id: customerId || '',
         price_id: priceId,
         product_id: productId,
-        plan_tier: 'pro',
+        plan_tier: entitlement.tier,
         status: 'trialing',
-        billing_interval: 'monthly',
+        billing_interval: entitlement.interval,
         has_trial: true,
         trial_ends_at: trialEndsAt,
         current_period_start: currentPeriod.starts_at || nowIso,
@@ -248,7 +279,7 @@ serve(async (req: Request) => {
       });
       if (subErr) console.error('[Paddle Webhook] paddle_subscriptions upsert error (trialing):', subErr);
 
-      console.log(`[Paddle Webhook] User ${targetUserId} trial activated (ends: ${trialEndsAt})`);
+      console.log(`[Paddle Webhook] User ${targetUserId} trial activated (${entitlement.tier} ${entitlement.interval}, ends: ${trialEndsAt})`);
     }
     // B. Activated / Standard Active / Converted from trial
     else if (
@@ -257,11 +288,19 @@ serve(async (req: Request) => {
       eventType === 'subscription.resumed' ||
       (eventType === 'transaction.completed' && subscriptionId)
     ) {
+      if (!entitlement) {
+        console.error(`[Paddle Webhook Security] Refusing active entitlement: Unknown or unmapped price ID "${priceId}" for subscription ${subscriptionId}`);
+        return new Response(JSON.stringify({ success: false, event_id: eventId, error: `Unknown price ID "${priceId}". Entitlement refused.` }), {
+          status: 422,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+
       const { error: profileErr } = await dbClient
         .from('profiles')
         .update({
-          plan_tier: 'pro',
-          billing_interval: 'monthly',
+          plan_tier: entitlement.tier,
+          billing_interval: entitlement.interval,
           subscription_status: 'active',
           payment_provider: 'paddle',
           paddle_subscription_id: subscriptionId,
@@ -279,9 +318,9 @@ serve(async (req: Request) => {
         customer_id: customerId || '',
         price_id: priceId,
         product_id: productId,
-        plan_tier: 'pro',
+        plan_tier: entitlement.tier,
         status: 'active',
-        billing_interval: 'monthly',
+        billing_interval: entitlement.interval,
         has_trial: Boolean(data.trial_period),
         current_period_start: currentPeriod.starts_at || nowIso,
         current_period_end: currentPeriod.ends_at || null,
@@ -290,25 +329,42 @@ serve(async (req: Request) => {
       });
       if (subErr) console.error('[Paddle Webhook] paddle_subscriptions upsert error (active):', subErr);
 
-      console.log(`[Paddle Webhook] User ${targetUserId} subscription active ($5.99/mo)`);
+      console.log(`[Paddle Webhook] User ${targetUserId} subscription active (${entitlement.tier} ${entitlement.interval})`);
     }
-    // C. Subscription Updated (e.g. cancellation scheduled at period end)
+    // C. Subscription Updated (e.g. cancellation scheduled at period end or plan change)
     else if (eventType === 'subscription.updated') {
       const scheduledChange = data.scheduled_change?.effective_at || null;
-      await dbClient.from('paddle_subscriptions').upsert({
+      const subUpsert: any = {
         user_id: targetUserId,
         subscription_id: subscriptionId,
         customer_id: customerId || '',
         price_id: priceId,
         product_id: productId,
-        plan_tier: 'pro',
         status: rawStatus || 'active',
-        billing_interval: 'monthly',
         scheduled_change: scheduledChange,
         current_period_start: currentPeriod.starts_at || null,
         current_period_end: currentPeriod.ends_at || null,
         updated_at: nowIso
-      });
+      };
+
+      if (entitlement) {
+        subUpsert.plan_tier = entitlement.tier;
+        subUpsert.billing_interval = entitlement.interval;
+
+        // If subscription is still active or trialing, update profile plan tier as well
+        if (rawStatus === 'active' || rawStatus === 'trialing') {
+          await dbClient
+            .from('profiles')
+            .update({
+              plan_tier: entitlement.tier,
+              billing_interval: entitlement.interval,
+              updated_at: nowIso
+            })
+            .eq('id', targetUserId);
+        }
+      }
+
+      await dbClient.from('paddle_subscriptions').upsert(subUpsert);
       console.log(`[Paddle Webhook] Subscription ${subscriptionId} updated (scheduled_change: ${scheduledChange})`);
     }
     // D. Canceled (Terminal state)
