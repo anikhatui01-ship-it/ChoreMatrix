@@ -211,9 +211,38 @@ serve(async (req: Request) => {
     // Query user profile
     const { data: userProfile } = await dbClient
       .from('profiles')
-      .select('id, trial_consumed, plan_tier, subscription_status')
+      .select('id, trial_consumed, plan_tier, subscription_status, paddle_subscription_id')
       .eq('id', targetUserId)
       .maybeSingle();
+
+    // Query local subscription record to enforce terminal cancellation invariant
+    const { data: localSubRecord } = subscriptionId ? await dbClient
+      .from('paddle_subscriptions')
+      .select('status, plan_tier, subscription_id')
+      .eq('subscription_id', subscriptionId)
+      .maybeSingle() : { data: null };
+
+    const isSubCancelled = localSubRecord?.status === 'canceled' || localSubRecord?.status === 'cancelled';
+    const isProfileCancelled = (userProfile?.subscription_status === 'canceled' || userProfile?.subscription_status === 'cancelled') &&
+      (userProfile?.paddle_subscription_id === subscriptionId || !userProfile?.paddle_subscription_id);
+
+    // INVARIANT: A cancelled subscription cannot be resurrected by subsequent webhooks
+    if (isSubCancelled || isProfileCancelled) {
+      if (eventType !== 'subscription.canceled' && rawStatus !== 'canceled' && rawStatus !== 'cancelled') {
+        console.warn(`[Paddle Webhook Safety] Blocked resurrection for cancelled subscription ${subscriptionId} (event: ${eventType}, status: ${rawStatus}). Preserving terminal free/cancelled state.`);
+        return new Response(JSON.stringify({
+          success: true,
+          event_id: eventId,
+          subscription_id: subscriptionId,
+          status: 'canceled',
+          plan_tier: 'free',
+          warning: 'Subscription already cancelled; resurrection prevented'
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
 
     const nowIso = new Date().toISOString();
     const currentPeriod = data.current_billing_period || {};
@@ -368,7 +397,7 @@ serve(async (req: Request) => {
       console.log(`[Paddle Webhook] Subscription ${subscriptionId} updated (scheduled_change: ${scheduledChange})`);
     }
     // D. Canceled (Terminal state)
-    else if (eventType === 'subscription.canceled' || rawStatus === 'canceled') {
+    else if (eventType === 'subscription.canceled' || rawStatus === 'canceled' || rawStatus === 'cancelled') {
       await dbClient
         .from('profiles')
         .update({

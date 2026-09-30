@@ -252,9 +252,36 @@ export async function processPaddleWebhook(
   // 8. Fetch current user profile to verify trial consumption invariant
   const { data: userProfile } = await dbClient
     .from('profiles')
-    .select('id, trial_consumed, plan_tier, subscription_status')
+    .select('id, trial_consumed, plan_tier, subscription_status, paddle_subscription_id')
     .eq('id', targetUserId)
     .maybeSingle();
+
+  // 8b. Fetch local subscription record to enforce terminal cancellation invariant
+  const { data: localSubRecord } = subscriptionId ? await dbClient
+    .from('paddle_subscriptions')
+    .select('status, plan_tier, subscription_id')
+    .eq('subscription_id', subscriptionId)
+    .maybeSingle() : { data: null };
+
+  const isSubCancelled = localSubRecord?.status === 'canceled' || localSubRecord?.status === 'cancelled';
+  const isProfileCancelled = (userProfile?.subscription_status === 'canceled' || userProfile?.subscription_status === 'cancelled') &&
+    (userProfile?.paddle_subscription_id === subscriptionId || !userProfile?.paddle_subscription_id);
+
+  // INVARIANT: Once a subscription is cancelled immediately, subsequent webhooks for that subscription
+  // CANNOT resurrect it back to trialing or active.
+  if (isSubCancelled || isProfileCancelled) {
+    if (eventType !== 'subscription.canceled' && rawStatus !== 'canceled' && rawStatus !== 'cancelled') {
+      console.warn(`[Paddle Webhook Safety] Blocked resurrection for cancelled subscription ${subscriptionId} (event: ${eventType}, status: ${rawStatus}). Preserving terminal free/cancelled state.`);
+      return {
+        success: true,
+        event_id: eventId,
+        subscription_id: subscriptionId,
+        subscription_status: 'canceled',
+        plan_tier: 'free',
+        message: 'Ignoring webhook for already cancelled subscription; terminal cancellation state preserved.'
+      };
+    }
+  }
 
   const nowIso = new Date().toISOString();
   const currentPeriod = data.current_billing_period || {};
@@ -451,7 +478,7 @@ export async function processPaddleWebhook(
   }
 
   // D. Subscription Canceled (Terminal state)
-  if (eventType === 'subscription.canceled' || rawStatus === 'canceled') {
+  if (eventType === 'subscription.canceled' || rawStatus === 'canceled' || rawStatus === 'cancelled') {
     // Revert user to free tier (trial_consumed remains true)
     await dbClient
       .from('profiles')

@@ -210,7 +210,7 @@ async function checkAccount() {
         const subNotice = document.getElementById('subScheduledNotice');
 
         // Server-authoritative state: display based on subscription_status from profile
-        if (profile.subscription_status === 'canceled') {
+        if (profile.subscription_status === 'canceled' || profile.subscription_status === 'cancelled') {
           // CANCELLED STATE: show Cancelled button, hide scheduled notice
           if (cancelBtn) {
             cancelBtn.style.display = 'inline-block';
@@ -353,7 +353,7 @@ document.getElementById('btnCancelSub')?.addEventListener('click', async () => {
   const cancelBtn = document.getElementById('btnCancelSub');
   if (cancelBtn) {
     cancelBtn.disabled = true;
-    cancelBtn.textContent = 'Cancellation in process...';
+    cancelBtn.textContent = 'Cancelling...';
   }
   let isSuccess = false;
   try {
@@ -403,26 +403,18 @@ document.getElementById('btnCancelSub')?.addEventListener('click', async () => {
       throw new Error(data.error || 'Failed to cancel subscription.');
     }
 
+    const isConfirmed = data.success && (data.status === 'cancelled' || data.status === 'canceled' || data.plan_tier === 'free');
+    if (!isConfirmed) {
+      throw new Error(data.error || 'Cancellation could not be confirmed by the server.');
+    }
+
     isSuccess = true;
 
-    // Immediate cancellation confirmed
+    // Refresh authoritative state from backend database to confirm persistence
+    await checkAccount();
+
+    // Immediate cancellation confirmed notice
     showNotice('✓ Subscription cancelled. Your paid access has ended.');
-
-    if (cancelBtn) {
-      cancelBtn.textContent = 'Cancelled';
-      cancelBtn.disabled = true;
-      cancelBtn.title = 'Subscription has been cancelled.';
-      cancelBtn.classList.remove('danger');
-    }
-
-    // Update plan display immediately
-    if (planField) {
-      planField.value = formatPlanTier('free');
-    }
-
-    // Hide the scheduled notice if visible
-    const subNotice = document.getElementById('subScheduledNotice');
-    if (subNotice) subNotice.style.display = 'none';
 
   } catch (err) {
     showError(err.message || "We couldn't cancel your subscription. Please try again.");

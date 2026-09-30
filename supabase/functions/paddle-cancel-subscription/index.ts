@@ -89,11 +89,12 @@ serve(async (req: Request) => {
         .maybeSingle();
 
       // If subscription_status is already canceled, return idempotent success
-      if (profile?.subscription_status === 'canceled') {
+      if (profile?.subscription_status === 'canceled' || profile?.subscription_status === 'cancelled') {
         return new Response(JSON.stringify({
           success: true,
           subscription_id: profile.paddle_subscription_id || null,
-          status: 'canceled',
+          status: 'cancelled',
+          plan_tier: 'free',
           message: 'Subscription is already cancelled.'
         }), {
           status: 200,
@@ -138,11 +139,12 @@ serve(async (req: Request) => {
     }
 
     // If subscription is already canceled in our DB, return idempotent success
-    if (ownedSub?.status === 'canceled') {
+    if (ownedSub?.status === 'canceled' || ownedSub?.status === 'cancelled') {
       return new Response(JSON.stringify({
         success: true,
         subscription_id: subId,
-        status: 'canceled',
+        status: 'cancelled',
+        plan_tier: 'free',
         message: 'Subscription is already cancelled.'
       }), {
         status: 200,
@@ -219,18 +221,23 @@ serve(async (req: Request) => {
 
         await dbClient
           .from('paddle_subscriptions')
-          .update({
+          .upsert({
+            user_id: user.id,
+            subscription_id: subId,
+            customer_id: ownedSub?.customer_id || '',
+            price_id: ownedSub?.price_id || '',
+            product_id: ownedSub?.product_id || '',
             status: 'canceled',
             plan_tier: 'free',
             scheduled_change: null,
             updated_at: nowIso
-          })
-          .eq('subscription_id', subId);
+          }, { onConflict: 'subscription_id' });
 
         return new Response(JSON.stringify({
           success: true,
           subscription_id: subId,
           status: 'canceled',
+          plan_tier: 'free',
           message: 'Subscription is already cancelled.'
         }), {
           status: 200,
@@ -265,16 +272,20 @@ serve(async (req: Request) => {
       console.error('[paddle-cancel-subscription] Profile update error:', profileErr);
     }
 
-    // Update paddle_subscriptions: mark as canceled
+    // Update paddle_subscriptions: mark as canceled (upsert to ensure row exists)
     const { error: subErr } = await dbClient
       .from('paddle_subscriptions')
-      .update({
+      .upsert({
+        user_id: user.id,
+        subscription_id: subId,
+        customer_id: ownedSub?.customer_id || '',
+        price_id: ownedSub?.price_id || '',
+        product_id: ownedSub?.product_id || '',
         status: 'canceled',
         plan_tier: 'free',
         scheduled_change: null,
         updated_at: nowIso
-      })
-      .eq('subscription_id', subId);
+      }, { onConflict: 'subscription_id' });
 
     if (subErr) {
       console.error('[paddle-cancel-subscription] Subscription record update error:', subErr);
@@ -286,6 +297,7 @@ serve(async (req: Request) => {
       success: true,
       subscription_id: subId,
       status: 'canceled',
+      plan_tier: 'free',
       message: 'Subscription cancelled. Your paid access has ended.'
     }), {
       status: 200,
