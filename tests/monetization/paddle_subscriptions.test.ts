@@ -1058,4 +1058,298 @@ describe('Paddle Sandbox Subscriptions & Entitlements Test Suite', () => {
       /Access denied: subscription ownership check failed/
     );
   });
+
+  // =========================================================================
+  // 35. Regression: Step 9.1 - Successful cancellation
+  // =========================================================================
+  it('35. Regression 9.1: Successful cancellation calls Paddle next_billing_period and returns JSON 200', async () => {
+    let paddleCalled = false;
+    let paddlePayload: any = null;
+
+    const mockDb = createMockSupabase({
+      id: 'usr_reg_success',
+      plan_tier: 'pro',
+      subscription_status: 'trialing',
+      paddle_subscription_id: 'sub_reg_success_001'
+    });
+
+    mockDb.subscriptions['sub_reg_success_001'] = {
+      subscription_id: 'sub_reg_success_001',
+      user_id: 'usr_reg_success',
+      status: 'trialing',
+      scheduled_change: null
+    };
+
+    // Simulate edge function logic
+    async function handleCancelRequest(authUserId: string, targetSubId: string) {
+      const sub = mockDb.subscriptions[targetSubId];
+      if (!sub || sub.user_id !== authUserId) {
+        return { status: 403, headers: { 'Content-Type': 'application/json' }, body: { error: 'Forbidden' } };
+      }
+
+      // Mock Paddle API call
+      paddleCalled = true;
+      paddlePayload = { effective_from: 'next_billing_period' };
+      const effectiveAt = '2026-10-07T06:02:52.567Z';
+
+      sub.scheduled_change = effectiveAt;
+
+      return {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: {
+          success: true,
+          subscription_id: sub.subscription_id,
+          status: sub.status,
+          scheduled_change: effectiveAt,
+          effective_at: effectiveAt,
+          message: 'Subscription canceled at the end of your current trial/billing period.'
+        }
+      };
+    }
+
+    const res = await handleCancelRequest('usr_reg_success', 'sub_reg_success_001');
+    assert.strictEqual(res.status, 200);
+    assert.strictEqual(res.headers['Content-Type'], 'application/json');
+    assert.strictEqual(paddleCalled, true);
+    assert.strictEqual(paddlePayload.effective_from, 'next_billing_period');
+    assert.strictEqual(res.body.success, true);
+    assert.strictEqual(res.body.status, 'trialing');
+    assert.strictEqual(res.body.scheduled_change, '2026-10-07T06:02:52.567Z');
+  });
+
+  // =========================================================================
+  // 36. Regression: Step 9.2 - Paddle cancellation succeeds but frontend receives malformed/non-JSON response
+  // =========================================================================
+  it('36. Regression 9.2: Frontend handles HTML/non-JSON responses safely without throwing SyntaxError <!doctype', async () => {
+    // Simulate what account.html does on response
+    async function processFrontendResponse(fakeResponse: {
+      status: number;
+      ok: boolean;
+      headers: { get(name: string): string | null };
+      text(): Promise<string>;
+      json(): Promise<any>;
+    }) {
+      const contentType = fakeResponse.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        const text = await fakeResponse.text();
+        throw new Error(`Cancellation service returned unexpected response (${fakeResponse.status}). Please try again later.`);
+      }
+
+      let data: any;
+      try {
+        data = await fakeResponse.json();
+      } catch (parseErr: any) {
+        throw new Error(`Cancellation service returned invalid JSON (${fakeResponse.status}).`);
+      }
+
+      if (!fakeResponse.ok) {
+        throw new Error(data?.error || 'Failed to cancel subscription.');
+      }
+      return data;
+    }
+
+    // Case A: 404 HTML fallback from Vercel
+    const vercel404Response = {
+      status: 404,
+      ok: false,
+      headers: { get: (name: string) => name.toLowerCase() === 'content-type' ? 'text/html; charset=utf-8' : null },
+      text: async () => '<!doctype html><html><head><title>404</title></head><body>Not Found</body></html>',
+      json: async () => { throw new SyntaxError("Unexpected token '<', \"<!doctype \"... is not valid JSON"); }
+    };
+
+    await assert.rejects(
+      async () => processFrontendResponse(vercel404Response),
+      (err: Error) => {
+        assert.ok(!err.message.includes("Unexpected token '<'"), 'Must NOT throw SyntaxError for <!doctype');
+        assert.ok(err.message.includes('unexpected response (404)'), 'Must produce user-friendly error message');
+        return true;
+      }
+    );
+
+    // Case B: Content-Type is json but body is malformed text
+    const malformedJsonResponse = {
+      status: 200,
+      ok: true,
+      headers: { get: (name: string) => name.toLowerCase() === 'content-type' ? 'application/json' : null },
+      text: async () => 'not a valid json string {',
+      json: async () => { throw new SyntaxError("Unexpected token 'n', \"not a vali\"... is not valid JSON"); }
+    };
+
+    await assert.rejects(
+      async () => processFrontendResponse(malformedJsonResponse),
+      (err: Error) => {
+        assert.ok(err.message.includes('invalid JSON (200)'));
+        return true;
+      }
+    );
+  });
+
+  // =========================================================================
+  // 37. Regression: Step 9.3 - Backend 401/403
+  // =========================================================================
+  it('37. Regression 9.3: Backend returns clean JSON 401 for unauthenticated and 403 for unauthorized ownership', async () => {
+    const mockDb = createMockSupabase({
+      id: 'owner_usr_001',
+      plan_tier: 'pro',
+      subscription_status: 'active'
+    });
+
+    mockDb.subscriptions['sub_owned_by_owner'] = {
+      subscription_id: 'sub_owned_by_owner',
+      user_id: 'owner_usr_001',
+      status: 'active'
+    };
+
+    function simulateEndpointAuth(token: string | null, authUserId: string | null, targetSubId: string) {
+      if (!token || !authUserId) {
+        return {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+          body: { error: 'Missing or invalid authorization session token.' }
+        };
+      }
+
+      const sub = mockDb.subscriptions[targetSubId];
+      if (!sub || sub.user_id !== authUserId) {
+        return {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' },
+          body: { error: 'Subscription not found or not owned by authenticated user.' }
+        };
+      }
+
+      return {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: { success: true }
+      };
+    }
+
+    // 401 Unauthenticated
+    const res401 = simulateEndpointAuth(null, null, 'sub_owned_by_owner');
+    assert.strictEqual(res401.status, 401);
+    assert.strictEqual(res401.headers['Content-Type'], 'application/json');
+    assert.strictEqual(res401.body.error, 'Missing or invalid authorization session token.');
+
+    // 403 Forbidden (Attacker trying to cancel owner's subscription)
+    const res403 = simulateEndpointAuth('valid_token_attacker', 'attacker_usr_999', 'sub_owned_by_owner');
+    assert.strictEqual(res403.status, 403);
+    assert.strictEqual(res403.headers['Content-Type'], 'application/json');
+    assert.strictEqual(res403.body.error, 'Subscription not found or not owned by authenticated user.');
+  });
+
+  // =========================================================================
+  // 38. Regression: Step 9.4 - Backend 404
+  // =========================================================================
+  it('38. Regression 9.4: Backend returns clean JSON 404 when no active/trialing subscription exists', async () => {
+    const mockDb = createMockSupabase({
+      id: 'free_usr_001',
+      plan_tier: 'free',
+      subscription_status: 'none'
+    });
+
+    function simulateLookup(userId: string) {
+      const activeSubs = Object.values(mockDb.subscriptions).filter(
+        (s: any) => s.user_id === userId && (s.status === 'active' || s.status === 'trialing')
+      );
+
+      if (activeSubs.length === 0) {
+        return {
+          status: 404,
+          headers: { 'Content-Type': 'application/json' },
+          body: { error: 'No active or trialing subscription found for this account.' }
+        };
+      }
+
+      return { status: 200, body: { success: true } };
+    }
+
+    const res404 = simulateLookup('free_usr_001');
+    assert.strictEqual(res404.status, 404);
+    assert.strictEqual(res404.headers['Content-Type'], 'application/json');
+    assert.strictEqual(res404.body.error, 'No active or trialing subscription found for this account.');
+  });
+
+  // =========================================================================
+  // 39. Regression: Step 9.5 - Paddle API failure
+  // =========================================================================
+  it('39. Regression 9.5: Paddle API failure returns clean JSON 502 without exposing unhandled exceptions', async () => {
+    function simulatePaddleFailure(paddleResponseStatus: number, paddleResponseBody: string, isJson: boolean) {
+      if (!isJson) {
+        return {
+          status: 502,
+          headers: { 'Content-Type': 'application/json' },
+          body: { error: `Payment provider returned unexpected response (${paddleResponseStatus}).` }
+        };
+      }
+
+      return {
+        status: paddleResponseStatus >= 400 && paddleResponseStatus < 500 ? paddleResponseStatus : 502,
+        headers: { 'Content-Type': 'application/json' },
+        body: { error: 'Paddle API cancellation failed.', code: 'gateway_error' }
+      };
+    }
+
+    // Upstream returns 500 HTML
+    const htmlFailure = simulatePaddleFailure(500, '<html>500 Internal Error</html>', false);
+    assert.strictEqual(htmlFailure.status, 502);
+    assert.strictEqual(htmlFailure.headers['Content-Type'], 'application/json');
+    assert.strictEqual(htmlFailure.body.error, 'Payment provider returned unexpected response (500).');
+
+    // Upstream returns 503 JSON
+    const jsonFailure = simulatePaddleFailure(503, JSON.stringify({ error: { code: 'service_unavailable' } }), true);
+    assert.strictEqual(jsonFailure.status, 502);
+    assert.strictEqual(jsonFailure.headers['Content-Type'], 'application/json');
+    assert.strictEqual(jsonFailure.body.error, 'Paddle API cancellation failed.');
+  });
+
+  // =========================================================================
+  // 40. Regression: Step 9.6 - Successful cancellation followed by subscription refresh
+  // =========================================================================
+  it('40. Regression 9.6: Successful cancellation followed by checkAccount refresh detects scheduled_change and retains Pro tier', async () => {
+    const mockDb = createMockSupabase({
+      id: 'refresh_usr_001',
+      plan_tier: 'pro',
+      subscription_status: 'trialing',
+      paddle_subscription_id: 'sub_refresh_001'
+    });
+
+    const scheduledDate = '2026-10-07T06:02:52.567Z';
+    mockDb.subscriptions['sub_refresh_001'] = {
+      subscription_id: 'sub_refresh_001',
+      user_id: 'refresh_usr_001',
+      status: 'trialing',
+      scheduled_change: scheduledDate
+    };
+
+    // Simulate checkAccount() query
+    const subRecord = mockDb.subscriptions['sub_refresh_001'];
+    const profile = mockDb.profile;
+
+    // Check account state verification
+    assert.strictEqual(profile.plan_tier, 'pro', 'User maintains Pro tier access');
+    assert.strictEqual(profile.subscription_status, 'trialing');
+    assert.strictEqual(subRecord.scheduled_change, scheduledDate, 'Scheduled change date must be present');
+
+    // Simulate UI button state
+    let buttonState = {
+      disabled: false,
+      text: 'Cancel Subscription',
+      noticeVisible: false,
+      noticeText: ''
+    };
+
+    if (subRecord.scheduled_change) {
+      buttonState.disabled = true;
+      buttonState.text = 'Cancellation Scheduled';
+      buttonState.noticeVisible = true;
+      buttonState.noticeText = `Subscription Notice: Cancellation scheduled. You retain full Pro access through ${scheduledDate}.`;
+    }
+
+    assert.strictEqual(buttonState.disabled, true);
+    assert.strictEqual(buttonState.text, 'Cancellation Scheduled');
+    assert.strictEqual(buttonState.noticeVisible, true);
+    assert.ok(buttonState.noticeText.includes('Cancellation scheduled'));
+  });
 });

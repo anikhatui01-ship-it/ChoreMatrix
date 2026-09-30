@@ -402,13 +402,26 @@ document.getElementById('btnCancelSub')?.addEventListener('click', async () => {
     });
 
     const contentType = res.headers.get('content-type') || '';
+    console.log('[Account Cancellation Diagnostic]', {
+      url: directEndpoint,
+      status: res.status,
+      contentType
+    });
+
     if (!contentType.includes('application/json')) {
       const textResp = await res.text();
       console.error('[Account] Non-JSON response from cancellation endpoint:', res.status, textResp.slice(0, 150));
       throw new Error(`Cancellation service returned unexpected response (${res.status}). Please try again later.`);
     }
 
-    const data = await res.json();
+    let data;
+    try {
+      data = await res.json();
+    } catch (parseErr) {
+      console.error('[Account] JSON parse failure:', parseErr);
+      throw new Error(`Cancellation service returned invalid JSON (${res.status}).`);
+    }
+
     if (!res.ok) {
       throw new Error(data.error || 'Failed to cancel subscription.');
     }
