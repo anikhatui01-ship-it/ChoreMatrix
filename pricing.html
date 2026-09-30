@@ -33,19 +33,21 @@
   .pricing-header {
     text-align: center;
     padding: 40px 0 24px;
-    max-width: 700px;
+    max-width: 680px;
     margin: 0 auto;
   }
   .pricing-header h1 {
-    font-size: 36px;
-    font-weight: 800;
+    font-size: 34px;
+    font-weight: 700;
+    letter-spacing: -0.025em;
     margin: 0 0 12px;
     color: var(--ink);
   }
   .pricing-header p {
-    font-size: 16px;
-    color: var(--muted);
+    font-size: 15px;
+    color: var(--text-secondary);
     margin: 0 0 20px;
+    line-height: 1.5;
   }
   .pricing-grid {
     display: grid;
@@ -57,38 +59,47 @@
   .tier-card {
     background: var(--panel);
     border: 1px solid var(--line);
-    border-radius: var(--radius);
+    border-radius: 18px;
     padding: 28px;
     box-shadow: var(--shadow);
     display: flex;
     flex-direction: column;
     position: relative;
+    transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+  }
+  .tier-card:hover {
+    transform: translateY(-2px);
+    border-color: var(--line-subtle);
+    box-shadow: var(--shadow-lg);
   }
   .tier-card.popular {
-    border-color: var(--accent);
-    box-shadow: 0 8px 30px rgba(15, 118, 110, 0.15);
+    border-color: var(--primary);
+    box-shadow: 0 4px 20px rgba(79, 175, 143, 0.16);
   }
   .tier-popular-tag {
     position: absolute;
-    top: -12px;
+    top: -11px;
     right: 24px;
-    background: var(--accent);
-    color: #fff;
+    background: var(--primary);
+    color: var(--primary-text);
     font-size: 11px;
-    font-weight: 800;
+    font-weight: 700;
     text-transform: uppercase;
-    padding: 3px 10px;
-    border-radius: 99px;
+    letter-spacing: 0.04em;
+    padding: 3px 12px;
+    border-radius: 9999px;
+    box-shadow: 0 2px 6px rgba(79, 175, 143, 0.3);
   }
   .tier-price {
-    font-size: 36px;
-    font-weight: 800;
+    font-size: 38px;
+    font-weight: 700;
+    letter-spacing: -0.03em;
     color: var(--ink);
     margin: 16px 0 4px;
   }
   .tier-price small {
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 500;
     color: var(--muted);
   }
   .tier-annual {
@@ -110,11 +121,12 @@
     align-items: flex-start;
     gap: 8px;
     color: var(--ink);
+    line-height: 1.4;
   }
   .tier-features li::before {
     content: "✓";
     color: var(--good);
-    font-weight: 800;
+    font-weight: 700;
   }
   .tier-limits {
     list-style: none;
@@ -136,23 +148,23 @@
   }
   .billing-toggle {
     display: inline-flex;
-    background: var(--panel);
+    background: var(--panel-subtle);
     border: 1px solid var(--line);
-    border-radius: 99px;
-    padding: 4px;
-    gap: 4px;
-    box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.06));
+    border-radius: 9999px;
+    padding: 3px;
+    gap: 3px;
+    box-shadow: var(--shadow-subtle);
   }
   .billing-toggle-btn {
     border: none;
     background: transparent;
-    color: var(--muted);
+    color: var(--text-secondary);
     font-size: 13px;
-    font-weight: 700;
-    padding: 8px 18px;
-    border-radius: 99px;
+    font-weight: 600;
+    padding: 7px 18px;
+    border-radius: 9999px;
     cursor: pointer;
-    transition: all 0.2s ease;
+    transition: all 0.14s ease;
     display: inline-flex;
     align-items: center;
   }
@@ -160,9 +172,9 @@
     color: var(--ink);
   }
   .billing-toggle-btn.active {
-    background: var(--accent);
-    color: #fff;
-    box-shadow: 0 2px 8px rgba(15, 118, 110, 0.25);
+    background: var(--btn-dark-bg);
+    color: var(--btn-dark-text);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.14);
   }
   @media (max-width: 900px) {
     .pricing-grid { grid-template-columns: 1fr; }
