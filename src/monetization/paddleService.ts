@@ -8,7 +8,7 @@
  *    - Trial entitlement marked ONLY on authoritative subscription.trialing event.
  *    - Once consumed, trial cannot be repeated.
  * 4. Subscription state synchronization (active, trialing, past_due, canceled, paused).
- * 5. Cancellation via Paddle API with scheduled change tracking.
+ * 5. Cancellation via Paddle API with immediate termination (effective_from: "immediately").
  */
 
 import crypto from 'node:crypto';
@@ -584,12 +584,13 @@ export async function handlePaddleWebhookEvent(
 
 /**
  * Cancels a Paddle subscription on the gateway using the server API key.
- * By default schedules cancellation for the end of the current billing cycle / trial period.
+ * PRODUCT POLICY: Cancellation is IMMEDIATE by default.
+ * The subscription is terminated right away and paid access ends immediately.
  */
 export async function cancelPaddleSubscription(
   subscriptionId: string,
   credentials: { apiKey: string; baseUrl?: string },
-  effectiveFrom: 'next_billing_period' | 'immediately' = 'next_billing_period',
+  effectiveFrom: 'next_billing_period' | 'immediately' = 'immediately',
   customFetch: typeof fetch = fetch
 ): Promise<{ success: boolean; data?: any; error?: string }> {
   const { apiKey, baseUrl = 'https://sandbox-api.paddle.com' } = credentials;

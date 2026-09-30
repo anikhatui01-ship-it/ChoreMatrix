@@ -209,50 +209,26 @@ async function checkAccount() {
         const cancelBtn = document.getElementById('btnCancelSub');
         const subNotice = document.getElementById('subScheduledNotice');
 
-        let scheduledChangeDate = null;
-        if (supabase && profile.plan_tier && profile.plan_tier !== 'free') {
-          try {
-            const { data: subRecord } = await supabase
-              .from('paddle_subscriptions')
-              .select('scheduled_change, current_period_end, trial_ends_at, status')
-              .eq('user_id', user.id)
-              .like('subscription_id', 'sub_%')
-              .in('status', ['active', 'trialing'])
-              .order('created_at', { ascending: false })
-              .limit(1)
-              .maybeSingle();
-
-            if (subRecord?.scheduled_change) {
-              scheduledChangeDate = subRecord.scheduled_change;
-            }
-          } catch (subErr) {
-            console.warn('[Account] Subscription fetch warning:', subErr);
-          }
-        }
-
-        if (profile.plan_tier && profile.plan_tier !== 'free' && (profile.subscription_status === 'active' || profile.subscription_status === 'trialing')) {
+        // Server-authoritative state: display based on subscription_status from profile
+        if (profile.subscription_status === 'canceled') {
+          // CANCELLED STATE: show Cancelled button, hide scheduled notice
           if (cancelBtn) {
             cancelBtn.style.display = 'inline-block';
-            if (scheduledChangeDate) {
-              cancelBtn.disabled = true;
-              cancelBtn.textContent = 'Cancellation Scheduled';
-              cancelBtn.title = 'Cancellation is already scheduled for the end of the current billing/trial period.';
-            } else {
-              cancelBtn.disabled = false;
-              cancelBtn.textContent = 'Cancel Subscription';
-              cancelBtn.title = '';
-            }
+            cancelBtn.disabled = true;
+            cancelBtn.textContent = 'Cancelled';
+            cancelBtn.title = 'Subscription has been cancelled.';
+            cancelBtn.classList.remove('danger');
           }
-          if (subNotice) {
-            if (scheduledChangeDate) {
-              const d = new Date(scheduledChangeDate);
-              const formatted = !isNaN(d.getTime()) ? d.toLocaleDateString(undefined, { dateStyle: 'medium' }) : scheduledChangeDate;
-              subNotice.innerHTML = `<strong>Subscription Notice:</strong> Cancellation scheduled. You retain full ${profile.plan_tier === 'pro' ? 'Pro' : 'Plus'} access through <strong>${formatted}</strong>.`;
-              subNotice.style.display = 'block';
-            } else {
-              subNotice.style.display = 'none';
-            }
+          if (subNotice) subNotice.style.display = 'none';
+        } else if (profile.plan_tier && profile.plan_tier !== 'free' && (profile.subscription_status === 'active' || profile.subscription_status === 'trialing')) {
+          // ACTIVE/TRIALING STATE: show Cancel Subscription button
+          if (cancelBtn) {
+            cancelBtn.style.display = 'inline-block';
+            cancelBtn.disabled = false;
+            cancelBtn.textContent = 'Cancel Subscription';
+            cancelBtn.title = '';
           }
+          if (subNotice) subNotice.style.display = 'none';
         } else {
           if (cancelBtn) cancelBtn.style.display = 'none';
           if (subNotice) subNotice.style.display = 'none';
@@ -369,15 +345,15 @@ document.getElementById('changePassForm')?.addEventListener('submit', async (e) 
   }
 });
 
-// 4b. Cancel Subscription
+// 4b. Cancel Subscription — IMMEDIATE CANCELLATION POLICY
 document.getElementById('btnCancelSub')?.addEventListener('click', async () => {
-  if (!confirm('Are you sure you want to cancel your subscription? You will retain access until the end of your current trial/billing period.')) {
+  if (!confirm('Are you sure you want to cancel your subscription? Your paid access will end immediately.')) {
     return;
   }
   const cancelBtn = document.getElementById('btnCancelSub');
   if (cancelBtn) {
     cancelBtn.disabled = true;
-    cancelBtn.textContent = 'Cancelling…';
+    cancelBtn.textContent = 'Cancellation in process...';
   }
   let isSuccess = false;
   try {
@@ -428,32 +404,28 @@ document.getElementById('btnCancelSub')?.addEventListener('click', async () => {
     }
 
     isSuccess = true;
-    const effectiveDate = data.scheduled_change || data.effective_at;
-    let formattedDate = '';
-    if (effectiveDate) {
-      try {
-        const d = new Date(effectiveDate);
-        if (!isNaN(d.getTime())) {
-          formattedDate = d.toLocaleDateString(undefined, { dateStyle: 'medium' });
-        }
-      } catch {}
-    }
 
-    const confirmationMsg = formattedDate
-      ? `Subscription canceled at the end of your current trial/billing period (Access active through ${formattedDate}).`
-      : 'Subscription canceled at the end of your current trial/billing period.';
-
-    showNotice(`✓ ${confirmationMsg}`);
+    // Immediate cancellation confirmed
+    showNotice('✓ Subscription cancelled. Your paid access has ended.');
 
     if (cancelBtn) {
-      cancelBtn.textContent = 'Cancellation Scheduled';
+      cancelBtn.textContent = 'Cancelled';
       cancelBtn.disabled = true;
-      cancelBtn.title = 'Cancellation is already scheduled for the end of the current billing/trial period.';
+      cancelBtn.title = 'Subscription has been cancelled.';
+      cancelBtn.classList.remove('danger');
     }
 
-    await checkAccount();
+    // Update plan display immediately
+    if (planField) {
+      planField.value = formatPlanTier('free');
+    }
+
+    // Hide the scheduled notice if visible
+    const subNotice = document.getElementById('subScheduledNotice');
+    if (subNotice) subNotice.style.display = 'none';
+
   } catch (err) {
-    showError(err.message || 'Error cancelling subscription.');
+    showError(err.message || "We couldn't cancel your subscription. Please try again.");
     if (cancelBtn && !isSuccess) {
       cancelBtn.disabled = false;
       cancelBtn.textContent = 'Cancel Subscription';
