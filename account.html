@@ -216,6 +216,7 @@ async function checkAccount() {
               .from('paddle_subscriptions')
               .select('scheduled_change, current_period_end, trial_ends_at, status')
               .eq('user_id', user.id)
+              .like('subscription_id', 'sub_%')
               .in('status', ['active', 'trialing'])
               .order('created_at', { ascending: false })
               .limit(1)
