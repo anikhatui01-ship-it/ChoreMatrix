@@ -16,6 +16,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import crypto from 'node:crypto';
+import { Buffer } from 'node:buffer';
 
 function parseSignatureHeader(header: string | null): { ts: string; h1: string } | null {
   if (!header) return null;
@@ -32,15 +33,30 @@ function parseSignatureHeader(header: string | null): { ts: string; h1: string }
 
 function verifySignature(header: string | null, rawBody: string, secret: string): boolean {
   const parsed = parseSignatureHeader(header);
-  if (!parsed || !rawBody || !secret) return false;
+  if (!parsed || !rawBody || !secret) {
+    console.warn('[Paddle Webhook] Missing signature parts, body, or secret:', {
+      hasParsed: !!parsed,
+      hasBody: !!rawBody,
+      hasSecret: !!secret
+    });
+    return false;
+  }
   try {
     const payload = `${parsed.ts}:${rawBody}`;
     const expected = crypto.createHmac('sha256', secret.trim()).update(payload).digest('hex');
     const h1Buf = Buffer.from(parsed.h1.trim(), 'utf8');
     const expBuf = Buffer.from(expected.trim(), 'utf8');
-    if (h1Buf.length !== expBuf.length) return false;
-    return crypto.timingSafeEqual(h1Buf, expBuf);
-  } catch {
+    if (h1Buf.length !== expBuf.length) {
+      console.warn('[Paddle Webhook] Signature length mismatch:', h1Buf.length, expBuf.length);
+      return false;
+    }
+    const match = crypto.timingSafeEqual(h1Buf, expBuf);
+    if (!match) {
+      console.warn('[Paddle Webhook] HMAC signature mismatch');
+    }
+    return match;
+  } catch (err) {
+    console.error('[Paddle Webhook] verifySignature exception:', err);
     return false;
   }
 }
@@ -92,7 +108,8 @@ serve(async (req: Request) => {
     const eventId = deriveEventId(payload);
     const eventType = String(payload.event_type || '');
     const data = payload.data || {};
-    const subscriptionId = data.id || data.subscription_id || null;
+    const isSubscriptionEvent = eventType.startsWith('subscription.');
+    const subscriptionId = isSubscriptionEvent ? data.id : (data.subscription_id || data.id || null);
     const customerId = data.customer_id || null;
     const rawStatus = (data.status || '').toLowerCase();
 
@@ -196,7 +213,7 @@ serve(async (req: Request) => {
 
       const trialEndsAt = currentPeriod.ends_at || new Date(Date.now() + 7 * 86400 * 1000).toISOString();
 
-      await dbClient
+      const { error: profileErr } = await dbClient
         .from('profiles')
         .update({
           plan_tier: 'pro',
@@ -212,8 +229,9 @@ serve(async (req: Request) => {
           updated_at: nowIso
         })
         .eq('id', targetUserId);
+      if (profileErr) console.error('[Paddle Webhook] Profile update error (trialing):', profileErr);
 
-      await dbClient.from('paddle_subscriptions').upsert({
+      const { error: subErr } = await dbClient.from('paddle_subscriptions').upsert({
         user_id: targetUserId,
         subscription_id: subscriptionId,
         customer_id: customerId || '',
@@ -228,6 +246,7 @@ serve(async (req: Request) => {
         current_period_end: currentPeriod.ends_at || trialEndsAt,
         updated_at: nowIso
       });
+      if (subErr) console.error('[Paddle Webhook] paddle_subscriptions upsert error (trialing):', subErr);
 
       console.log(`[Paddle Webhook] User ${targetUserId} trial activated (ends: ${trialEndsAt})`);
     }
@@ -238,7 +257,7 @@ serve(async (req: Request) => {
       eventType === 'subscription.resumed' ||
       (eventType === 'transaction.completed' && subscriptionId)
     ) {
-      await dbClient
+      const { error: profileErr } = await dbClient
         .from('profiles')
         .update({
           plan_tier: 'pro',
@@ -252,8 +271,9 @@ serve(async (req: Request) => {
           updated_at: nowIso
         })
         .eq('id', targetUserId);
+      if (profileErr) console.error('[Paddle Webhook] Profile update error (active):', profileErr);
 
-      await dbClient.from('paddle_subscriptions').upsert({
+      const { error: subErr } = await dbClient.from('paddle_subscriptions').upsert({
         user_id: targetUserId,
         subscription_id: subscriptionId,
         customer_id: customerId || '',
@@ -268,6 +288,7 @@ serve(async (req: Request) => {
         scheduled_change: null,
         updated_at: nowIso
       });
+      if (subErr) console.error('[Paddle Webhook] paddle_subscriptions upsert error (active):', subErr);
 
       console.log(`[Paddle Webhook] User ${targetUserId} subscription active ($5.99/mo)`);
     }

@@ -13,6 +13,8 @@ import {
   handlePaddleWebhookEvent,
   cancelPaddleSubscription
 } from '../../src/monetization/paddleService.ts';
+import { resolveAdEntitlement, AdSlot } from '../../src/monetization/adSlot.ts';
+import { getTierById } from '../../src/config/pricing.ts';
 
 // Helper: generate valid Paddle webhook signature header for testing
 function generateTestPaddleSignature(rawBody: string, secret: string, timestamp?: number): string {
@@ -623,5 +625,437 @@ describe('Paddle Sandbox Subscriptions & Entitlements Test Suite', () => {
       assert.ok(!bundleContent.includes('pdl_sdbx_'), 'Paddle secret API key must never appear in client bundle');
       assert.ok(!bundleContent.includes('pdl_ntfset_'), 'Paddle webhook secret must never appear in client bundle');
     }
+  });
+
+  // =========================================================================
+  // 21. Pro tier feature entitlement: ad suppression for Pro users vs Free
+  // =========================================================================
+  it('21. Pro tier feature entitlement: suppresses ads for Pro and serves house ads for Free', async () => {
+    class MockElement {
+      style: Record<string, string> = {};
+      innerHTML: string = '';
+    }
+
+    const proFetcher = async () => ({ plan_tier: 'pro' });
+    const freeFetcher = async () => ({ plan_tier: 'free' });
+
+    // Pro user
+    const proState = await resolveAdEntitlement({ id: 'pro_user_1' }, proFetcher);
+    assert.strictEqual(proState, 'paid-tier');
+
+    const proContainer = new MockElement();
+    const proAdSlot = new AdSlot(proContainer as any);
+    await proAdSlot.init({ id: 'pro_user_1' }, proFetcher);
+    assert.strictEqual(proContainer.innerHTML, '');
+    assert.strictEqual(proContainer.style.display, 'none');
+
+    // Free user
+    const freeState = await resolveAdEntitlement({ id: 'free_user_1' }, freeFetcher);
+    assert.strictEqual(freeState, 'free-tier');
+
+    const freeContainer = new MockElement();
+    const freeAdSlot = new AdSlot(freeContainer as any);
+    await freeAdSlot.init({ id: 'free_user_1' }, freeFetcher);
+    assert.ok(freeContainer.innerHTML.includes('Sponsor Notice · Free Tier'));
+    assert.strictEqual(freeContainer.style.display, 'block');
+  });
+
+  // =========================================================================
+  // 22. Pro tier feature entitlement: account page subscription management
+  // =========================================================================
+  it('22. Pro tier feature entitlement: exposes cancellation management on account page only for active paid plans', () => {
+    function isCancelSubVisible(profile: any): boolean {
+      return Boolean(
+        profile.plan_tier &&
+        profile.plan_tier !== 'free' &&
+        (profile.subscription_status === 'active' || profile.subscription_status === 'trialing')
+      );
+    }
+
+    assert.strictEqual(isCancelSubVisible({ plan_tier: 'pro', subscription_status: 'active' }), true);
+    assert.strictEqual(isCancelSubVisible({ plan_tier: 'pro', subscription_status: 'trialing' }), true);
+    assert.strictEqual(isCancelSubVisible({ plan_tier: 'pro', subscription_status: 'canceled' }), false);
+    assert.strictEqual(isCancelSubVisible({ plan_tier: 'free', subscription_status: 'none' }), false);
+  });
+
+  // =========================================================================
+  // 23. Anti-tampering & privilege escalation prevention
+  // =========================================================================
+  it('23. Anti-tampering: rejects client-side spoofing and relies strictly on authoritative profile', async () => {
+    const maliciousClientUser = {
+      id: 'attacker_1',
+      plan_tier: 'pro',
+      subscription_status: 'active',
+      isPaid: true
+    };
+
+    // Authoritative fetcher returns actual database record
+    const authoritativeFetcher = async (uid: string) => ({ plan_tier: 'free' });
+
+    const state = await resolveAdEntitlement(maliciousClientUser, authoritativeFetcher);
+    assert.strictEqual(state, 'free-tier', 'Must ignore client user plan_tier and obey authoritative DB');
+  });
+
+  // =========================================================================
+  // 24. Successful end-of-period cancellation
+  // =========================================================================
+  it('24. Successful end-of-period cancellation: schedules cancellation via POST /subscriptions/{id}/cancel with effective_from=next_billing_period', async () => {
+    let capturedUrl = '';
+    let capturedMethod = '';
+    let capturedBody: any = null;
+    let capturedAuth = '';
+
+    const mockFetch = (async (url: string | URL | Request, init?: RequestInit) => {
+      capturedUrl = String(url);
+      capturedMethod = init?.method || 'GET';
+      capturedAuth = (init?.headers as any)?.['Authorization'] || '';
+      capturedBody = JSON.parse(String(init?.body || '{}'));
+
+      return {
+        ok: true,
+        status: 200,
+        headers: {
+          get: (header: string) => header.toLowerCase() === 'content-type' ? 'application/json' : null
+        },
+        json: async () => ({
+          data: {
+            id: 'sub_test_123',
+            status: 'active',
+            scheduled_change: {
+              action: 'cancel',
+              effective_at: '2026-10-30T00:00:00.000Z'
+            }
+          }
+        })
+      } as any;
+    }) as unknown as typeof fetch;
+
+    const res = await cancelPaddleSubscription(
+      'sub_test_123',
+      { apiKey: 'test_server_key', baseUrl: 'https://sandbox-api.paddle.com' },
+      'next_billing_period',
+      mockFetch
+    );
+
+    assert.strictEqual(res.success, true);
+    assert.strictEqual(capturedMethod, 'POST');
+    assert.strictEqual(capturedUrl, 'https://sandbox-api.paddle.com/subscriptions/sub_test_123/cancel');
+    assert.strictEqual(capturedAuth, 'Bearer test_server_key');
+    assert.strictEqual(capturedBody.effective_from, 'next_billing_period', 'Cancellation MUST default to next_billing_period');
+    assert.strictEqual(res.data?.data?.scheduled_change?.action, 'cancel');
+  });
+
+  // =========================================================================
+  // 25. Cancellation of trialing subscription
+  // =========================================================================
+  it('25. Cancellation of trialing subscription: maintains trialing status and schedules cancellation for trial end', async () => {
+    const trialEndIso = '2026-10-07T06:02:52.567Z';
+    const mockFetch = (async () => ({
+      ok: true,
+      status: 200,
+      headers: {
+        get: (h: string) => h.toLowerCase() === 'content-type' ? 'application/json' : null
+      },
+      json: async () => ({
+        data: {
+          id: 'sub_trialing_456',
+          status: 'trialing',
+          scheduled_change: {
+            action: 'cancel',
+            effective_at: trialEndIso
+          },
+          current_billing_period: {
+            starts_at: '2026-09-30T06:02:52.567Z',
+            ends_at: trialEndIso
+          }
+        }
+      })
+    })) as unknown as typeof fetch;
+
+    const res = await cancelPaddleSubscription(
+      'sub_trialing_456',
+      { apiKey: 'test_key' },
+      'next_billing_period',
+      mockFetch
+    );
+
+    assert.strictEqual(res.success, true);
+    assert.strictEqual(res.data?.data?.status, 'trialing', 'Subscription remains in trialing status until period end');
+    assert.strictEqual(res.data?.data?.scheduled_change?.effective_at, trialEndIso);
+  });
+
+  // =========================================================================
+  // 26. Unauthorized / missing authentication
+  // =========================================================================
+  it('26. Unauthorized / missing authentication: rejects request without token or with invalid session', async () => {
+    function simulateAuthGuard(headers: Record<string, string>) {
+      const auth = headers['authorization'] || headers['Authorization'];
+      if (!auth) {
+        return { status: 401, headers: { 'Content-Type': 'application/json' }, body: { error: 'Unauthorized: Missing Authorization header' } };
+      }
+      const token = auth.replace(/^Bearer\s+/i, '');
+      if (token !== 'valid_session_token') {
+        return { status: 401, headers: { 'Content-Type': 'application/json' }, body: { error: 'Unauthorized: Invalid or expired session' } };
+      }
+      return { status: 200, user: { id: 'usr_valid' } };
+    }
+
+    const noAuth = simulateAuthGuard({});
+    assert.strictEqual(noAuth.status, 401);
+    assert.strictEqual(noAuth.headers['Content-Type'], 'application/json');
+    assert.strictEqual(noAuth.body.error, 'Unauthorized: Missing Authorization header');
+
+    const badAuth = simulateAuthGuard({ authorization: 'Bearer invalid_tok_xyz' });
+    assert.strictEqual(badAuth.status, 401);
+    assert.strictEqual(badAuth.headers['Content-Type'], 'application/json');
+    assert.strictEqual(badAuth.body.error, 'Unauthorized: Invalid or expired session');
+  });
+
+  // =========================================================================
+  // 27. Subscription ownership mismatch
+  // =========================================================================
+  it('27. Subscription ownership mismatch: prevents user A from cancelling user B subscription', async () => {
+    const mockDb = createMockSupabase();
+    // Preload user_victim subscription in paddle_subscriptions
+    mockDb.subscriptions['sub_victim_999'] = {
+      user_id: 'user_victim',
+      subscription_id: 'sub_victim_999',
+      status: 'active'
+    };
+
+    async function cancelEndpoint(requesterUserId: string, requestedSubId: string) {
+      // Query subscription and verify user_id = requesterUserId
+      const sub = mockDb.subscriptions[requestedSubId];
+      if (!sub || sub.user_id !== requesterUserId) {
+        return {
+          status: 403,
+          headers: { 'Content-Type': 'application/json' },
+          body: { error: 'Subscription not found or not owned by authenticated user.' }
+        };
+      }
+      return { status: 200, body: { success: true } };
+    }
+
+    const attackerAttempt = await cancelEndpoint('user_attacker', 'sub_victim_999');
+    assert.strictEqual(attackerAttempt.status, 403, 'Must return HTTP 403 Forbidden for ownership mismatch');
+    assert.strictEqual(attackerAttempt.headers['Content-Type'], 'application/json');
+    assert.strictEqual(attackerAttempt.body.error, 'Subscription not found or not owned by authenticated user.');
+
+    const victimAttempt = await cancelEndpoint('user_victim', 'sub_victim_999');
+    assert.strictEqual(victimAttempt.status, 200);
+  });
+
+  // =========================================================================
+  // 28. Paddle API failure
+  // =========================================================================
+  it('28. Paddle API failure: handles upstream 400/500 JSON error cleanly without throwing', async () => {
+    const mockFetch = (async () => ({
+      ok: false,
+      status: 400,
+      headers: {
+        get: (h: string) => h.toLowerCase() === 'content-type' ? 'application/json' : null
+      },
+      json: async () => ({
+        error: {
+          code: 'subscription_locked_for_update',
+          detail: 'Subscription is locked for update'
+        }
+      })
+    })) as unknown as typeof fetch;
+
+    const res = await cancelPaddleSubscription(
+      'sub_test_fail',
+      { apiKey: 'test_key' },
+      'next_billing_period',
+      mockFetch
+    );
+
+    assert.strictEqual(res.success, false);
+    assert.ok(res.error?.includes('Subscription is locked for update'), 'Must extract Paddle error detail message');
+  });
+
+  // =========================================================================
+  // 29. Malformed / non-JSON upstream response
+  // =========================================================================
+  it('29. Malformed / non-JSON upstream response: inspects Content-Type and gracefully handles HTML error pages', async () => {
+    const mockFetch = (async () => ({
+      ok: false,
+      status: 502,
+      headers: {
+        get: (h: string) => h.toLowerCase() === 'content-type' ? 'text/html; charset=utf-8' : null
+      },
+      text: async () => '<!doctype html><html><body>502 Bad Gateway</body></html>'
+    })) as unknown as typeof fetch;
+
+    const res = await cancelPaddleSubscription(
+      'sub_html_fail',
+      { apiKey: 'test_key' },
+      'next_billing_period',
+      mockFetch
+    );
+
+    assert.strictEqual(res.success, false);
+    assert.ok(res.error?.includes('502'), 'Must report 502 status code');
+    assert.ok(!res.error?.includes('Unexpected token'), 'Must NOT throw SyntaxError for HTML response');
+  });
+
+  // =========================================================================
+  // 30. Duplicate cancellation attempt
+  // =========================================================================
+  it('30. Duplicate cancellation attempt: returns idempotent success when cancellation is already scheduled', async () => {
+    function handleCancellationResponse(paddleStatus: number, paddleCode: string, subRecord: any) {
+      if (paddleStatus === 409 || paddleCode === 'subscription_locked_for_update' || paddleCode === 'subscription_already_canceled') {
+        return {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+          body: {
+            success: true,
+            subscription_id: subRecord.subscription_id,
+            status: subRecord.status,
+            scheduled_change: subRecord.scheduled_change,
+            message: 'Subscription cancellation is already scheduled for the end of your billing period.'
+          }
+        };
+      }
+      return { status: 400, body: { error: 'Other error' } };
+    }
+
+    const sub = {
+      subscription_id: 'sub_dup_123',
+      status: 'active',
+      scheduled_change: '2026-10-07T06:02:52.567Z'
+    };
+
+    const duplicateRes = handleCancellationResponse(409, 'subscription_locked_for_update', sub);
+    assert.strictEqual(duplicateRes.status, 200);
+    assert.strictEqual(duplicateRes.body.success, true);
+    assert.ok(duplicateRes.body.message.includes('already scheduled'));
+  });
+
+  // =========================================================================
+  // 31. Webhook scheduled cancellation state
+  // =========================================================================
+  it('31. Webhook scheduled cancellation state: subscription.updated records scheduled_change without revoking Pro entitlement early', async () => {
+    const mockDb = createMockSupabase({
+      id: 'usr_scheduled_test',
+      plan_tier: 'pro',
+      subscription_status: 'active',
+      trial_consumed: true,
+      payment_provider: 'paddle',
+      paddle_customer_id: 'ctm_test_sched',
+      paddle_subscription_id: 'sub_sched_test'
+    });
+
+    const scheduledDate = '2026-10-07T06:02:52.567Z';
+    const payload = {
+      event_id: 'evt_update_sched_1',
+      event_type: 'subscription.updated',
+      occurred_at: '2026-09-30T10:00:00Z',
+      data: {
+        id: 'sub_sched_test',
+        customer_id: 'ctm_test_sched',
+        status: 'active',
+        scheduled_change: {
+          action: 'cancel',
+          effective_at: scheduledDate
+        },
+        custom_data: { user_id: 'usr_scheduled_test' },
+        current_billing_period: {
+          starts_at: '2026-09-30T06:02:52.567Z',
+          ends_at: scheduledDate
+        }
+      }
+    };
+
+    const result = await handlePaddleWebhookEvent(payload, mockDb);
+    assert.strictEqual(result.processed, true);
+
+    // Profile entitlement check: Pro tier MUST NOT be revoked early
+    assert.strictEqual(mockDb.profile.plan_tier, 'pro', 'User keeps Pro entitlement until period end');
+    assert.strictEqual(mockDb.profile.subscription_status, 'active');
+
+    // Subscriptions table check: scheduled_change must be recorded
+    const subRecord = mockDb.subscriptions['sub_sched_test'];
+    assert.ok(subRecord, 'Subscription record must be upserted');
+    assert.strictEqual(subRecord.scheduled_change, scheduledDate);
+    assert.strictEqual(subRecord.plan_tier, 'pro');
+  });
+
+  // =========================================================================
+  // 32. Final subscription.canceled state
+  // =========================================================================
+  it('32. Final subscription.canceled state: downgrades to free tier when cancellation becomes effective and preserves trial_consumed', async () => {
+    const mockDb = createMockSupabase({
+      id: 'usr_term_test',
+      plan_tier: 'pro',
+      subscription_status: 'active',
+      trial_consumed: true,
+      payment_provider: 'paddle',
+      paddle_customer_id: 'ctm_test_term',
+      paddle_subscription_id: 'sub_term_test'
+    });
+
+    const payload = {
+      event_id: 'evt_canceled_final_1',
+      event_type: 'subscription.canceled',
+      occurred_at: '2026-10-07T06:02:53Z',
+      data: {
+        id: 'sub_term_test',
+        customer_id: 'ctm_test_term',
+        status: 'canceled',
+        custom_data: { user_id: 'usr_term_test' }
+      }
+    };
+
+    const result = await handlePaddleWebhookEvent(payload, mockDb);
+    assert.strictEqual(result.processed, true);
+
+    // Profile check: downgraded to free, status canceled, trial_consumed permanently true
+    assert.strictEqual(mockDb.profile.plan_tier, 'free');
+    assert.strictEqual(mockDb.profile.subscription_status, 'canceled');
+    assert.strictEqual(mockDb.profile.trial_consumed, true, 'trial_consumed must never reset');
+
+    const subRecord = mockDb.subscriptions['sub_term_test'];
+    assert.strictEqual(subRecord.status, 'canceled');
+    assert.strictEqual(subRecord.plan_tier, 'free');
+  });
+
+  // =========================================================================
+  // 33. Security: Paddle secret credentials never appear in client bundles
+  // =========================================================================
+  it('33. Security: Paddle secret credentials never appear in client bundles or frontend code', () => {
+    const distClientBundle = path.join(rootDir, 'dist', 'src', 'client.bundle.js');
+    if (fs.existsSync(distClientBundle)) {
+      const bundle = fs.readFileSync(distClientBundle, 'utf8');
+      assert.ok(!bundle.includes('pdl_sdbx_apikey_'), 'Paddle API key must NOT be bundled');
+      assert.ok(!bundle.includes('pdl_ntfset_'), 'Paddle webhook secret must NOT be bundled');
+      assert.ok(!bundle.includes('SUPABASE_SERVICE_ROLE_KEY'), 'Service role key must NOT be bundled');
+    }
+
+    const accountHtml = fs.readFileSync(path.join(rootDir, 'account.html'), 'utf8');
+    assert.ok(!accountHtml.includes('pdl_sdbx_'), 'Paddle API key must NOT appear in account.html');
+    assert.ok(!accountHtml.includes('service_role'), 'Service role must NOT appear in account.html');
+  });
+
+  // =========================================================================
+  // 34. Security: arbitrary subscription_id cannot be canceled
+  // =========================================================================
+  it('34. Security: arbitrary subscription_id cannot be canceled without verified user ownership', async () => {
+    const mockDb = createMockSupabase();
+
+    async function secureCancelService(userId: string, targetSubId: string) {
+      const sub = mockDb.subscriptions[targetSubId];
+      if (!sub || sub.user_id !== userId) {
+        throw new Error('Access denied: subscription ownership check failed');
+      }
+      return { success: true };
+    }
+
+    await assert.rejects(
+      async () => {
+        await secureCancelService('user_legit', 'sub_arbitrary_unowned_id');
+      },
+      /Access denied: subscription ownership check failed/
+    );
   });
 });

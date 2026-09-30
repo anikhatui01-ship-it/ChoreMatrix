@@ -123,6 +123,7 @@ import {
   PADDLE_CONFIG,
   getPaddlePriceId,
   initiatePaddleSubscription,
+  initializePaddleInstance,
   persistenceAdapter,
   authService,
   renderNavbar,
@@ -133,6 +134,7 @@ import {
 renderNavbar('pricing');
 renderFooter();
 initCookieBanner();
+initializePaddleInstance().catch(err => console.warn('[Upgrade Page] Paddle warmup notice:', err));
 
 const params = new URLSearchParams(window.location.search);
 const requestedPlanId = params.get('plan');

@@ -69,6 +69,7 @@
             <a href="/pricing.html" class="btn small">View Plans</a>
             <button type="button" class="btn small danger" id="btnCancelSub" style="display:none;">Cancel Subscription</button>
           </div>
+          <div id="subScheduledNotice" style="display:none; margin-top:8px; font-size:12px; color:var(--muted); background:var(--panel-subtle); padding:8px 12px; border-radius:6px; border:1px solid var(--line);"></div>
         </div>
 
         <div style="margin-top:24px; padding-top:20px; border-top:1px solid var(--line);">
@@ -141,7 +142,7 @@
 <div id="globalFooter"></div>
 
 <script type="module">
-import { authService, persistenceAdapter, isSupabaseConfigured, getTierById, renderNavbar, renderFooter, initCookieBanner } from './src/client.bundle.js';
+import { authService, persistenceAdapter, isSupabaseConfigured, getTierById, renderNavbar, renderFooter, initCookieBanner, supabase, getEnvVar } from './src/client.bundle.js';
 
 renderNavbar('account');
 renderFooter();
@@ -156,7 +157,7 @@ function formatPlanTier(tierId, interval, status) {
   const tier = getTierById(tierId);
   const tierName = tier ? `${tier.name} Tier` : (tierId ? `${tierId.charAt(0).toUpperCase()}${tierId.slice(1)} Tier` : 'Free Tier');
   let suffix = tier && tier.id !== 'free' ? `(${tier.tagline})` : '(Essential Optimizer)';
-  if (interval || status) {
+  if (tier && tier.id !== 'free' && (interval || (status && status !== 'none'))) {
     const parts = [];
     if (status && status !== 'active') parts.push(status.charAt(0).toUpperCase() + status.slice(1));
     if (interval) parts.push(interval === 'annually' ? 'Annual' : 'Monthly');
@@ -206,16 +207,62 @@ async function checkAccount() {
           emailField.value = profile.email;
         }
         const cancelBtn = document.getElementById('btnCancelSub');
+        const subNotice = document.getElementById('subScheduledNotice');
+
+        let scheduledChangeDate = null;
+        if (supabase && profile.plan_tier && profile.plan_tier !== 'free') {
+          try {
+            const { data: subRecord } = await supabase
+              .from('paddle_subscriptions')
+              .select('scheduled_change, current_period_end, trial_ends_at, status')
+              .eq('user_id', user.id)
+              .in('status', ['active', 'trialing'])
+              .order('created_at', { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (subRecord?.scheduled_change) {
+              scheduledChangeDate = subRecord.scheduled_change;
+            }
+          } catch (subErr) {
+            console.warn('[Account] Subscription fetch warning:', subErr);
+          }
+        }
+
         if (profile.plan_tier && profile.plan_tier !== 'free' && (profile.subscription_status === 'active' || profile.subscription_status === 'trialing')) {
-          if (cancelBtn) cancelBtn.style.display = 'inline-block';
+          if (cancelBtn) {
+            cancelBtn.style.display = 'inline-block';
+            if (scheduledChangeDate) {
+              cancelBtn.disabled = true;
+              cancelBtn.textContent = 'Cancellation Scheduled';
+              cancelBtn.title = 'Cancellation is already scheduled for the end of the current billing/trial period.';
+            } else {
+              cancelBtn.disabled = false;
+              cancelBtn.textContent = 'Cancel Subscription';
+              cancelBtn.title = '';
+            }
+          }
+          if (subNotice) {
+            if (scheduledChangeDate) {
+              const d = new Date(scheduledChangeDate);
+              const formatted = !isNaN(d.getTime()) ? d.toLocaleDateString(undefined, { dateStyle: 'medium' }) : scheduledChangeDate;
+              subNotice.innerHTML = `<strong>Subscription Notice:</strong> Cancellation scheduled. You retain full ${profile.plan_tier === 'pro' ? 'Pro' : 'Plus'} access through <strong>${formatted}</strong>.`;
+              subNotice.style.display = 'block';
+            } else {
+              subNotice.style.display = 'none';
+            }
+          }
         } else {
           if (cancelBtn) cancelBtn.style.display = 'none';
+          if (subNotice) subNotice.style.display = 'none';
         }
       } else if (planField) {
         // Profile row absent -> graceful fallback to Free Tier
         planField.value = formatPlanTier('free');
         const cancelBtn = document.getElementById('btnCancelSub');
+        const subNotice = document.getElementById('subScheduledNotice');
         if (cancelBtn) cancelBtn.style.display = 'none';
+        if (subNotice) subNotice.style.display = 'none';
       }
 
       // Check for return from subscription checkout
@@ -323,7 +370,7 @@ document.getElementById('changePassForm')?.addEventListener('submit', async (e) 
 
 // 4b. Cancel Subscription
 document.getElementById('btnCancelSub')?.addEventListener('click', async () => {
-  if (!confirm('Are you sure you want to cancel your subscription? You will retain access until the end of your billing cycle and your account will revert to the Free tier.')) {
+  if (!confirm('Are you sure you want to cancel your subscription? You will retain access until the end of your current trial/billing period.')) {
     return;
   }
   const cancelBtn = document.getElementById('btnCancelSub');
@@ -331,34 +378,69 @@ document.getElementById('btnCancelSub')?.addEventListener('click', async () => {
     cancelBtn.disabled = true;
     cancelBtn.textContent = 'Cancelling…';
   }
+  let isSuccess = false;
   try {
     const session = await authService.getSession();
     const token = session?.access_token;
     if (!token) throw new Error('Authentication session expired. Please sign in again.');
 
-    const supabaseUrl = (window.__ENV__?.VITE_SUPABASE_URL || '').replace(/\/+$/, '');
+    const supabaseUrl = (getEnvVar('VITE_SUPABASE_URL') || '').replace(/\/+$/, '');
+    const supabaseKey = getEnvVar('VITE_SUPABASE_PUBLISHABLE_KEY') || '';
+    if (!supabaseUrl) {
+      throw new Error('Supabase URL is not configured in client environment.');
+    }
     const directEndpoint = `${supabaseUrl}/functions/v1/paddle-cancel-subscription`;
 
     const res = await fetch(directEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        'Authorization': `Bearer ${token}`,
+        'apikey': supabaseKey
       },
       body: JSON.stringify({})
     });
+
+    const contentType = res.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+      const textResp = await res.text();
+      console.error('[Account] Non-JSON response from cancellation endpoint:', res.status, textResp.slice(0, 150));
+      throw new Error(`Cancellation service returned unexpected response (${res.status}). Please try again later.`);
+    }
 
     const data = await res.json();
     if (!res.ok) {
       throw new Error(data.error || 'Failed to cancel subscription.');
     }
 
-    showNotice('✓ Subscription cancelled successfully. Your account has reverted to the Free tier.');
+    isSuccess = true;
+    const effectiveDate = data.scheduled_change || data.effective_at;
+    let formattedDate = '';
+    if (effectiveDate) {
+      try {
+        const d = new Date(effectiveDate);
+        if (!isNaN(d.getTime())) {
+          formattedDate = d.toLocaleDateString(undefined, { dateStyle: 'medium' });
+        }
+      } catch {}
+    }
+
+    const confirmationMsg = formattedDate
+      ? `Subscription canceled at the end of your current trial/billing period (Access active through ${formattedDate}).`
+      : 'Subscription canceled at the end of your current trial/billing period.';
+
+    showNotice(`✓ ${confirmationMsg}`);
+
+    if (cancelBtn) {
+      cancelBtn.textContent = 'Cancellation Scheduled';
+      cancelBtn.disabled = true;
+      cancelBtn.title = 'Cancellation is already scheduled for the end of the current billing/trial period.';
+    }
+
     await checkAccount();
   } catch (err) {
     showError(err.message || 'Error cancelling subscription.');
-  } finally {
-    if (cancelBtn) {
+    if (cancelBtn && !isSuccess) {
       cancelBtn.disabled = false;
       cancelBtn.textContent = 'Cancel Subscription';
     }

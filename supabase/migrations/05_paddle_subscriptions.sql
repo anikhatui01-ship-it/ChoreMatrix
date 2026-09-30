@@ -3,9 +3,11 @@
 -- Description:
 -- Adds Paddle subscription lifecycle tracking, provider state mapping, and idempotent webhook logging.
 
--- 1. Extend Profiles Table with Paddle-specific Columns
+-- 1. Extend Profiles Table with Paddle and Provider Columns
 alter table public.profiles add column if not exists paddle_customer_id text;
 alter table public.profiles add column if not exists paddle_subscription_id text;
+alter table public.profiles add column if not exists payment_provider text default 'paddle';
+alter table public.profiles add column if not exists provider_subscription_id text;
 
 -- 2. Paddle Subscriptions Table (Tracks Paddle subscription lifecycle)
 create table if not exists public.paddle_subscriptions (
@@ -57,9 +59,17 @@ create policy "Users can view own paddle subscriptions"
 grant select on public.paddle_subscriptions to authenticated;
 grant all on public.paddle_subscriptions to service_role;
 grant all on public.paddle_webhook_events to service_role;
+grant all on public.profiles to service_role;
 grant usage, select on all sequences in schema public to service_role;
 
--- 7. Durable Invariant: Ensure prevent_trial_reset trigger exists and protects profiles.trial_consumed
+-- 7. Indexes for Performance & Relational Integrity
+create index if not exists idx_paddle_subscriptions_user_id on public.paddle_subscriptions(user_id);
+create index if not exists idx_paddle_subscriptions_customer_id on public.paddle_subscriptions(customer_id);
+create index if not exists idx_paddle_webhook_events_subscription_id on public.paddle_webhook_events(subscription_id);
+create index if not exists idx_profiles_paddle_customer_id on public.profiles(paddle_customer_id);
+create index if not exists idx_profiles_paddle_subscription_id on public.profiles(paddle_subscription_id);
+
+-- 8. Durable Invariant: Ensure prevent_trial_reset trigger exists and protects profiles.trial_consumed
 create or replace function public.prevent_trial_reset()
 returns trigger as $$
 begin

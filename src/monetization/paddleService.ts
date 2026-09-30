@@ -565,16 +565,45 @@ export async function cancelPaddleSubscription(
   });
 
   if (!response.ok) {
-    const errText = await response.text();
+    const contentType = response.headers?.get?.('content-type') || '';
+    let errMessage = `Paddle cancellation failed (${response.status})`;
+    if (contentType.includes('application/json')) {
+      try {
+        const errJson = await response.json();
+        errMessage = errJson?.error?.detail || errJson?.error?.message || errJson?.message || errMessage;
+      } catch {
+        const rawText = await response.text();
+        if (rawText) errMessage += `: ${rawText.slice(0, 150)}`;
+      }
+    } else {
+      const rawText = await response.text();
+      if (rawText) errMessage += `: ${rawText.slice(0, 150)}`;
+    }
     return {
       success: false,
-      error: `Paddle cancellation failed (${response.status}): ${errText}`
+      error: errMessage
     };
   }
 
-  const data = await response.json();
-  return {
-    success: true,
-    data
-  };
+  const contentType = response.headers?.get?.('content-type') || '';
+  if (!contentType.includes('application/json')) {
+    const rawText = await response.text();
+    return {
+      success: false,
+      error: `Paddle cancellation returned unexpected non-JSON response (${response.status}): ${rawText.slice(0, 150)}`
+    };
+  }
+
+  try {
+    const data = await response.json();
+    return {
+      success: true,
+      data
+    };
+  } catch (parseErr: any) {
+    return {
+      success: false,
+      error: `Failed to parse Paddle response JSON: ${parseErr.message}`
+    };
+  }
 }
