@@ -16,3 +16,17 @@ export * from './ui/cookieBanner.ts';
 export * from './monetization/adSlot.ts';
 export * from './monetization/entitlements.ts';
 export * from './monetization/paddleCheckout.ts';
+export * from './analytics/ga4.ts';
+
+import { initGoogleAnalytics } from './analytics/ga4.ts';
+
+// Automatically initialize Google Analytics 4 exactly once in the browser runtime
+if (typeof window !== 'undefined' && typeof document !== 'undefined') {
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      initGoogleAnalytics();
+    }, { once: true });
+  } else {
+    initGoogleAnalytics();
+  }
+}
