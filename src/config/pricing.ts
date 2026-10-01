@@ -252,3 +252,5 @@ export function calculateAnnualSavings(tier: PricingTier): {
   };
 }
 
+export * from '../monetization/entitlements.ts';
+

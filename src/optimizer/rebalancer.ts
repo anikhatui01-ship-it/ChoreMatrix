@@ -13,14 +13,15 @@ export interface RebalanceDiff {
 
 export function rebalanceHousehold(
   request: OptimizationRequest,
-  previousAssignments: AssignmentOutput[]
+  previousAssignments: AssignmentOutput[],
+  entitlement?: { maxPlanningWeeks?: number; isPaid?: boolean }
 ): OptimizationResult {
   const requestWithPrevious: OptimizationRequest = {
     ...request,
     previousRunAssignments: previousAssignments,
   };
 
-  const result = runOptimization(requestWithPrevious);
+  const result = runOptimization(requestWithPrevious, entitlement);
   const diff = computeAssignmentDiff(previousAssignments, result.assignments);
 
   result.diffSummary = diff.explanations;

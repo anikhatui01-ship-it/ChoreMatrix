@@ -27,9 +27,27 @@ interface MutableMemberState {
   taskCount: number;
 }
 
-export function runOptimization(request: OptimizationRequest): OptimizationResult {
+export function runOptimization(
+  request: OptimizationRequest,
+  entitlement?: { maxPlanningWeeks?: number; isPaid?: boolean }
+): OptimizationResult {
+  let safeRequest = request;
+  if (entitlement) {
+    const maxWeeks = entitlement.isPaid && entitlement.maxPlanningWeeks ? entitlement.maxPlanningWeeks : 1;
+    const requestedWeeks = Number(request.household?.planningHorizonWeeks) || 1;
+    const safeWeeks = Math.max(1, Math.min(maxWeeks, requestedWeeks));
+    if (safeWeeks !== request.household?.planningHorizonWeeks) {
+      safeRequest = {
+        ...request,
+        household: {
+          ...request.household,
+          planningHorizonWeeks: safeWeeks
+        }
+      };
+    }
+  }
   const runId = `run_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
-  const normalized: NormalizedHousehold = normalizeRequest(request);
+  const normalized: NormalizedHousehold = normalizeRequest(safeRequest);
   const {
     horizonWeeks,
     totalHouseholdCapacityMinutes,
@@ -41,13 +59,13 @@ export function runOptimization(request: OptimizationRequest): OptimizationResul
     occurrences,
   } = normalized;
 
-  const mode = request.household.mode || 'capacity_aware';
+  const mode = safeRequest.household.mode || 'capacity_aware';
   const memberList = Array.from(memberMap.values());
   const memberCount = memberList.length;
 
   const assignments: AssignmentOutput[] = [];
   const unassignedTasks: UnassignedTask[] = [];
-  const rotationLedger = new RotationLedger(request.previousRunAssignments || []);
+  const rotationLedger = new RotationLedger(safeRequest.previousRunAssignments || []);
 
   if (memberCount === 0) {
     for (const occ of occurrences) {
@@ -66,7 +84,7 @@ export function runOptimization(request: OptimizationRequest): OptimizationResul
 
     return buildResult({
       runId,
-      request,
+      request: safeRequest,
       assignments: [],
       unassignedTasks,
       normalized,
@@ -76,8 +94,8 @@ export function runOptimization(request: OptimizationRequest): OptimizationResul
 
   // Pre-index previous assignments for churn penalties / rebalancing
   const previousAssignmentMap = new Map<string, string>(); // occurrenceId -> memberId
-  if (request.previousRunAssignments) {
-    for (const pa of request.previousRunAssignments) {
+  if (safeRequest.previousRunAssignments) {
+    for (const pa of safeRequest.previousRunAssignments) {
       previousAssignmentMap.set(pa.occurrenceId, pa.memberId);
     }
   }
@@ -301,7 +319,7 @@ export function runOptimization(request: OptimizationRequest): OptimizationResul
 
   return buildResult({
     runId,
-    request,
+    request: safeRequest,
     assignments,
     unassignedTasks,
     normalized,

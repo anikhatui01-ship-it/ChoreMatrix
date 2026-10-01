@@ -10,6 +10,7 @@
 import { supabase, isSupabaseConfigured } from '../config/supabase.ts';
 import type { OptimizationRequest, OptimizationResult, MemberInput, TaskInput, DayOfWeek } from '../optimizer/types.ts';
 import type { ProfileRow, HouseholdRow, MemberRow, TaskRow, MemberPreferenceRow, PlanRow } from './types.ts';
+import { getPlanningEntitlement } from '../monetization/entitlements.ts';
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -190,13 +191,29 @@ export class SupabaseAdapter {
       eligibleMemberIds: t.eligible_member_ids || []
     }));
 
+    const rawWeeks = household.planning_horizon_weeks || 1;
+    let maxAllowedWeeks = 4;
+    try {
+      const { data: profile } = await this.client
+        .from('profiles')
+        .select('plan_tier, subscription_status')
+        .eq('id', userId)
+        .maybeSingle();
+      if (profile) {
+        const entitlement = getPlanningEntitlement(profile);
+        maxAllowedWeeks = entitlement.maxPlanningWeeks;
+      }
+    } catch (e) {}
+
+    const safeLoadedWeeks = Math.max(1, Math.min(maxAllowedWeeks, rawWeeks));
+
     const request: OptimizationRequest = {
       household: {
         id: household.id,
         name: household.name,
         type: household.type,
         mode: household.mode,
-        planningHorizonWeeks: household.planning_horizon_weeks
+        planningHorizonWeeks: safeLoadedWeeks
       },
       members: memberInputs,
       tasks: taskInputs
@@ -260,6 +277,23 @@ export class SupabaseAdapter {
     const targetHouseholdId = householdId || generateUuid();
     const nowIso = new Date().toISOString();
 
+    let maxAllowedWeeks = 4;
+    try {
+      const { data: profile } = await this.client
+        .from('profiles')
+        .select('plan_tier, subscription_status')
+        .eq('id', userId)
+        .maybeSingle();
+      if (profile) {
+        const entitlement = getPlanningEntitlement(profile);
+        maxAllowedWeeks = entitlement.maxPlanningWeeks;
+      }
+    } catch (e) {}
+
+    const requestedWeeks = request.household.planningHorizonWeeks || 1;
+    const safeHorizonWeeks = Math.max(1, Math.min(maxAllowedWeeks, requestedWeeks));
+    request.household.planningHorizonWeeks = safeHorizonWeeks;
+
     const { data: hData, error: hError } = await this.client
       .from('households')
       .upsert({
@@ -268,7 +302,7 @@ export class SupabaseAdapter {
         name: request.household.name || 'My Household',
         type: request.household.type || 'family',
         mode: request.household.mode || 'capacity_aware',
-        planning_horizon_weeks: request.household.planningHorizonWeeks || 4,
+        planning_horizon_weeks: safeHorizonWeeks,
         updated_at: nowIso
       })
       .select('id')

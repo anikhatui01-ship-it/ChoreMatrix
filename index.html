@@ -440,10 +440,7 @@
             <div class="field">
               <label for="selWeeks">Planning Horizon</label>
               <select id="selWeeks">
-                <option value="1">1 Week</option>
-                <option value="2">2 Weeks</option>
-                <option value="3">3 Weeks</option>
-                <option value="4" selected>4-Week Rotation</option>
+                <option value="1" selected>1 Week</option>
               </select>
             </div>
           </div>
@@ -578,7 +575,15 @@
 
 <script type="module">
 import { runOptimization, rebalanceHousehold, DAYS_OF_WEEK } from './optimizer.bundle.js';
-import { renderFooter, initCookieBanner, authService, AdSlot } from './src/client.bundle.js';
+import {
+  renderFooter,
+  initCookieBanner,
+  authService,
+  persistenceAdapter,
+  AdSlot,
+  getPlanningEntitlement,
+  enforcePlanningHorizon
+} from './src/client.bundle.js';
 
 renderFooter();
 initCookieBanner();
@@ -586,16 +591,43 @@ initCookieBanner();
 const demoAdSlot = new AdSlot('#demoAdSlot');
 demoAdSlot.init(null);
 
-authService.getSession().then(session => {
+authService.getSession().then(async session => {
   const authArea = document.getElementById('navAuthArea');
-  if (!authArea) return;
   if (session && session.user) {
-    authArea.innerHTML = `
-      <a href="/app.html" class="btn small">Optimizer</a>
-      <a href="/account.html" class="btn small">Account</a>
-    `;
+    if (authArea) {
+      authArea.innerHTML = `
+        <a href="/app.html" class="btn small">Optimizer</a>
+        <a href="/account.html" class="btn small">Account</a>
+      `;
+    }
+    try {
+      const profile = await persistenceAdapter.getProfile(session.user.id);
+      currentEntitlement = getPlanningEntitlement(profile);
+    } catch (e) {
+      currentEntitlement = getPlanningEntitlement(null);
+    }
+    renderPlanningHorizonOptions(currentEntitlement, currentRequest.household.planningHorizonWeeks);
+    executeOptimization(true);
   }
 }).catch(() => {});
+
+authService.onAuthStateChange(async (event, session) => {
+  if (event === 'SIGNED_OUT' || !session || !session.user) {
+    currentEntitlement = getPlanningEntitlement(null);
+    renderPlanningHorizonOptions(currentEntitlement, 1);
+    currentRequest.household.planningHorizonWeeks = 1;
+    executeOptimization(true);
+  } else if (event === 'SIGNED_IN' && session?.user) {
+    try {
+      const profile = await persistenceAdapter.getProfile(session.user.id);
+      currentEntitlement = getPlanningEntitlement(profile);
+    } catch (e) {
+      currentEntitlement = getPlanningEntitlement(null);
+    }
+    renderPlanningHorizonOptions(currentEntitlement, currentRequest.household.planningHorizonWeeks);
+    executeOptimization(true);
+  }
+});
 
 // Theme switcher initialization
 const THEME_STORAGE_KEY = 'chorematrix_theme';
@@ -638,10 +670,10 @@ function setTheme(choice) {
   applyTheme(choice);
 }
 
-// Pre-defined prototype state fixtures
+// Pre-defined prototype state fixtures (Normalized to safe Free 1-week horizon)
 const PRESETS = {
   family: {
-    household: { id: 'h_fam', name: 'Family Home', type: 'family', mode: 'capacity_aware', planningHorizonWeeks: 4 },
+    household: { id: 'h_fam', name: 'Family Home', type: 'family', mode: 'capacity_aware', planningHorizonWeeks: 1 },
     members: [
       { id: 'm1', name: 'Maya', role: 'Adult', weeklyCapacityMinutes: 300, unavailableDays: [], preferredTaskIds: ['t_cook'], avoidedTaskIds: [] },
       { id: 'm2', name: 'Arjun', role: 'Adult', weeklyCapacityMinutes: 240, unavailableDays: ['thu'], preferredTaskIds: [], avoidedTaskIds: ['t_dishes'] },
@@ -658,7 +690,7 @@ const PRESETS = {
     ]
   },
   couple: {
-    household: { id: 'h_cpl', name: 'Couple Apartment', type: 'couple', mode: 'capacity_aware', planningHorizonWeeks: 4 },
+    household: { id: 'h_cpl', name: 'Couple Apartment', type: 'couple', mode: 'capacity_aware', planningHorizonWeeks: 1 },
     members: [
       { id: 'm1', name: 'Alex', role: 'Adult', weeklyCapacityMinutes: 240, unavailableDays: ['wed'], preferredTaskIds: ['t_cook'], avoidedTaskIds: ['t_bath'] },
       { id: 'm2', name: 'Sam', role: 'Adult', weeklyCapacityMinutes: 240, unavailableDays: [], preferredTaskIds: ['t_dishes'], avoidedTaskIds: [] }
@@ -672,7 +704,7 @@ const PRESETS = {
     ]
   },
   roommates: {
-    household: { id: 'h_rm', name: 'Shared House', type: 'roommates', mode: 'balanced', planningHorizonWeeks: 4 },
+    household: { id: 'h_rm', name: 'Shared House', type: 'roommates', mode: 'balanced', planningHorizonWeeks: 1 },
     members: [
       { id: 'm1', name: 'Ari', role: 'Roommate', weeklyCapacityMinutes: 180, unavailableDays: [], preferredTaskIds: [], avoidedTaskIds: [] },
       { id: 'm2', name: 'Noah', role: 'Roommate', weeklyCapacityMinutes: 180, unavailableDays: [], preferredTaskIds: [], avoidedTaskIds: [] },
@@ -687,6 +719,7 @@ const PRESETS = {
   }
 };
 
+let currentEntitlement = getPlanningEntitlement(null); // Defaults strictly to Free (1 week)
 let currentRequest = JSON.parse(JSON.stringify(PRESETS.family));
 let currentResult = null;
 let activeWeek = 0;
@@ -694,16 +727,56 @@ let activeView = 'calendar';
 
 const $ = s => document.querySelector(s);
 
+/**
+ * Dynamically renders planning horizon select options based on authoritative entitlement.
+ * For unauthenticated or Free users, strictly only renders 1 Week.
+ * Stale or unauthorized multi-week values are safely clamped to 1.
+ */
+function renderPlanningHorizonOptions(entitlement, targetWeeks = 1) {
+  const sel = $('#selWeeks');
+  if (!sel) return;
+  const safeEntitlement = entitlement || getPlanningEntitlement(null);
+  const isPaid = Boolean(safeEntitlement.isPaid && safeEntitlement.maxPlanningWeeks >= 4);
+  const safeWeeks = enforcePlanningHorizon(targetWeeks, safeEntitlement);
+
+  if (isPaid) {
+    sel.innerHTML = `
+      <option value="1">1 Week</option>
+      <option value="2">2 Weeks</option>
+      <option value="3">3 Weeks</option>
+      <option value="4">4-Week Rotation</option>
+    `;
+  } else {
+    sel.innerHTML = `
+      <option value="1">1 Week</option>
+    `;
+  }
+  sel.value = String(safeWeeks);
+  currentRequest.household.planningHorizonWeeks = safeWeeks;
+}
+
 function init() {
   initTheme();
   attachListeners();
+  currentEntitlement = getPlanningEntitlement(null);
+  renderPlanningHorizonOptions(currentEntitlement, 1);
   loadPreset('family');
+
+  const urlParams = new URLSearchParams(window.location.search);
+  const requestedUrlWeeks = urlParams.get('weeks') || urlParams.get('horizon');
+  if (requestedUrlWeeks) {
+    const safeUrlWeeks = enforcePlanningHorizon(requestedUrlWeeks, currentEntitlement);
+    currentRequest.household.planningHorizonWeeks = safeUrlWeeks;
+    renderPlanningHorizonOptions(currentEntitlement, safeUrlWeeks);
+    executeOptimization(true);
+  }
 }
 
 function loadPreset(key) {
   currentRequest = JSON.parse(JSON.stringify(PRESETS[key]));
+  currentRequest.household.planningHorizonWeeks = enforcePlanningHorizon(currentRequest.household.planningHorizonWeeks, currentEntitlement);
   $('#selMode').value = currentRequest.household.mode;
-  $('#selWeeks').value = currentRequest.household.planningHorizonWeeks;
+  renderPlanningHorizonOptions(currentEntitlement, currentRequest.household.planningHorizonWeeks);
   renderInputs();
   executeOptimization();
 }
@@ -819,7 +892,10 @@ function syncDOMToState() {
   const modeEl = $('#selMode');
   if (modeEl) currentRequest.household.mode = modeEl.value;
   const weeksEl = $('#selWeeks');
-  if (weeksEl) currentRequest.household.planningHorizonWeeks = Number(weeksEl.value) || 1;
+  if (weeksEl) {
+    const rawWeeks = Number(weeksEl.value) || 1;
+    currentRequest.household.planningHorizonWeeks = enforcePlanningHorizon(rawWeeks, currentEntitlement);
+  }
 
   const memberCards = document.querySelectorAll('#memberListContainer .item-card');
   memberCards.forEach((card, i) => {
@@ -872,13 +948,17 @@ function executeOptimization(force = false) {
   if (isCalculating) return;
   isCalculating = true;
   syncDOMToState();
+  currentRequest.household.planningHorizonWeeks = enforcePlanningHorizon(
+    currentRequest.household.planningHorizonWeeks,
+    currentEntitlement
+  );
   const stateHash = JSON.stringify(currentRequest);
   if (!force && stateHash === lastCalculatedHash && currentResult) {
     flashCalculateStatus();
     isCalculating = false;
     return;
   }
-  currentResult = runOptimization(currentRequest);
+  currentResult = runOptimization(currentRequest, currentEntitlement);
   lastCalculatedHash = stateHash;
   if (currentResult) {
     activeWeek = Math.max(0, Math.min(activeWeek, currentResult.weeks - 1));
@@ -892,10 +972,14 @@ function executeRebalance() {
   if (isCalculating) return;
   isCalculating = true;
   syncDOMToState();
+  currentRequest.household.planningHorizonWeeks = enforcePlanningHorizon(
+    currentRequest.household.planningHorizonWeeks,
+    currentEntitlement
+  );
   if (!currentResult || !currentResult.assignments.length) {
-    currentResult = runOptimization(currentRequest);
+    currentResult = runOptimization(currentRequest, currentEntitlement);
   } else {
-    currentResult = rebalanceHousehold(currentRequest, currentResult.assignments);
+    currentResult = rebalanceHousehold(currentRequest, currentResult.assignments, currentEntitlement);
   }
   lastCalculatedHash = JSON.stringify(currentRequest);
   if (currentResult) {
@@ -908,6 +992,13 @@ function executeRebalance() {
 
 function renderResults() {
   if (!currentResult) return;
+
+  // Authoritative entitlement safety: ensure result never exceeds maximum authorized weeks
+  if (currentResult.weeks > currentEntitlement.maxPlanningWeeks) {
+    currentRequest.household.planningHorizonWeeks = enforcePlanningHorizon(currentResult.weeks, currentEntitlement);
+    currentResult = runOptimization(currentRequest, currentEntitlement);
+  }
+
   const diag = currentResult.diagnostics;
 
   $('#balanceScoreVal').innerHTML = `${diag.balanceScore}%<small>fairness index</small>`;
@@ -957,7 +1048,8 @@ function renderResults() {
   }).join('');
 
   const tabStrip = $('#weekTabsContainer');
-  const horizon = currentResult.weeks;
+  const horizon = Math.min(currentEntitlement.maxPlanningWeeks, currentResult.weeks);
+  activeWeek = Math.max(0, Math.min(activeWeek, horizon - 1));
   tabStrip.innerHTML = Array.from({ length: horizon }).map((_, w) => `
     <button type="button" class="tab-btn ${w === activeWeek ? 'active' : ''}" data-week="${w}">Week ${w + 1}</button>
   `).join('');
@@ -1069,7 +1161,9 @@ function attachListeners() {
   $('#weekTabsContainer')?.addEventListener('click', e => {
     const btn = e.target.closest('[data-week]');
     if (btn) {
-      activeWeek = Number(btn.dataset.week);
+      const requestedWeek = Number(btn.dataset.week);
+      if (requestedWeek >= currentEntitlement.maxPlanningWeeks) return;
+      activeWeek = requestedWeek;
       document.querySelectorAll('#weekTabsContainer .tab-btn').forEach(b => b.classList.toggle('active', b === btn));
       renderSchedule();
     }
