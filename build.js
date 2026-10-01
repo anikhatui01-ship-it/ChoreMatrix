@@ -295,7 +295,8 @@ export async function build(options = {}) {
     'favicon.ico',
     'og-image.jpg',
     'robots.txt',
-    'sitemap.xml'
+    'sitemap.xml',
+    'ads.txt'
   ];
   for (const asset of staticAssets) {
     const assetPath = path.join(rootDir, asset);

@@ -65,4 +65,20 @@ describe('Google AdSense Verification Code Installation Audit', () => {
       assert.ok(content.includes('crossorigin="anonymous"'), `dist/${page} must have crossorigin="anonymous" attribute`);
     }
   });
+
+  it('verifies ads.txt exists in root and dist and contains exact authorized publisher record', () => {
+    const rootAdsTxt = path.join(rootDir, 'ads.txt');
+    const distAdsTxt = path.join(distDir, 'ads.txt');
+
+    assert.ok(fs.existsSync(rootAdsTxt), 'ads.txt must exist in project root');
+    assert.ok(fs.existsSync(distAdsTxt), 'ads.txt must exist in dist');
+
+    const expectedRecord = 'google.com, pub-6399557140317733, DIRECT, f08c47fec0942fa0';
+
+    const rootContent = fs.readFileSync(rootAdsTxt, 'utf8').trim();
+    const distContent = fs.readFileSync(distAdsTxt, 'utf8').trim();
+
+    assert.strictEqual(rootContent, expectedRecord, 'root ads.txt must match exact required record');
+    assert.strictEqual(distContent, expectedRecord, 'dist ads.txt must match exact required record');
+  });
 });
