@@ -23,7 +23,8 @@ export function sanitizeUrl(urlStr: string): string {
     const sensitiveKeys = [
       'token', 'access_token', 'refresh_token', 'id_token', 'code',
       'secret', 'password', 'pwd', 'email', 'auth', 'key', 'signature',
-      '_ptxn', 'subscription_id', 'payment_id'
+      '_ptxn', 'subscription_id', 'payment_id', 'customer_id', 'user_id',
+      'household', 'task', 'chore'
     ];
 
     for (const key of Array.from(url.searchParams.keys())) {
@@ -56,7 +57,9 @@ export function isSensitiveKey(key: string): boolean {
     'subscription', 'sub_id', 'subscription_id', 'payment', 'card',
     'cvv', 'cvc', 'pan', 'expire', 'billing', 'customer_id',
     'household', 'member', 'phone', 'ssn', 'address', 'fullname',
-    'first_name', 'last_name', 'name'
+    'first_name', 'last_name', 'name', 'user_id',
+    'task', 'tasks', 'chore', 'chores', 'allocation', 'schedule',
+    'capacity', 'availability'
   ];
   return sensitivePatterns.some(pattern => lower === pattern || lower.includes(pattern));
 }

@@ -138,7 +138,8 @@ describe('Google Analytics 4 (GA4) Integration Suite', () => {
       const sensitiveKeys = [
         'password', 'user_password', 'pwd', 'token', 'access_token', 'refresh_token',
         'auth_token', 'secret', 'email', 'user_email', 'subscription_id', 'sub_id',
-        'card_number', 'cvv', 'cvc', 'payment_id', 'household_name', 'member_name'
+        'customer_id', 'card_number', 'cvv', 'cvc', 'payment_id', 'household_name', 'member_name',
+        'task_data', 'chore_title', 'schedule_info'
       ];
       for (const key of sensitiveKeys) {
         assert.strictEqual(isSensitiveKey(key), true, `Key ${key} must be recognized as sensitive`);
@@ -168,7 +169,9 @@ describe('Google Analytics 4 (GA4) Integration Suite', () => {
         email: 'alice@domain.org',
         password: 'superSecretPassword123',
         subscription_id: 'sub_live_9999',
+        customer_id: 'ctm_12345',
         card: '4111222233334444',
+        task_data: 'Dishes and laundry',
         theme: 'dark',
         note: 'Sent message to bob@family.net'
       };
@@ -181,7 +184,9 @@ describe('Google Analytics 4 (GA4) Integration Suite', () => {
       assert.strictEqual(cleaned.email, undefined, 'email must be completely stripped');
       assert.strictEqual(cleaned.password, undefined, 'password must be completely stripped');
       assert.strictEqual(cleaned.subscription_id, undefined, 'subscription_id must be completely stripped');
+      assert.strictEqual(cleaned.customer_id, undefined, 'customer_id must be completely stripped');
       assert.strictEqual(cleaned.card, undefined, 'card must be completely stripped');
+      assert.strictEqual(cleaned.task_data, undefined, 'task_data must be completely stripped');
     });
 
     it('strips auth tokens, credentials, and email query params from URL in sanitizeUrl', () => {
