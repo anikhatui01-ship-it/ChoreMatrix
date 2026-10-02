@@ -193,7 +193,10 @@ if (errType || errCode) {
       await authService.resendVerificationEmail(email);
       if (resendStatus) resendStatus.innerHTML = '<span style="color:var(--good, #18864b);">✓ New verification link sent. Please check your inbox.</span>';
     } catch (err) {
-      if (resendStatus) resendStatus.innerHTML = `<span style="color:var(--bad);">${err.message || 'Unable to resend email right now.'}</span>`;
+      if (resendStatus) {
+        resendStatus.textContent = err.message || 'Unable to resend email right now.';
+        resendStatus.style.color = 'var(--bad)';
+      }
     } finally {
       resendBtn.disabled = false;
       resendBtn.textContent = 'Resend Verification Email';

@@ -118,18 +118,18 @@ describe('Pre-Polish Production Launch Audit Suite', () => {
 
       const sitemap = fs.readFileSync(path.join(rootDir, 'sitemap.xml'), 'utf8');
       const expectedUrls = [
-        'https://chorematrix.com/',
-        'https://chorematrix.com/how-it-works.html',
-        'https://chorematrix.com/pricing.html',
-        'https://chorematrix.com/why-chorematrix.html',
-        'https://chorematrix.com/faq.html',
-        'https://chorematrix.com/privacy.html',
-        'https://chorematrix.com/terms.html',
-        'https://chorematrix.com/cookies.html',
-        'https://chorematrix.com/data-rights.html',
-        'https://chorematrix.com/login.html',
-        'https://chorematrix.com/signup.html',
-        'https://chorematrix.com/forgot-password.html'
+        'https://www.chorematrix.online/',
+        'https://www.chorematrix.online/how-it-works.html',
+        'https://www.chorematrix.online/pricing.html',
+        'https://www.chorematrix.online/why-chorematrix.html',
+        'https://www.chorematrix.online/faq.html',
+        'https://www.chorematrix.online/privacy.html',
+        'https://www.chorematrix.online/terms.html',
+        'https://www.chorematrix.online/cookies.html',
+        'https://www.chorematrix.online/data-rights.html',
+        'https://www.chorematrix.online/login.html',
+        'https://www.chorematrix.online/signup.html',
+        'https://www.chorematrix.online/forgot-password.html'
       ];
 
       for (const url of expectedUrls) {
@@ -146,7 +146,7 @@ describe('Pre-Polish Production Launch Audit Suite', () => {
       assert.ok(robots.includes('Disallow: /account.html'), 'robots.txt must disallow /account.html');
       assert.ok(robots.includes('Disallow: /reset-password.html'), 'robots.txt must disallow /reset-password.html');
       assert.ok(robots.includes('Disallow: /verify-email.html'), 'robots.txt must disallow /verify-email.html');
-      assert.ok(robots.includes('Sitemap: https://chorematrix.com/sitemap.xml'), 'robots.txt must link to sitemap.xml');
+      assert.ok(robots.includes('Sitemap: https://www.chorematrix.online/sitemap.xml'), 'robots.txt must link to sitemap.xml');
     });
 
     it('verifies all public pages contain canonical, OG, and Twitter metadata', () => {

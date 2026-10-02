@@ -10,7 +10,7 @@
  */
 
 import { supabase, isSupabaseConfigured } from '../config/supabase.ts';
-import { PADDLE_CONFIG, getPaddlePriceId, isPaddlePriceId } from '../config/paddle.ts';
+import { PADDLE_CONFIG, getPaddlePriceId, isPaddlePriceId, mapPaddlePriceToTier } from '../config/paddle.ts';
 
 declare global {
   interface Window {
@@ -205,7 +205,14 @@ export async function initiatePaddleSubscription(
       console.error('[Paddle Checkout]', err);
       return { success: false, error: err };
     }
-    selectedPriceId = options.priceId.trim();
+    const cleanPriceId = options.priceId.trim();
+    const mapped = mapPaddlePriceToTier(cleanPriceId);
+    if (!isTrialEligible && mapped?.hasTrial) {
+      selectedPriceId = getPaddlePriceId(mapped.tier, mapped.interval, false);
+      console.warn(`[Paddle Checkout Safety] Trial already consumed for user ${user.id}. Substituting standard no-trial price: ${selectedPriceId}`);
+    } else {
+      selectedPriceId = cleanPriceId;
+    }
   } else {
     try {
       selectedPriceId = getPaddlePriceId(

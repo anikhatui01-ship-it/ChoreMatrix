@@ -272,7 +272,7 @@ async function checkAccount() {
       emailField.value = 'Unable to load email';
     }
     showError(
-      `Unable to load account information (${err.message || 'Network error'}). ` +
+      `Unable to load account information (${escapeHtml(err.message || 'Network error')}). ` +
       `<button type="button" id="btnRetryAccount" class="btn small" style="margin-left:8px; padding:2px 8px;">Retry</button>`,
       true
     );
@@ -455,6 +455,12 @@ document.getElementById('btnDeleteAccount')?.addEventListener('click', async () 
     }
   }
 });
+
+function escapeHtml(str) {
+  return String(str || '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  })[c]);
+}
 
 function showError(msg, isHtml = false) {
   if (alertBox) {

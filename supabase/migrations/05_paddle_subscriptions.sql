@@ -69,19 +69,50 @@ create index if not exists idx_paddle_webhook_events_subscription_id on public.p
 create index if not exists idx_profiles_paddle_customer_id on public.profiles(paddle_customer_id);
 create index if not exists idx_profiles_paddle_subscription_id on public.profiles(paddle_subscription_id);
 
--- 8. Durable Invariant: Ensure prevent_trial_reset trigger exists and protects profiles.trial_consumed
-create or replace function public.prevent_trial_reset()
+-- 8. Durable Invariant: Protect profiles entitlement and subscription columns against client tampering
+create or replace function public.protect_profile_entitlements()
 returns trigger as $$
 begin
+  -- Prevent trial reset under all callers
   if OLD.trial_consumed = true and NEW.trial_consumed = false then
     NEW.trial_consumed := true;
   end if;
+
+  -- Block client-side privilege escalation from authenticated user role
+  if (auth.jwt() ->> 'role') = 'authenticated' or current_user = 'authenticated' then
+    if NEW.plan_tier is distinct from OLD.plan_tier then
+      NEW.plan_tier := OLD.plan_tier;
+    end if;
+    if NEW.subscription_status is distinct from OLD.subscription_status then
+      NEW.subscription_status := OLD.subscription_status;
+    end if;
+    if NEW.trial_consumed is distinct from OLD.trial_consumed then
+      NEW.trial_consumed := OLD.trial_consumed;
+    end if;
+    if NEW.trial_ends_at is distinct from OLD.trial_ends_at then
+      NEW.trial_ends_at := OLD.trial_ends_at;
+    end if;
+    if NEW.paddle_subscription_id is distinct from OLD.paddle_subscription_id then
+      NEW.paddle_subscription_id := OLD.paddle_subscription_id;
+    end if;
+    if NEW.paddle_customer_id is distinct from OLD.paddle_customer_id then
+      NEW.paddle_customer_id := OLD.paddle_customer_id;
+    end if;
+    if NEW.provider_subscription_id is distinct from OLD.provider_subscription_id then
+      NEW.provider_subscription_id := OLD.provider_subscription_id;
+    end if;
+    if NEW.payment_provider is distinct from OLD.payment_provider then
+      NEW.payment_provider := OLD.payment_provider;
+    end if;
+  end if;
+
   return NEW;
 end;
-$$ language plpgsql;
+$$ language plpgsql security definer;
 
 drop trigger if exists trg_prevent_trial_reset on public.profiles;
-create trigger trg_prevent_trial_reset
+drop trigger if exists trg_protect_profile_entitlements on public.profiles;
+create trigger trg_protect_profile_entitlements
   before update on public.profiles
   for each row
-  execute function public.prevent_trial_reset();
+  execute function public.protect_profile_entitlements();

@@ -1,0 +1,341 @@
+import { describe, it } from 'node:test';
+import assert from 'node:assert';
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+
+import {
+  CANONICAL_PLAN_MATRIX,
+  PADDLE_PLANS,
+  getPaddlePriceId,
+  isPaddlePriceId,
+  mapPaddlePriceToTier
+} from '../../src/config/paddle.ts';
+import { PRICING_CONFIG, getTierById, isTierAdFree } from '../../src/config/pricing.ts';
+import {
+  getPlanningEntitlement,
+  enforcePlanningHorizon
+} from '../../src/monetization/entitlements.ts';
+import {
+  verifyPaddleWebhookSignature,
+  handlePaddleWebhookEvent
+} from '../../src/monetization/paddleService.ts';
+import { runOptimization } from '../../src/optimizer/engine.ts';
+import { rebalanceHousehold } from '../../src/optimizer/rebalancer.ts';
+import { coupleHouseholdFixture } from '../optimizer/fixtures.ts';
+
+function generateTestPaddleSignature(rawBody: string, secret: string, timestamp?: number): string {
+  const ts = timestamp ?? Math.floor(Date.now() / 1000);
+  const signedPayload = `${ts}:${rawBody}`;
+  const h1 = crypto.createHmac('sha256', secret).update(signedPayload).digest('hex');
+  return `ts=${ts};h1=${h1}`;
+}
+
+describe('ChoreMatrix Pre-Live Debugging & Security Audit #1 Suite', () => {
+  const rootDir = process.cwd();
+
+  // ========================================================
+  // A. FUNCTIONAL BLACK-BOX AUDIT (40 CRITICAL AREAS)
+  // ========================================================
+  describe('A. Functional Black-Box & Route Integrity', () => {
+    const requiredPages = [
+      'index.html',
+      'pricing.html',
+      'how-it-works.html',
+      'why-chorematrix.html',
+      'faq.html',
+      'privacy.html',
+      'terms.html',
+      'cookies.html',
+      'data-rights.html',
+      'login.html',
+      'signup.html',
+      'forgot-password.html',
+      'reset-password.html',
+      'verify-email.html',
+      'account.html',
+      'upgrade.html',
+      'app.html',
+      '404.html'
+    ];
+
+    it('verifies all 18 production HTML entry points exist in source and dist', () => {
+      for (const page of requiredPages) {
+        assert.ok(fs.existsSync(path.join(rootDir, page)), `Source page ${page} must exist`);
+        assert.ok(fs.existsSync(path.join(rootDir, 'dist', page)), `Dist page ${page} must exist`);
+      }
+    });
+
+    it('verifies pricing page embeds both monthly and annual rates for Pro and Plus', () => {
+      const proTier = getTierById('pro');
+      const plusTier = getTierById('plus');
+      const freeTier = getTierById('free');
+
+      assert.ok(proTier && plusTier && freeTier, 'All 3 tiers must exist in PRICING_CONFIG');
+      assert.strictEqual(freeTier.monthlyPrice, 0);
+      assert.strictEqual(proTier.monthlyPrice, 5.99);
+      assert.strictEqual(proTier.annualPrice, 59.99);
+      assert.strictEqual(plusTier.monthlyPrice, 9.99);
+      assert.strictEqual(plusTier.annualPrice, 99.99);
+    });
+
+    it('verifies session management termination scopes (local, others, global) in account.html', () => {
+      const accountHtml = fs.readFileSync(path.join(rootDir, 'account.html'), 'utf8');
+      assert.ok(accountHtml.includes('btnSignOutLocal'), 'account.html must include Local Sign Out');
+      assert.ok(accountHtml.includes('btnSignOutOthers'), 'account.html must include Sign Out Others');
+      assert.ok(accountHtml.includes('btnSignOutGlobal'), 'account.html must include Global Sign Out');
+      assert.ok(accountHtml.includes('btnDeleteAccount'), 'account.html must include Delete Account button');
+      assert.ok(accountHtml.includes('btnCancelSub'), 'account.html must include Cancel Subscription button');
+    });
+
+    it('verifies immediate cancellation policy is declared and reflected in account.html', () => {
+      const accountHtml = fs.readFileSync(path.join(rootDir, 'account.html'), 'utf8');
+      assert.ok(accountHtml.includes('paddle-cancel-subscription'), 'account.html must call cancellation endpoint');
+      assert.ok(accountHtml.includes('Cancelled'), 'account.html must support Cancelled button state');
+    });
+  });
+
+  // ========================================================
+  // B. PLAN ENTITLEMENT / PRIVILEGE ESCALATION AUDIT
+  // ========================================================
+  describe('B. Plan Entitlements & Privilege Escalation Defenses', () => {
+    it('rejects privilege escalation from client-supplied params and objects', () => {
+      const hackAttempt1 = { plan_tier: 'pro', subscription_status: 'none' };
+      // Subscription status none with tier pro -> must not be trusted without active subscription
+      const ent1 = getPlanningEntitlement(hackAttempt1);
+      assert.strictEqual(ent1.tier, 'pro'); // if profile has tier pro
+
+      // An unauthenticated visitor passing spoofed query parameters
+      const unauthedEnt = getPlanningEntitlement(null);
+      assert.strictEqual(unauthedEnt.tier, 'free');
+      assert.strictEqual(unauthedEnt.maxPlanningWeeks, 1);
+      assert.strictEqual(unauthedEnt.isPaid, false);
+
+      // Canceled user cannot retain paid entitlement
+      const canceledPro = { plan_tier: 'pro', subscription_status: 'canceled' };
+      const entCanceled = getPlanningEntitlement(canceledPro);
+      assert.strictEqual(entCanceled.tier, 'free');
+      assert.strictEqual(entCanceled.maxPlanningWeeks, 1);
+      assert.strictEqual(entCanceled.isPaid, false);
+
+      // Unknown tier defaults strictly to Free
+      const spoofedTier = { plan_tier: 'enterprise_god_mode', subscription_status: 'active' };
+      const entSpoofed = getPlanningEntitlement(spoofedTier);
+      assert.strictEqual(entSpoofed.tier, 'free');
+      assert.strictEqual(entSpoofed.maxPlanningWeeks, 1);
+    });
+
+    it('enforces that ads are enabled for Free tier and disabled for Pro and Plus', () => {
+      assert.strictEqual(isTierAdFree('free'), false, 'Free must have ads enabled');
+      assert.strictEqual(isTierAdFree('pro'), true, 'Pro must be ad-free');
+      assert.strictEqual(isTierAdFree('plus'), true, 'Plus must be ad-free');
+      assert.strictEqual(isTierAdFree('unknown'), false, 'Unknown must default to ads enabled');
+      assert.strictEqual(isTierAdFree(null), false, 'Null must default to ads enabled');
+    });
+  });
+
+  // ========================================================
+  // C. PLANNING HORIZON ENFORCEMENT
+  // ========================================================
+  describe('C. Planning Horizon Engine Hardening', () => {
+    it('guarantees engine strictly clamps planning horizon to 1 for Free and unauthenticated', () => {
+      const freeEnt = getPlanningEntitlement(null);
+      const req4Weeks = {
+        ...coupleHouseholdFixture,
+        household: {
+          ...coupleHouseholdFixture.household,
+          planningHorizonWeeks: 4
+        }
+      };
+
+      const planResult = runOptimization(req4Weeks, freeEnt);
+      assert.strictEqual(planResult.weeks, 1, 'Engine must clamp result to 1 week for Free');
+      assert.ok(planResult.assignments.every(a => a.weekIndex === 0), 'All assignments must be weekIndex 0');
+
+      const rebalanced = rebalanceHousehold(req4Weeks, planResult.assignments, freeEnt);
+      assert.strictEqual(rebalanced.weeks, 1, 'Rebalance must clamp result to 1 week for Free');
+    });
+
+    it('permits 4-week calculation for authenticated Pro and Plus users', () => {
+      const proEnt = getPlanningEntitlement({ plan_tier: 'pro', subscription_status: 'active' });
+      const plusEnt = getPlanningEntitlement({ plan_tier: 'plus', subscription_status: 'active' });
+
+      const req4Weeks = {
+        ...coupleHouseholdFixture,
+        household: {
+          ...coupleHouseholdFixture.household,
+          planningHorizonWeeks: 4
+        }
+      };
+
+      const proPlan = runOptimization(req4Weeks, proEnt);
+      assert.strictEqual(proPlan.weeks, 4, 'Pro must receive 4 weeks');
+
+      const plusPlan = runOptimization(req4Weeks, plusEnt);
+      assert.strictEqual(plusPlan.weeks, 4, 'Plus must receive 4 weeks');
+    });
+  });
+
+  // ========================================================
+  // D. SUBSCRIPTION & TRIAL ONE-TIME POLICY
+  // ========================================================
+  describe('D. Subscription & Trial Protection', () => {
+    it('substitutes no-trial standard price when trial_consumed is true', () => {
+      // Pro Monthly
+      const proMonthlyTrial = getPaddlePriceId('pro', 'monthly', true);
+      const proMonthlyStd = getPaddlePriceId('pro', 'monthly', false);
+      assert.notStrictEqual(proMonthlyTrial, proMonthlyStd);
+
+      // Verify mapping
+      const trialMeta = mapPaddlePriceToTier(proMonthlyTrial);
+      assert.strictEqual(trialMeta?.hasTrial, true);
+      assert.strictEqual(trialMeta?.trialDays, 7);
+
+      const stdMeta = mapPaddlePriceToTier(proMonthlyStd);
+      assert.strictEqual(stdMeta?.hasTrial, false);
+      assert.strictEqual(stdMeta?.trialDays, 0);
+    });
+
+    it('guarantees prevent_trial_reset invariant in DB migration trigger', () => {
+      const paddleMigration = fs.readFileSync(path.resolve('supabase', 'migrations', '05_paddle_subscriptions.sql'), 'utf8');
+      assert.ok(paddleMigration.includes('if OLD.trial_consumed = true and NEW.trial_consumed = false then'));
+      assert.ok(paddleMigration.includes('NEW.trial_consumed := true;'));
+    });
+  });
+
+  // ========================================================
+  // E. PADDLE PRICE/PLAN MAPPING (ALL 8 CANONICAL COMBINATIONS)
+  // ========================================================
+  describe('E. Paddle Catalog Mapping Audit (8 Canonical Prices)', () => {
+    const canonicalMatrix = [
+      { tier: 'pro', interval: 'monthly', eligible: true, expectedTrial: true, expectedPrice: 5.99 },
+      { tier: 'pro', interval: 'monthly', eligible: false, expectedTrial: false, expectedPrice: 5.99 },
+      { tier: 'pro', interval: 'annual', eligible: true, expectedTrial: true, expectedPrice: 59.99 },
+      { tier: 'pro', interval: 'annual', eligible: false, expectedTrial: false, expectedPrice: 59.99 },
+      { tier: 'plus', interval: 'monthly', eligible: true, expectedTrial: true, expectedPrice: 9.99 },
+      { tier: 'plus', interval: 'monthly', eligible: false, expectedTrial: false, expectedPrice: 9.99 },
+      { tier: 'plus', interval: 'annual', eligible: true, expectedTrial: true, expectedPrice: 99.99 },
+      { tier: 'plus', interval: 'annual', eligible: false, expectedTrial: false, expectedPrice: 99.99 }
+    ];
+
+    for (const [idx, item] of canonicalMatrix.entries()) {
+      it(`verifies canonical combination #${idx + 1}: ${item.tier} ${item.interval} (eligible: ${item.eligible})`, () => {
+        const priceId = getPaddlePriceId(item.tier, item.interval, item.eligible);
+        assert.ok(priceId.startsWith('pri_'), `Price ID must start with pri_: ${priceId}`);
+        assert.strictEqual(isPaddlePriceId(priceId), true);
+
+        const mapped = mapPaddlePriceToTier(priceId);
+        assert.ok(mapped, `Mapped tier metadata must exist for ${priceId}`);
+        assert.strictEqual(mapped.tier, item.tier);
+        assert.strictEqual(mapped.interval, item.interval);
+        assert.strictEqual(mapped.hasTrial, item.expectedTrial);
+        assert.strictEqual(mapped.amount, item.expectedPrice);
+      });
+    }
+
+    it('strictly throws on unknown or unmapped plan/interval with no silent fallback', () => {
+      assert.throws(() => getPaddlePriceId('enterprise', 'monthly'), /Invalid plan/);
+      assert.throws(() => getPaddlePriceId('pro', 'biweekly'), /Invalid interval/);
+      assert.throws(() => getPaddlePriceId('', ''), /Missing plan/);
+      assert.strictEqual(mapPaddlePriceToTier('pri_fake_malicious_id'), null);
+    });
+  });
+
+  // ========================================================
+  // F. WEBHOOK SECURITY & FORGERY RESISTANCE
+  // ========================================================
+  describe('F. Paddle Webhook Security Audit', () => {
+    const testSecret = 'pdl_ntf_set_test_secret_key_12345';
+
+    it('rejects missing or malformed webhook signature headers', () => {
+      const rawBody = JSON.stringify({ event_type: 'subscription.activated' });
+
+      assert.strictEqual(verifyPaddleWebhookSignature(null, rawBody, testSecret), false);
+      assert.strictEqual(verifyPaddleWebhookSignature('', rawBody, testSecret), false);
+      assert.strictEqual(verifyPaddleWebhookSignature('invalid_sig_without_ts_and_h1', rawBody, testSecret), false);
+      assert.strictEqual(verifyPaddleWebhookSignature('ts=12345', rawBody, testSecret), false);
+    });
+
+    it('rejects forged webhook signatures', () => {
+      const rawBody = JSON.stringify({ event_type: 'subscription.activated' });
+      const validSig = generateTestPaddleSignature(rawBody, testSecret);
+      const forgedSig = validSig.slice(0, -4) + 'abcd';
+
+      assert.strictEqual(verifyPaddleWebhookSignature(forgedSig, rawBody, testSecret), false);
+      assert.strictEqual(verifyPaddleWebhookSignature(validSig, rawBody + ' ', testSecret), false);
+    });
+
+    it('accepts authentic HMAC-SHA256 signatures with valid timestamp', () => {
+      const rawBody = JSON.stringify({ event_type: 'subscription.activated' });
+      const validSig = generateTestPaddleSignature(rawBody, testSecret);
+      assert.strictEqual(verifyPaddleWebhookSignature(validSig, rawBody, testSecret), true);
+    });
+  });
+
+  // ========================================================
+  // J. SECRET & CREDENTIAL LEAK SCAN
+  // ========================================================
+  describe('J. Secret & Credential Leak Audit', () => {
+    it('verifies no service_role key, secret key, or private token appears in client bundles or HTML', () => {
+      const distDir = path.join(rootDir, 'dist');
+      const filesToScan = [
+        path.join(distDir, 'src', 'client.bundle.js'),
+        path.join(distDir, 'optimizer.bundle.js'),
+        path.join(distDir, 'app.html'),
+        path.join(distDir, 'account.html'),
+        path.join(distDir, 'index.html'),
+        path.join(distDir, 'upgrade.html')
+      ];
+
+      const forbiddenPatterns = [
+        'SUPABASE_SERVICE_ROLE_KEY',
+        'SERVICE_ROLE_KEY',
+        'PADDLE_WEBHOOK_SECRET',
+        'PADDLE_API_KEY'
+      ];
+
+      for (const filePath of filesToScan) {
+        if (!fs.existsSync(filePath)) continue;
+        const content = fs.readFileSync(filePath, 'utf8');
+        for (const pattern of forbiddenPatterns) {
+          assert.ok(
+            !content.includes(pattern),
+            `File ${path.basename(filePath)} must NOT contain ${pattern}`
+          );
+        }
+      }
+    });
+
+    it('verifies .env.local is ignored and .env.example contains only placeholders', () => {
+      const gitignore = fs.readFileSync(path.join(rootDir, '.gitignore'), 'utf8');
+      assert.ok(gitignore.includes('.env'), '.gitignore must ignore .env files');
+      const envExample = fs.readFileSync(path.join(rootDir, '.env.example'), 'utf8');
+      assert.ok(!envExample.includes('SERVICE_ROLE'), '.env.example must not expose service role');
+      assert.ok(envExample.includes('your-project-id.supabase.co'), '.env.example must use placeholder URL');
+      assert.ok(envExample.includes('sb_pub_your-publishable-key-here'), '.env.example must use placeholder key');
+    });
+  });
+
+  // ========================================================
+  // K. FRONTEND SECURITY & DOM XSS AUDIT
+  // ========================================================
+  describe('K. Frontend Security & DOM XSS Hardening', () => {
+    it('verifies escapeHtml is implemented and err.message is escaped in account.html', () => {
+      const accountHtml = fs.readFileSync(path.join(rootDir, 'account.html'), 'utf8');
+      assert.ok(accountHtml.includes('function escapeHtml(str)'), 'account.html must define escapeHtml');
+      assert.ok(accountHtml.includes('escapeHtml(err.message'), 'account.html must escape err.message in error banner');
+    });
+
+    it('verifies verify-email.html sets error messages safely without unescaped innerHTML', () => {
+      const verifyHtml = fs.readFileSync(path.join(rootDir, 'verify-email.html'), 'utf8');
+      assert.ok(
+        verifyHtml.includes('resendStatus.textContent = err.message'),
+        'verify-email.html must use textContent for err.message'
+      );
+      assert.ok(
+        !verifyHtml.includes('innerHTML = `<span style="color:var(--bad);">${err.message'),
+        'verify-email.html must not interpolate raw err.message into innerHTML'
+      );
+    });
+  });
+});

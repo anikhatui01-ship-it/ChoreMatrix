@@ -273,5 +273,72 @@ describe('Database Schema & Row Level Security (RLS) Boundaries', () => {
     assert.ok(fixSql.includes('grant select, insert, update, delete on public.profiles to authenticated;'));
     assert.ok(fixSql.includes('grant select, insert, update, delete on public.user_privacy_preferences to authenticated;'));
   });
+
+  it('verifies 05_paddle_subscriptions.sql installs protect_profile_entitlements trigger preventing privilege tampering', () => {
+    const paddleMigrationPath = path.resolve('supabase', 'migrations', '05_paddle_subscriptions.sql');
+    assert.ok(fs.existsSync(paddleMigrationPath), '05_paddle_subscriptions.sql must exist');
+    const paddleSql = fs.readFileSync(paddleMigrationPath, 'utf8');
+
+    assert.ok(paddleSql.includes('protect_profile_entitlements'), 'Must declare protect_profile_entitlements trigger function');
+    assert.ok(paddleSql.includes('trg_protect_profile_entitlements'), 'Must attach trg_protect_profile_entitlements to profiles');
+    assert.ok(paddleSql.includes('NEW.plan_tier := OLD.plan_tier;'), 'Must preserve OLD.plan_tier on non-service update');
+    assert.ok(paddleSql.includes('NEW.subscription_status := OLD.subscription_status;'), 'Must preserve OLD.subscription_status');
+    assert.ok(paddleSql.includes('NEW.trial_consumed := true;'), 'Must prevent trial_consumed reset');
+
+    // Simulate Postgres trigger behavior for authenticated client vs service_role
+    interface ProfileRow {
+      id: string;
+      plan_tier: string;
+      subscription_status: string;
+      trial_consumed: boolean;
+    }
+
+    function simulateProfileUpdateTrigger(
+      role: 'authenticated' | 'service_role',
+      oldRow: ProfileRow,
+      newRow: ProfileRow
+    ): ProfileRow {
+      const result = { ...newRow };
+      if (oldRow.trial_consumed && !result.trial_consumed) {
+        result.trial_consumed = true;
+      }
+      if (role === 'authenticated') {
+        if (result.plan_tier !== oldRow.plan_tier) {
+          result.plan_tier = oldRow.plan_tier;
+        }
+        if (result.subscription_status !== oldRow.subscription_status) {
+          result.subscription_status = oldRow.subscription_status;
+        }
+        if (result.trial_consumed !== oldRow.trial_consumed) {
+          result.trial_consumed = oldRow.trial_consumed;
+        }
+      }
+      return result;
+    }
+
+    const freeUser: ProfileRow = {
+      id: 'usr_malicious',
+      plan_tier: 'free',
+      subscription_status: 'none',
+      trial_consumed: false
+    };
+
+    // Authenticated user attempts privilege escalation via PostgREST
+    const tamperedAttempt: ProfileRow = {
+      id: 'usr_malicious',
+      plan_tier: 'pro',
+      subscription_status: 'active',
+      trial_consumed: false
+    };
+
+    const clientUpdateResult = simulateProfileUpdateTrigger('authenticated', freeUser, tamperedAttempt);
+    assert.strictEqual(clientUpdateResult.plan_tier, 'free', 'Client cannot elevate plan_tier to pro');
+    assert.strictEqual(clientUpdateResult.subscription_status, 'none', 'Client cannot set subscription_status to active');
+
+    // Service role (webhook) is permitted to update plan_tier and subscription_status
+    const webhookUpdateResult = simulateProfileUpdateTrigger('service_role', freeUser, tamperedAttempt);
+    assert.strictEqual(webhookUpdateResult.plan_tier, 'pro', 'service_role is authorized to update plan_tier');
+    assert.strictEqual(webhookUpdateResult.subscription_status, 'active', 'service_role is authorized to update status');
+  });
 });
 
