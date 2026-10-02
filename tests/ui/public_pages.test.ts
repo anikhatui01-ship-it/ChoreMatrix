@@ -70,7 +70,7 @@ describe('Public Pages & Legal Suite Verification', () => {
 
   it('verifies FAQ page contains required SEO metadata, headings, 25 questions, and accessible accordion semantics', () => {
     const faqHtml = fs.readFileSync(path.join(rootDir, 'faq.html'), 'utf8');
-    assert.ok(faqHtml.includes('<title>ChoreMatrix FAQ — Household Workload Optimizer</title>'), 'FAQ must have exact required title');
+    assert.ok(faqHtml.includes('<title>ChoreMatrix FAQ — Household Workload & Chore Planning</title>'), 'FAQ must have exact required title');
     assert.ok(faqHtml.includes('name="description"'), 'FAQ must have meta description');
     assert.ok(faqHtml.includes('rel="canonical"'), 'FAQ must have canonical link');
     assert.ok(faqHtml.includes('property="og:title"'), 'FAQ must have Open Graph title');
