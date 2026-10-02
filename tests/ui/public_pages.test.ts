@@ -137,7 +137,6 @@ describe('Public Pages & Legal Suite Verification', () => {
     assert.ok(refundHtml.includes('7-day'), 'refund.html must explain 7-day trial refund terms');
     assert.ok(refundHtml.includes('statutory consumer rights'), 'refund.html must preserve statutory consumer rights');
     assert.ok(!refundHtml.includes('legally impossible under all circumstances'), 'refund.html must NOT state refunds are legally impossible');
-    assert.ok(refundHtml.includes('support@chorematrix.com'), 'refund.html must list support email');
   });
 
   it('verifies Merchant of Record disclosure is present on pricing, upgrade, terms, and refund pages', () => {

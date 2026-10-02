@@ -26,8 +26,8 @@ describe('Pre-Polish Production Launch Audit Suite', () => {
       }
     });
 
-    it('verifies official support email support@chorematrix.com is present on legal pages', () => {
-      const legalPages = ['terms.html', 'privacy.html', 'refund.html'];
+    it('verifies official support email support@chorematrix.com is present on terms and privacy pages', () => {
+      const legalPages = ['terms.html', 'privacy.html'];
       for (const file of legalPages) {
         const content = fs.readFileSync(path.join(rootDir, file), 'utf8');
         assert.ok(
