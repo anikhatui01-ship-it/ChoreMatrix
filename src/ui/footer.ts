@@ -49,6 +49,7 @@ export function renderFooter() {
               <li><a href="/privacy.html">Privacy Policy</a></li>
               <li><a href="/terms.html">Terms of Service</a></li>
               <li><a href="/cookies.html">Cookie Policy</a></li>
+              <li><a href="/refund.html">Refund Policy</a></li>
               <li><a href="/data-rights.html">Data Rights & Export</a></li>
               <li><a href="#" id="btnManageCookies">Cookie Preferences</a></li>
             </ul>
@@ -63,6 +64,7 @@ export function renderFooter() {
             <a href="/faq.html">FAQ</a>
             <a href="/privacy.html">Privacy</a>
             <a href="/terms.html">Terms</a>
+            <a href="/refund.html">Refunds</a>
             <a href="/data-rights.html">Data Rights</a>
           </div>
         </div>

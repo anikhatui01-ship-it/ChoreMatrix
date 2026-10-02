@@ -58,7 +58,7 @@ export const PRICING_CONFIG: PricingConfig = {
   isBusinessFinalized: false,
   provisionalNotice: 'Informational Pricing & Sandbox Checkout: Subscription payment checkout is powered by Paddle Sandbox for testing. Core optimization and interactive planning remain accessible without entering payment details.',
   defaultTrialDays: 7,
-  autoRenewalPolicyNotice: 'Automatic Renewal Disclosure: Future paid subscriptions automatically renew at the applicable recurring rate ($5.99/mo or $59.99/yr for Pro; $9.99/mo or $99.99/yr for Plus) at the end of each billing cycle or promotional trial period until cancelled. Cancellations can be executed online anytime via Account Settings without phone or manual cancellation barriers. California and other jurisdictions require explicit affirmative consent and clear disclosure of all renewal terms adjacent to the purchase action.',
+  autoRenewalPolicyNotice: 'Automatic Renewal & Merchant of Record Disclosure: Paid subscriptions automatically renew at the applicable recurring rate ($5.99/mo or $59.99/yr for Pro; $9.99/mo or $99.99/yr for Plus) at the end of each billing cycle or promotional trial period until cancelled. Cancellations can be executed online anytime via Account Settings without phone or manual cancellation barriers. Orders are processed by Paddle.com as Merchant of Record. Please review our Cancellation & Refund Policy for full terms on trial cancellation, statutory consumer rights, and refund requests.',
   tiers: [
     {
       id: 'free',

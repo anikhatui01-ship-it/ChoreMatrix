@@ -16,6 +16,7 @@ describe('Public Pages & Legal Suite Verification', () => {
     'terms.html',
     'cookies.html',
     'data-rights.html',
+    'refund.html',
     'login.html',
     'signup.html',
     'forgot-password.html',
@@ -25,7 +26,7 @@ describe('Public Pages & Legal Suite Verification', () => {
     'app.html'
   ];
 
-  it('verifies all 16 required HTML pages exist and contain core head tags', () => {
+  it('verifies all 17 required HTML pages exist and contain core head tags', () => {
     for (const page of requiredPages) {
       const filePath = path.join(rootDir, page);
       assert.ok(fs.existsSync(filePath), `Page ${page} must exist in project root`);
@@ -52,10 +53,9 @@ describe('Public Pages & Legal Suite Verification', () => {
     assert.ok(indexHtml.includes('Log In') && indexHtml.includes('Sign Up'), 'index.html must include Log In and Sign Up');
   });
 
-  it('verifies public footer is cleaned of entity, email, and address placeholders and includes FAQ', () => {
+  it('verifies public footer is cleaned of entity and address placeholders, and includes FAQ and Refund Policy links', () => {
     const footerTs = fs.readFileSync(path.join(rootDir, 'src', 'ui', 'footer.ts'), 'utf8');
     assert.ok(!footerTs.includes('[ChoreMatrix Legal Entity Placeholder]'), 'footer.ts must not contain legal entity placeholder');
-    assert.ok(!footerTs.includes('support@chorematrix.com'), 'footer.ts must not contain fabricated support email');
     assert.ok(!footerTs.includes('[Registered Business Address Placeholder]'), 'footer.ts must not contain address placeholder');
     assert.ok(footerTs.includes('/faq.html'), 'footer.ts must contain FAQ link');
     assert.ok(footerTs.includes('/how-it-works.html'), 'footer.ts preserves How It Works');
@@ -64,6 +64,7 @@ describe('Public Pages & Legal Suite Verification', () => {
     assert.ok(footerTs.includes('/privacy.html'), 'footer.ts preserves Privacy Policy');
     assert.ok(footerTs.includes('/terms.html'), 'footer.ts preserves Terms of Service');
     assert.ok(footerTs.includes('/cookies.html'), 'footer.ts preserves Cookie Policy');
+    assert.ok(footerTs.includes('/refund.html'), 'footer.ts must contain Refund Policy link');
     assert.ok(footerTs.includes('/data-rights.html'), 'footer.ts preserves Data Rights');
     assert.ok(footerTs.includes('btnManageCookies'), 'footer.ts preserves Cookie Preferences');
   });
@@ -107,21 +108,47 @@ describe('Public Pages & Legal Suite Verification', () => {
     assert.ok(!faqHtml.includes("world's first"), 'FAQ must avoid hype term world\'s first');
   });
 
-  it('verifies pricing page embeds centralized configuration and provisional notices', () => {
+  it('verifies pricing page embeds centralized configuration, provisional notices, and refund link', () => {
     const pricingHtml = fs.readFileSync(path.join(rootDir, 'pricing.html'), 'utf8');
     assert.ok(pricingHtml.includes('PRICING_CONFIG'), 'pricing.html must import PRICING_CONFIG');
     assert.ok(pricingHtml.includes('Provisional Development Pricing'), 'pricing.html must show provisional notice');
     assert.ok(pricingHtml.includes('Free Trial') && pricingHtml.includes('trialDays'), 'pricing.html must display free trial representation');
+    assert.ok(pricingHtml.includes('/refund.html'), 'pricing.html must link to Cancellation & Refund Policy');
   });
 
-  it('verifies privacy page makes honest disclosures without unsubstantiated compliance badges', () => {
+  it('verifies privacy page identifies ChoreMatrix as service provider without legal entity placeholders', () => {
     const privacyHtml = fs.readFileSync(path.join(rootDir, 'privacy.html'), 'utf8');
     assert.ok(privacyHtml.includes('Data Minimization'), 'Privacy page must emphasize data minimization');
     assert.ok(privacyHtml.includes('Supabase Inc.'), 'Privacy page must list Supabase subprocessor');
     assert.ok(privacyHtml.includes('Vercel Inc.'), 'Privacy page must list Vercel subprocessor');
+    assert.ok(privacyHtml.includes('Paddle.com'), 'Privacy page must list Paddle subprocessor & MoR');
     assert.ok(!privacyHtml.includes('HIPAA compliant'), 'Privacy page must NOT falsely claim HIPAA compliance');
     assert.ok(!privacyHtml.includes('SOC 2 certified'), 'Privacy page must NOT falsely claim SOC 2 certification');
-    assert.ok(privacyHtml.includes('[ChoreMatrix Legal Entity Placeholder]'), 'Privacy page must include entity placeholder');
+    assert.ok(privacyHtml.includes('Service Provider: ChoreMatrix'), 'Privacy page must identify ChoreMatrix as service provider');
+    assert.ok(!privacyHtml.includes('[ChoreMatrix Legal Entity Placeholder]'), 'Privacy page must not contain legal entity placeholder');
+  });
+
+  it('verifies refund page contains complete Paddle compliance and statutory disclosures', () => {
+    const refundHtml = fs.readFileSync(path.join(rootDir, 'refund.html'), 'utf8');
+    assert.ok(refundHtml.includes('<title>Cancellation & Refund Policy — ChoreMatrix</title>'), 'refund.html must have correct title');
+    assert.ok(refundHtml.includes('rel="canonical" href="https://chorematrix.com/refund.html"'), 'refund.html must have canonical link');
+    assert.ok(refundHtml.includes('Merchant of Record'), 'refund.html must disclose Merchant of Record');
+    assert.ok(refundHtml.includes('Paddle.com'), 'refund.html must name Paddle.com');
+    assert.ok(refundHtml.includes('7-day'), 'refund.html must explain 7-day trial refund terms');
+    assert.ok(refundHtml.includes('statutory consumer rights'), 'refund.html must preserve statutory consumer rights');
+    assert.ok(!refundHtml.includes('legally impossible under all circumstances'), 'refund.html must NOT state refunds are legally impossible');
+    assert.ok(refundHtml.includes('support@chorematrix.com'), 'refund.html must list support email');
+  });
+
+  it('verifies Merchant of Record disclosure is present on pricing, upgrade, terms, and refund pages', () => {
+    const pagesToCheck = ['terms.html', 'refund.html', 'pricing.html', 'upgrade.html'];
+    for (const page of pagesToCheck) {
+      const content = fs.readFileSync(path.join(rootDir, page), 'utf8');
+      assert.ok(
+        content.includes('Merchant of Record') || content.includes('Paddle.com'),
+        `${page} must contain Merchant of Record disclosure`
+      );
+    }
   });
 
   it('verifies account page provides all 3 explicit logout scopes', () => {
