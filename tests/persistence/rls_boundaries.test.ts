@@ -367,6 +367,25 @@ describe('Database Schema & Row Level Security (RLS) Boundaries', () => {
     assert.ok(dodoSql.includes('NEW.dodo_customer_id := OLD.dodo_customer_id;'));
     assert.ok(dodoSql.includes('trg_protect_profile_entitlements'));
   });
+
+  it('verifies 07_cleanup_legacy_payment_providers.sql cleanly drops legacy tables and updates trigger', () => {
+    const cleanupMigrationPath = path.resolve('supabase', 'migrations', '07_cleanup_legacy_payment_providers.sql');
+    assert.ok(fs.existsSync(cleanupMigrationPath), '07_cleanup_legacy_payment_providers.sql must exist');
+    const cleanupSql = fs.readFileSync(cleanupMigrationPath, 'utf8');
+
+    assert.ok(cleanupSql.includes('drop table if exists public.paddle_webhook_events cascade;'));
+    assert.ok(cleanupSql.includes('drop table if exists public.paddle_subscriptions cascade;'));
+    assert.ok(cleanupSql.includes('drop table if exists public.razorpay_webhook_events cascade;'));
+    assert.ok(cleanupSql.includes('drop table if exists public.razorpay_subscriptions cascade;'));
+    assert.ok(cleanupSql.includes('drop table if exists public.cashfree_webhook_events cascade;'));
+    assert.ok(cleanupSql.includes('drop table if exists public.cashfree_subscriptions cascade;'));
+
+    assert.ok(cleanupSql.includes('alter table public.profiles drop column if exists paddle_subscription_id;'));
+    assert.ok(cleanupSql.includes('alter table public.profiles drop column if exists paddle_customer_id;'));
+
+    assert.ok(cleanupSql.includes('protect_profile_entitlements'));
+    assert.ok(cleanupSql.includes('trg_protect_profile_entitlements'));
+  });
 });
 
 

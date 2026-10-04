@@ -121,19 +121,19 @@ describe('Public Pages & Legal Suite Verification', () => {
     assert.ok(privacyHtml.includes('Data Minimization'), 'Privacy page must emphasize data minimization');
     assert.ok(privacyHtml.includes('Supabase Inc.'), 'Privacy page must list Supabase subprocessor');
     assert.ok(privacyHtml.includes('Vercel Inc.'), 'Privacy page must list Vercel subprocessor');
-    assert.ok(privacyHtml.includes('Paddle.com'), 'Privacy page must list Paddle subprocessor & MoR');
+    assert.ok(privacyHtml.includes('Dodo Payments'), 'Privacy page must list Dodo subprocessor & MoR');
     assert.ok(!privacyHtml.includes('HIPAA compliant'), 'Privacy page must NOT falsely claim HIPAA compliance');
     assert.ok(!privacyHtml.includes('SOC 2 certified'), 'Privacy page must NOT falsely claim SOC 2 certification');
     assert.ok(privacyHtml.includes('Service Provider: ChoreMatrix'), 'Privacy page must identify ChoreMatrix as service provider');
     assert.ok(!privacyHtml.includes('[ChoreMatrix Legal Entity Placeholder]'), 'Privacy page must not contain legal entity placeholder');
   });
 
-  it('verifies refund page contains complete Paddle compliance and statutory disclosures', () => {
+  it('verifies refund page contains complete Dodo compliance and statutory disclosures', () => {
     const refundHtml = fs.readFileSync(path.join(rootDir, 'refund.html'), 'utf8');
     assert.ok(refundHtml.includes('<title>Cancellation & Refund Policy — ChoreMatrix</title>'), 'refund.html must have correct title');
     assert.ok(refundHtml.includes('rel="canonical" href="https://chorematrix.com/refund.html"'), 'refund.html must have canonical link');
     assert.ok(refundHtml.includes('Merchant of Record'), 'refund.html must disclose Merchant of Record');
-    assert.ok(refundHtml.includes('Paddle.com'), 'refund.html must name Paddle.com');
+    assert.ok(refundHtml.includes('Dodo Payments'), 'refund.html must name Dodo Payments');
     assert.ok(refundHtml.includes('7-day'), 'refund.html must explain 7-day trial refund terms');
     assert.ok(refundHtml.includes('statutory consumer rights'), 'refund.html must preserve statutory consumer rights');
     assert.ok(!refundHtml.includes('legally impossible under all circumstances'), 'refund.html must NOT state refunds are legally impossible');
@@ -144,7 +144,7 @@ describe('Public Pages & Legal Suite Verification', () => {
     for (const page of pagesToCheck) {
       const content = fs.readFileSync(path.join(rootDir, page), 'utf8');
       assert.ok(
-        content.includes('Merchant of Record') || content.includes('Paddle.com'),
+        content.includes('Merchant of Record') || content.includes('Dodo Payments'),
         `${page} must contain Merchant of Record disclosure`
       );
     }

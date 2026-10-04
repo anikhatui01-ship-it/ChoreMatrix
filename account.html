@@ -258,12 +258,11 @@ async function checkAccount() {
         if (subNotice) subNotice.style.display = 'none';
       }
 
-      // Check for return from subscription checkout
+      // Informational return notice from subscription checkout (does NOT grant or alter entitlement)
       const urlParams = new URLSearchParams(window.location.search);
-      const returnSubId = urlParams.get('sub_id') || urlParams.get('subscription_id') || urlParams.get('paddle_subscription_id');
-      const checkoutStatus = urlParams.get('payment_status') || urlParams.get('status');
-      if (returnSubId || checkoutStatus === 'submitted' || checkoutStatus === 'completed') {
-        showNotice(`✓ Subscription authorization submitted${returnSubId ? ` (${returnSubId})` : ''}. Your plan tier will update automatically once verified by Paddle.`);
+      const checkoutStatus = urlParams.get('status') || urlParams.get('checkout_status');
+      if (checkoutStatus === 'completed' || checkoutStatus === 'submitted' || urlParams.has('payment_id')) {
+        showNotice('Subscription authorization submitted. Your plan tier will update automatically once confirmed by the server.');
       }
     } catch (profileErr) {
       console.warn('[Account] Profile fetch warning:', profileErr);
@@ -361,7 +360,7 @@ document.getElementById('changePassForm')?.addEventListener('submit', async (e) 
   }
 });
 
-// 4b. Cancel Subscription — IMMEDIATE CANCELLATION POLICY
+// 4b. Cancel Subscription — Dodo Subscription Cancellation
 document.getElementById('btnCancelSub')?.addEventListener('click', async () => {
   if (!confirm('Are you sure you want to cancel your subscription? Your paid access will end immediately.')) {
     return;
@@ -383,19 +382,7 @@ document.getElementById('btnCancelSub')?.addEventListener('click', async () => {
       throw new Error('Supabase URL is not configured in client environment.');
     }
     
-    // Determine provider endpoint based on profile record
-    let directEndpoint = `${supabaseUrl}/functions/v1/dodo-cancel-subscription`;
-    try {
-      const user = await authService.getUser();
-      if (user) {
-        const profile = await persistenceAdapter.getProfile(user.id);
-        if (profile?.payment_provider === 'paddle') {
-          directEndpoint = `${supabaseUrl}/functions/v1/paddle-cancel-subscription`;
-        }
-      }
-    } catch (e) {
-      console.warn('[Account] Provider check exception:', e);
-    }
+    const directEndpoint = `${supabaseUrl}/functions/v1/dodo-cancel-subscription`;
 
     const res = await fetch(directEndpoint, {
       method: 'POST',

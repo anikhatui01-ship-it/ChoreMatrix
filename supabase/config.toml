@@ -4,10 +4,13 @@
 # working directory name when running `supabase init`.
 project_id = "ftuenrkqiyacvyuajdtl"
 
-[functions.paddle-cancel-subscription]
+[functions.dodo-cancel-subscription]
 verify_jwt = true
 
-[functions.paddle-webhook]
+[functions.dodo-create-checkout]
+verify_jwt = true
+
+[functions.dodo-webhook]
 verify_jwt = false
 
 

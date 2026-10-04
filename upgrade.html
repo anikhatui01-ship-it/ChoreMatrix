@@ -29,7 +29,6 @@
   })();
 </script>
 <link rel="stylesheet" href="/src/styles/common.css" />
-<script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
 <style>
   .upgrade-wrap {
     max-width: 680px;
@@ -125,9 +124,6 @@ import {
   DODO_CONFIG,
   getDodoProductId,
   initiateDodoSubscription,
-  PADDLE_CONFIG,
-  getPaddlePriceId,
-  initiatePaddleSubscription,
   persistenceAdapter,
   authService,
   renderNavbar,
@@ -190,11 +186,11 @@ async function renderUpgradeCard() {
   const renewalAmount = isAnnual ? selectedTier.annualRenewalAmount : selectedTier.monthlyRenewalAmount;
   const renewalRateText = `$${renewalAmount.toFixed(2)}${intervalUnit}`;
 
-  let paddlePriceId = '';
+  // Validate Dodo product configuration
   try {
-    paddlePriceId = getPaddlePriceId(selectedTier.id, planInterval, isTrialEligible);
+    getDodoProductId(selectedTier.id, planInterval);
   } catch (err) {
-    console.error('[Upgrade Page] Price ID lookup error:', err);
+    console.error('[Upgrade Page] Dodo product lookup error:', err);
     displayCheckoutError(`Plan configuration error: ${err.message || String(err)}`);
     return;
   }

@@ -18,8 +18,6 @@ export interface ProfileRow {
   trial_ends_at: string | null;
   current_period_start?: string | null;
   current_period_end?: string | null;
-  paddle_customer_id?: string | null;
-  paddle_subscription_id?: string | null;
   dodo_customer_id?: string | null;
   dodo_subscription_id?: string | null;
   payment_provider?: string | null;
@@ -36,8 +34,6 @@ export interface BillingDetails {
   trial_ends_at: string | null;
   current_period_start: string | null;
   current_period_end: string | null;
-  paddle_customer_id?: string | null;
-  paddle_subscription_id?: string | null;
   dodo_customer_id?: string | null;
   dodo_subscription_id?: string | null;
   payment_provider?: string | null;

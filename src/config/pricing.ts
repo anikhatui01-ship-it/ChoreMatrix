@@ -56,9 +56,9 @@ export interface PricingConfig {
 
 export const PRICING_CONFIG: PricingConfig = {
   isBusinessFinalized: false,
-  provisionalNotice: 'Informational Pricing & Sandbox Checkout: Subscription payment checkout is powered by Paddle Sandbox for testing. Core optimization and interactive planning remain accessible without entering payment details.',
+  provisionalNotice: 'Informational Pricing & Test Mode Checkout: Subscription payment checkout is powered by Dodo Payments for testing. Core optimization and interactive planning remain accessible without entering payment details.',
   defaultTrialDays: 7,
-  autoRenewalPolicyNotice: 'Automatic Renewal & Merchant of Record Disclosure: Paid subscriptions automatically renew at the applicable recurring rate ($5.99/mo or $59.99/yr for Pro; $9.99/mo or $99.99/yr for Plus) at the end of each billing cycle or promotional trial period until cancelled. Cancellations can be executed online anytime via Account Settings without phone or manual cancellation barriers. Orders are processed by Paddle.com as Merchant of Record. Please review our Cancellation & Refund Policy for full terms on trial cancellation, statutory consumer rights, and refund requests.',
+  autoRenewalPolicyNotice: 'Automatic Renewal & Merchant of Record Disclosure: Paid subscriptions automatically renew at the applicable recurring rate ($5.99/mo or $59.99/yr for Pro; $9.99/mo or $99.99/yr for Plus) at the end of each billing cycle or promotional trial period until cancelled. Cancellations can be executed online anytime via Account Settings without phone or manual cancellation barriers. Orders are processed by Dodo Payments as Merchant of Record. Please review our Cancellation & Refund Policy for full terms on trial cancellation, statutory consumer rights, and refund requests.',
   tiers: [
     {
       id: 'free',
@@ -190,7 +190,7 @@ export const PRICING_CONFIG: PricingConfig = {
     },
     {
       question: 'Is payment processing active today?',
-      answer: 'Paddle Sandbox subscription checkout is active for development testing. Live payment processing will open soon. Test cards can be used without incurring real charges.'
+      answer: 'Dodo Payments Test Mode subscription checkout is active for development testing. Live payment processing will open soon. Test cards can be used without incurring real charges.'
     }
   ]
 };

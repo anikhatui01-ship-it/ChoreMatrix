@@ -706,4 +706,50 @@ describe('Dodo Payments Subscriptions & Security Suite (Test Mode)', () => {
       assert.strictEqual(safeEnv.VITE_DODO_ENVIRONMENT, 'test_mode');
     });
   });
+
+  describe('9. Dodo-Only Standardization & Legacy Provider Exclusion Audit', () => {
+    it('verifies active application code in src/ contains zero legacy payment provider references', () => {
+      const srcDir = path.resolve('src');
+      function scanDir(dir: string): string[] {
+        let results: string[] = [];
+        const entries = fs.readdirSync(dir, { withFileTypes: true });
+        for (const entry of entries) {
+          const fullPath = path.join(dir, entry.name);
+          if (entry.isDirectory()) {
+            results = results.concat(scanDir(fullPath));
+          } else if (entry.isFile() && entry.name.endsWith('.ts')) {
+            results.push(fullPath);
+          }
+        }
+        return results;
+      }
+
+      const files = scanDir(srcDir);
+      const forbiddenTerms = ['paddle', 'cashfree', 'razorpay', 'stripe'];
+
+      for (const file of files) {
+        const content = fs.readFileSync(file, 'utf8').toLowerCase();
+        for (const term of forbiddenTerms) {
+          assert.strictEqual(
+            content.includes(term),
+            false,
+            `File ${path.relative(srcDir, file)} must NOT contain legacy payment provider reference: "${term}"`
+          );
+        }
+      }
+    });
+
+    it('verifies supabase/functions contains ONLY Dodo edge functions', () => {
+      const functionsDir = path.resolve('supabase', 'functions');
+      const dirs = fs.readdirSync(functionsDir, { withFileTypes: true })
+        .filter(d => d.isDirectory())
+        .map(d => d.name);
+
+      assert.deepStrictEqual(dirs.sort(), [
+        'dodo-cancel-subscription',
+        'dodo-create-checkout',
+        'dodo-webhook'
+      ].sort());
+    });
+  });
 });

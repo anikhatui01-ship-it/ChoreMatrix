@@ -5,30 +5,47 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 
 import {
-  CANONICAL_PLAN_MATRIX,
-  PADDLE_PLANS,
-  getPaddlePriceId,
-  isPaddlePriceId,
-  mapPaddlePriceToTier
-} from '../../src/config/paddle.ts';
+  CANONICAL_DODO_PLAN_MATRIX,
+  DODO_PRODUCTS,
+  getDodoProductId,
+  isDodoProductId,
+  mapDodoProductToTier
+} from '../../src/config/dodo.ts';
 import { PRICING_CONFIG, getTierById, isTierAdFree } from '../../src/config/pricing.ts';
 import {
   getPlanningEntitlement,
   enforcePlanningHorizon
 } from '../../src/monetization/entitlements.ts';
 import {
-  verifyPaddleWebhookSignature,
-  handlePaddleWebhookEvent
-} from '../../src/monetization/paddleService.ts';
+  verifyDodoWebhookSignature,
+  processDodoWebhook
+} from '../../src/monetization/dodoService.ts';
 import { runOptimization } from '../../src/optimizer/engine.ts';
 import { rebalanceHousehold } from '../../src/optimizer/rebalancer.ts';
 import { coupleHouseholdFixture } from '../optimizer/fixtures.ts';
 
-function generateTestPaddleSignature(rawBody: string, secret: string, timestamp?: number): string {
-  const ts = timestamp ?? Math.floor(Date.now() / 1000);
-  const signedPayload = `${ts}:${rawBody}`;
-  const h1 = crypto.createHmac('sha256', secret).update(signedPayload).digest('hex');
-  return `ts=${ts};h1=${h1}`;
+function generateTestDodoSignature(
+  webhookId: string,
+  timestamp: string | number,
+  rawBody: string,
+  secret: string
+): { 'webhook-id': string; 'webhook-timestamp': string; 'webhook-signature': string } {
+  const ts = String(timestamp);
+  let secretBuffer: Buffer;
+  if (secret.startsWith('whsec_')) {
+    secretBuffer = Buffer.from(secret.slice(6), 'base64');
+  } else {
+    secretBuffer = Buffer.from(secret, 'utf8');
+  }
+
+  const signedPayload = `${webhookId}.${ts}.${rawBody}`;
+  const sig = crypto.createHmac('sha256', secretBuffer).update(signedPayload).digest('base64');
+
+  return {
+    'webhook-id': webhookId,
+    'webhook-timestamp': ts,
+    'webhook-signature': `v1,${sig}`
+  };
 }
 
 describe('ChoreMatrix Pre-Live Debugging & Security Audit #1 Suite', () => {
@@ -90,7 +107,7 @@ describe('ChoreMatrix Pre-Live Debugging & Security Audit #1 Suite', () => {
 
     it('verifies immediate cancellation policy is declared and reflected in account.html', () => {
       const accountHtml = fs.readFileSync(path.join(rootDir, 'account.html'), 'utf8');
-      assert.ok(accountHtml.includes('paddle-cancel-subscription'), 'account.html must call cancellation endpoint');
+      assert.ok(accountHtml.includes('dodo-cancel-subscription'), 'account.html must call dodo cancellation endpoint');
       assert.ok(accountHtml.includes('Cancelled'), 'account.html must support Cancelled button state');
     });
   });
@@ -180,95 +197,90 @@ describe('ChoreMatrix Pre-Live Debugging & Security Audit #1 Suite', () => {
   // D. SUBSCRIPTION & TRIAL ONE-TIME POLICY
   // ========================================================
   describe('D. Subscription & Trial Protection', () => {
-    it('substitutes no-trial standard price when trial_consumed is true', () => {
-      // Pro Monthly
-      const proMonthlyTrial = getPaddlePriceId('pro', 'monthly', true);
-      const proMonthlyStd = getPaddlePriceId('pro', 'monthly', false);
-      assert.notStrictEqual(proMonthlyTrial, proMonthlyStd);
+    it('verifies Dodo product configuration exists for pro and plus plans', () => {
+      const proMonthly = getDodoProductId('pro', 'monthly');
+      const proAnnual = getDodoProductId('pro', 'annual');
+      const plusMonthly = getDodoProductId('plus', 'monthly');
+      const plusAnnual = getDodoProductId('plus', 'annual');
 
-      // Verify mapping
-      const trialMeta = mapPaddlePriceToTier(proMonthlyTrial);
-      assert.strictEqual(trialMeta?.hasTrial, true);
-      assert.strictEqual(trialMeta?.trialDays, 7);
+      assert.ok(proMonthly.startsWith('pdt_'));
+      assert.ok(proAnnual.startsWith('pdt_'));
+      assert.ok(plusMonthly.startsWith('pdt_'));
+      assert.ok(plusAnnual.startsWith('pdt_'));
 
-      const stdMeta = mapPaddlePriceToTier(proMonthlyStd);
-      assert.strictEqual(stdMeta?.hasTrial, false);
-      assert.strictEqual(stdMeta?.trialDays, 0);
+      assert.strictEqual(isDodoProductId(proMonthly), true);
+      assert.strictEqual(mapDodoProductToTier(proMonthly)?.tier, 'pro');
+      assert.strictEqual(mapDodoProductToTier(plusAnnual)?.interval, 'annual');
     });
 
     it('guarantees prevent_trial_reset invariant in DB migration trigger', () => {
-      const paddleMigration = fs.readFileSync(path.resolve('supabase', 'migrations', '05_paddle_subscriptions.sql'), 'utf8');
-      assert.ok(paddleMigration.includes('if OLD.trial_consumed = true and NEW.trial_consumed = false then'));
-      assert.ok(paddleMigration.includes('NEW.trial_consumed := true;'));
+      const dodoMigration = fs.readFileSync(path.resolve('supabase', 'migrations', '06_dodo_subscriptions.sql'), 'utf8');
+      assert.ok(dodoMigration.includes('if OLD.trial_consumed = true and NEW.trial_consumed = false then'));
+      assert.ok(dodoMigration.includes('NEW.trial_consumed := true;'));
     });
   });
 
   // ========================================================
-  // E. PADDLE PRICE/PLAN MAPPING (ALL 8 CANONICAL COMBINATIONS)
+  // E. DODO PRODUCT/PLAN MAPPING (ALL 4 CANONICAL PRODUCTS)
   // ========================================================
-  describe('E. Paddle Catalog Mapping Audit (8 Canonical Prices)', () => {
+  describe('E. Dodo Catalog Mapping Audit (4 Canonical Products)', () => {
     const canonicalMatrix = [
-      { tier: 'pro', interval: 'monthly', eligible: true, expectedTrial: true, expectedPrice: 5.99 },
-      { tier: 'pro', interval: 'monthly', eligible: false, expectedTrial: false, expectedPrice: 5.99 },
-      { tier: 'pro', interval: 'annual', eligible: true, expectedTrial: true, expectedPrice: 59.99 },
-      { tier: 'pro', interval: 'annual', eligible: false, expectedTrial: false, expectedPrice: 59.99 },
-      { tier: 'plus', interval: 'monthly', eligible: true, expectedTrial: true, expectedPrice: 9.99 },
-      { tier: 'plus', interval: 'monthly', eligible: false, expectedTrial: false, expectedPrice: 9.99 },
-      { tier: 'plus', interval: 'annual', eligible: true, expectedTrial: true, expectedPrice: 99.99 },
-      { tier: 'plus', interval: 'annual', eligible: false, expectedTrial: false, expectedPrice: 99.99 }
+      { tier: 'pro', interval: 'monthly', expectedPrice: 5.99 },
+      { tier: 'pro', interval: 'annual', expectedPrice: 59.99 },
+      { tier: 'plus', interval: 'monthly', expectedPrice: 9.99 },
+      { tier: 'plus', interval: 'annual', expectedPrice: 99.99 }
     ];
 
     for (const [idx, item] of canonicalMatrix.entries()) {
-      it(`verifies canonical combination #${idx + 1}: ${item.tier} ${item.interval} (eligible: ${item.eligible})`, () => {
-        const priceId = getPaddlePriceId(item.tier, item.interval, item.eligible);
-        assert.ok(priceId.startsWith('pri_'), `Price ID must start with pri_: ${priceId}`);
-        assert.strictEqual(isPaddlePriceId(priceId), true);
+      it(`verifies canonical combination #${idx + 1}: ${item.tier} ${item.interval}`, () => {
+        const productId = getDodoProductId(item.tier, item.interval);
+        assert.ok(productId.startsWith('pdt_'), `Product ID must start with pdt_: ${productId}`);
+        assert.strictEqual(isDodoProductId(productId), true);
 
-        const mapped = mapPaddlePriceToTier(priceId);
-        assert.ok(mapped, `Mapped tier metadata must exist for ${priceId}`);
+        const mapped = mapDodoProductToTier(productId);
+        assert.ok(mapped, `Mapped tier metadata must exist for ${productId}`);
         assert.strictEqual(mapped.tier, item.tier);
-        assert.strictEqual(mapped.interval, item.interval);
-        assert.strictEqual(mapped.hasTrial, item.expectedTrial);
         assert.strictEqual(mapped.amount, item.expectedPrice);
       });
     }
 
     it('strictly throws on unknown or unmapped plan/interval with no silent fallback', () => {
-      assert.throws(() => getPaddlePriceId('enterprise', 'monthly'), /Invalid plan/);
-      assert.throws(() => getPaddlePriceId('pro', 'biweekly'), /Invalid interval/);
-      assert.throws(() => getPaddlePriceId('', ''), /Missing plan/);
-      assert.strictEqual(mapPaddlePriceToTier('pri_fake_malicious_id'), null);
+      assert.throws(() => getDodoProductId('enterprise', 'monthly'), /Invalid plan/);
+      assert.throws(() => getDodoProductId('pro', 'biweekly'), /Invalid interval/);
+      assert.throws(() => getDodoProductId('', ''), /Missing plan/);
+      assert.strictEqual(mapDodoProductToTier('pdt_fake_malicious_id'), null);
     });
   });
 
   // ========================================================
   // F. WEBHOOK SECURITY & FORGERY RESISTANCE
   // ========================================================
-  describe('F. Paddle Webhook Security Audit', () => {
-    const testSecret = 'pdl_ntf_set_test_secret_key_12345';
+  describe('F. Dodo Webhook Security Audit', () => {
+    const testSecret = 'whsec_MfKQ9r8GKYqrTwjUPD8ILPZIo2gZYMun';
 
     it('rejects missing or malformed webhook signature headers', () => {
-      const rawBody = JSON.stringify({ event_type: 'subscription.activated' });
+      const rawBody = JSON.stringify({ type: 'subscription.active' });
 
-      assert.strictEqual(verifyPaddleWebhookSignature(null, rawBody, testSecret), false);
-      assert.strictEqual(verifyPaddleWebhookSignature('', rawBody, testSecret), false);
-      assert.strictEqual(verifyPaddleWebhookSignature('invalid_sig_without_ts_and_h1', rawBody, testSecret), false);
-      assert.strictEqual(verifyPaddleWebhookSignature('ts=12345', rawBody, testSecret), false);
+      assert.strictEqual(verifyDodoWebhookSignature(null, rawBody, testSecret), false);
+      assert.strictEqual(verifyDodoWebhookSignature({}, rawBody, testSecret), false);
+      assert.strictEqual(verifyDodoWebhookSignature({ 'webhook-id': 'msg_1' }, rawBody, testSecret), false);
     });
 
     it('rejects forged webhook signatures', () => {
-      const rawBody = JSON.stringify({ event_type: 'subscription.activated' });
-      const validSig = generateTestPaddleSignature(rawBody, testSecret);
-      const forgedSig = validSig.slice(0, -4) + 'abcd';
+      const rawBody = JSON.stringify({ type: 'subscription.active' });
+      const now = Math.floor(Date.now() / 1000);
+      const headers = generateTestDodoSignature('msg_test', now, rawBody, testSecret);
+      const badHeaders = { ...headers, 'webhook-signature': 'v1,invalid_sig_here' };
 
-      assert.strictEqual(verifyPaddleWebhookSignature(forgedSig, rawBody, testSecret), false);
-      assert.strictEqual(verifyPaddleWebhookSignature(validSig, rawBody + ' ', testSecret), false);
+      assert.strictEqual(verifyDodoWebhookSignature(badHeaders, rawBody, testSecret), false);
+      assert.strictEqual(verifyDodoWebhookSignature(headers, rawBody + ' ', testSecret), false);
     });
 
-    it('accepts authentic HMAC-SHA256 signatures with valid timestamp', () => {
-      const rawBody = JSON.stringify({ event_type: 'subscription.activated' });
-      const validSig = generateTestPaddleSignature(rawBody, testSecret);
-      assert.strictEqual(verifyPaddleWebhookSignature(validSig, rawBody, testSecret), true);
+    it('accepts authentic webhook signatures with valid timestamp', () => {
+      const rawBody = JSON.stringify({ type: 'subscription.active' });
+      const now = Math.floor(Date.now() / 1000);
+      const headers = generateTestDodoSignature('msg_test', now, rawBody, testSecret);
+      assert.strictEqual(verifyDodoWebhookSignature(headers, rawBody, testSecret), true);
     });
   });
 
@@ -291,7 +303,9 @@ describe('ChoreMatrix Pre-Live Debugging & Security Audit #1 Suite', () => {
         'SUPABASE_SERVICE_ROLE_KEY',
         'SERVICE_ROLE_KEY',
         'PADDLE_WEBHOOK_SECRET',
-        'PADDLE_API_KEY'
+        'PADDLE_API_KEY',
+        'DODO_PAYMENTS_API_KEY',
+        'DODO_PAYMENTS_WEBHOOK_KEY'
       ];
 
       for (const filePath of filesToScan) {
