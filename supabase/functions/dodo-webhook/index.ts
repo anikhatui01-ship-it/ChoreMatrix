@@ -19,11 +19,19 @@ import crypto from 'node:crypto';
 import { Buffer } from 'node:buffer';
 
 const CANONICAL_PRODUCT_MAP: Record<string, { tier: 'pro' | 'plus'; interval: 'monthly' | 'annual' }> = {
+  // Test Mode Product IDs
   'pdt_0NozKZ3sZ6h0vplb451YK': { tier: 'pro', interval: 'monthly' },
   'pdt_0NozL7OvhpMonCSMw99Ng': { tier: 'pro', interval: 'annual' },
   'pdt_0NozLK4XCjDSCbkADEtQL': { tier: 'plus', interval: 'monthly' },
-  'pdt_0NozLba96vBrtNtGdFONX': { tier: 'plus', interval: 'annual' }
+  'pdt_0NozLba96vBrtNtGdFONX': { tier: 'plus', interval: 'annual' },
+  // Live Mode Product IDs
+  'pdt_0Np1eZsemtECph1HLoDb0': { tier: 'pro', interval: 'monthly' },
+  'pdt_0Np1ec3oUFACgeOKI4ktP': { tier: 'pro', interval: 'annual' },
+  'pdt_0Np1ean3rbxLUQs6d1QAb': { tier: 'plus', interval: 'monthly' },
+  'pdt_0Np1ebMsCqGBWntrkX3fK': { tier: 'plus', interval: 'annual' }
 };
+
+const TIER_RANK: Record<string, number> = { 'free': 0, 'pro': 1, 'plus': 2 };
 
 function resolveProductEntitlement(productId: string | null | undefined): { tier: 'pro' | 'plus'; interval: 'monthly' | 'annual' } | null {
   if (!productId) return null;
@@ -245,11 +253,27 @@ serve(async (req: Request) => {
       .eq('subscription_id', subscriptionId)
       .maybeSingle() : { data: null };
 
-    const TIER_RANK: Record<string, number> = { 'free': 0, 'pro': 1, 'plus': 2 };
+    const isSubCancelled = (localSubRecord?.status === 'canceled' || localSubRecord?.status === 'cancelled') &&
+      localSubRecord?.subscription_id === subscriptionId;
+    const isProfileCancelled = (userProfile?.subscription_status === 'canceled' || userProfile?.subscription_status === 'cancelled') &&
+      Boolean(userProfile?.dodo_subscription_id && userProfile.dodo_subscription_id === subscriptionId);
 
     // INVARIANT: A cancelled subscription cannot be resurrected by out-of-order webhook events for the same subscription ID
-    if (isSubCancelled && (rawStatus === 'canceled' || rawStatus === 'cancelled')) {
-      console.log(`[Dodo Webhook] Subscription ${subscriptionId} is already marked cancelled.`);
+    if (isSubCancelled || isProfileCancelled) {
+      if (eventType !== 'subscription.cancelled' && eventType !== 'subscription.canceled' && rawStatus !== 'canceled' && rawStatus !== 'cancelled') {
+        console.warn(`[Dodo Webhook Safety] Blocked resurrection for cancelled subscription ${subscriptionId} (event: ${eventType}, status: ${rawStatus}). Preserving terminal free/cancelled state.`);
+        return new Response(JSON.stringify({
+          success: true,
+          event_id: eventId,
+          subscription_id: subscriptionId,
+          subscription_status: 'canceled',
+          plan_tier: 'free',
+          message: 'Ignoring webhook for already cancelled subscription; terminal cancellation state preserved.'
+        }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
     }
 
     const nowIso = new Date().toISOString();
