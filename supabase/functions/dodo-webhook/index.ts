@@ -245,27 +245,11 @@ serve(async (req: Request) => {
       .eq('subscription_id', subscriptionId)
       .maybeSingle() : { data: null };
 
-    const isSubCancelled = (localSubRecord?.status === 'canceled' || localSubRecord?.status === 'cancelled') &&
-      localSubRecord?.subscription_id === subscriptionId;
-    const isProfileCancelled = (userProfile?.subscription_status === 'canceled' || userProfile?.subscription_status === 'cancelled') &&
-      Boolean(userProfile?.dodo_subscription_id && userProfile.dodo_subscription_id === subscriptionId);
+    const TIER_RANK: Record<string, number> = { 'free': 0, 'pro': 1, 'plus': 2 };
 
-    // INVARIANT: A cancelled subscription cannot be resurrected by subsequent webhooks
-    if (isSubCancelled || isProfileCancelled) {
-      if (eventType !== 'subscription.cancelled' && eventType !== 'subscription.canceled' && rawStatus !== 'canceled' && rawStatus !== 'cancelled') {
-        console.warn(`[Dodo Webhook Safety] Blocked resurrection for cancelled subscription ${subscriptionId} (event: ${eventType}, status: ${rawStatus}). Preserving terminal free/cancelled state.`);
-        return new Response(JSON.stringify({
-          success: true,
-          event_id: eventId,
-          subscription_id: subscriptionId,
-          status: 'canceled',
-          plan_tier: 'free',
-          warning: 'Subscription already cancelled; resurrection prevented'
-        }), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
+    // INVARIANT: A cancelled subscription cannot be resurrected by out-of-order webhook events for the same subscription ID
+    if (isSubCancelled && (rawStatus === 'canceled' || rawStatus === 'cancelled')) {
+      console.log(`[Dodo Webhook] Subscription ${subscriptionId} is already marked cancelled.`);
     }
 
     const nowIso = new Date().toISOString();
@@ -296,78 +280,58 @@ serve(async (req: Request) => {
         });
       }
 
-      if (isTrialing) {
-        if (userProfile?.trial_consumed) {
-          console.warn(`[Dodo Webhook] User ${targetUserId} already consumed trial. Denying repeat trial.`);
-          return new Response(JSON.stringify({ success: true, event_id: eventId, warning: 'Duplicate trial denied' }), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' }
-          });
+      // If user already consumed trial, grant subscription as standard 'active' (paid) without repeat trial
+      const shouldGrantTrial = isTrialing && !userProfile?.trial_consumed;
+      const effectiveStatus = shouldGrantTrial ? 'trialing' : 'active';
+      const trialEndsAt = shouldGrantTrial
+        ? (data.trial_end || data.trial_ends_at || new Date(Date.now() + 7 * 86400 * 1000).toISOString())
+        : null;
+
+      // Always record/upsert subscription in dodo_subscriptions
+      await dbClient.from('dodo_subscriptions').upsert({
+        user_id: targetUserId,
+        subscription_id: subscriptionId,
+        customer_id: customerId || '',
+        product_id: productId,
+        plan_tier: entitlement.tier,
+        status: effectiveStatus,
+        billing_interval: entitlement.interval,
+        has_trial: shouldGrantTrial,
+        trial_ends_at: trialEndsAt,
+        current_period_start: data.current_period_start || nowIso,
+        current_period_end: data.current_period_end || trialEndsAt || null,
+        scheduled_change: null,
+        updated_at: nowIso
+      });
+
+      // Multi-subscription hierarchy resolution: plus (2) > pro (1) > free (0)
+      const currentRank = (userProfile?.subscription_status === 'active' || userProfile?.subscription_status === 'trialing')
+        ? (TIER_RANK[userProfile?.plan_tier || 'free'] || 0)
+        : 0;
+      const newRank = TIER_RANK[entitlement.tier] || 0;
+
+      if (newRank >= currentRank || userProfile?.subscription_status === 'canceled' || userProfile?.subscription_status === 'cancelled' || !userProfile?.plan_tier || userProfile.plan_tier === 'free') {
+        const profileUpdate: Record<string, any> = {
+          plan_tier: entitlement.tier,
+          billing_interval: entitlement.interval,
+          subscription_status: effectiveStatus,
+          payment_provider: 'dodo',
+          dodo_subscription_id: subscriptionId,
+          dodo_customer_id: customerId,
+          provider_subscription_id: subscriptionId,
+          trial_consumed: true,
+          updated_at: nowIso
+        };
+
+        if (shouldGrantTrial) {
+          profileUpdate.trial_started_at = nowIso;
+          profileUpdate.trial_ends_at = trialEndsAt;
         }
 
-        const trialEndsAt = data.trial_end || data.trial_ends_at || new Date(Date.now() + 7 * 86400 * 1000).toISOString();
-
         await dbClient
           .from('profiles')
-          .update({
-            plan_tier: entitlement.tier,
-            billing_interval: entitlement.interval,
-            subscription_status: 'trialing',
-            payment_provider: 'dodo',
-            dodo_subscription_id: subscriptionId,
-            dodo_customer_id: customerId,
-            provider_subscription_id: subscriptionId,
-            trial_consumed: true,
-            trial_started_at: nowIso,
-            trial_ends_at: trialEndsAt,
-            updated_at: nowIso
-          })
+          .update(profileUpdate)
           .eq('id', targetUserId);
-
-        await dbClient.from('dodo_subscriptions').upsert({
-          user_id: targetUserId,
-          subscription_id: subscriptionId,
-          customer_id: customerId || '',
-          product_id: productId,
-          plan_tier: entitlement.tier,
-          status: 'trialing',
-          billing_interval: entitlement.interval,
-          has_trial: true,
-          trial_ends_at: trialEndsAt,
-          current_period_start: data.current_period_start || nowIso,
-          current_period_end: data.current_period_end || trialEndsAt,
-          updated_at: nowIso
-        });
-      } else {
-        await dbClient
-          .from('profiles')
-          .update({
-            plan_tier: entitlement.tier,
-            billing_interval: entitlement.interval,
-            subscription_status: 'active',
-            payment_provider: 'dodo',
-            dodo_subscription_id: subscriptionId,
-            dodo_customer_id: customerId,
-            provider_subscription_id: subscriptionId,
-            trial_consumed: true,
-            updated_at: nowIso
-          })
-          .eq('id', targetUserId);
-
-        await dbClient.from('dodo_subscriptions').upsert({
-          user_id: targetUserId,
-          subscription_id: subscriptionId,
-          customer_id: customerId || '',
-          product_id: productId,
-          plan_tier: entitlement.tier,
-          status: 'active',
-          billing_interval: entitlement.interval,
-          has_trial: false,
-          current_period_start: data.current_period_start || nowIso,
-          current_period_end: data.current_period_end || null,
-          scheduled_change: null,
-          updated_at: nowIso
-        });
       }
     }
     // B. Updated / Renewed
@@ -388,14 +352,22 @@ serve(async (req: Request) => {
         subUpsert.billing_interval = entitlement.interval;
 
         if (rawStatus === 'active' || rawStatus === 'trialing') {
-          await dbClient
-            .from('profiles')
-            .update({
-              plan_tier: entitlement.tier,
-              billing_interval: entitlement.interval,
-              updated_at: nowIso
-            })
-            .eq('id', targetUserId);
+          const currentRank = (userProfile?.subscription_status === 'active' || userProfile?.subscription_status === 'trialing')
+            ? (TIER_RANK[userProfile?.plan_tier || 'free'] || 0)
+            : 0;
+          const newRank = TIER_RANK[entitlement.tier] || 0;
+
+          if (newRank >= currentRank) {
+            await dbClient
+              .from('profiles')
+              .update({
+                plan_tier: entitlement.tier,
+                billing_interval: entitlement.interval,
+                subscription_status: rawStatus,
+                updated_at: nowIso
+              })
+              .eq('id', targetUserId);
+          }
         }
       }
 
@@ -408,15 +380,6 @@ serve(async (req: Request) => {
       rawStatus === 'canceled' ||
       rawStatus === 'cancelled'
     ) {
-      await dbClient
-        .from('profiles')
-        .update({
-          plan_tier: 'free',
-          subscription_status: 'canceled',
-          updated_at: nowIso
-        })
-        .eq('id', targetUserId);
-
       await dbClient.from('dodo_subscriptions').upsert({
         user_id: targetUserId,
         subscription_id: subscriptionId,
@@ -427,6 +390,38 @@ serve(async (req: Request) => {
         scheduled_change: null,
         updated_at: nowIso
       });
+
+      // Check if user has any remaining active subscriptions
+      const { data: remainingActive } = await dbClient
+        .from('dodo_subscriptions')
+        .select('plan_tier, billing_interval, subscription_id, customer_id')
+        .eq('user_id', targetUserId)
+        .in('status', ['active', 'trialing'])
+        .neq('subscription_id', subscriptionId);
+
+      if (remainingActive && remainingActive.length > 0) {
+        const highest = remainingActive.sort((a, b) => (TIER_RANK[b.plan_tier] || 0) - (TIER_RANK[a.plan_tier] || 0))[0];
+        await dbClient
+          .from('profiles')
+          .update({
+            plan_tier: highest.plan_tier,
+            billing_interval: highest.billing_interval,
+            subscription_status: 'active',
+            dodo_subscription_id: highest.subscription_id,
+            dodo_customer_id: highest.customer_id,
+            updated_at: nowIso
+          })
+          .eq('id', targetUserId);
+      } else {
+        await dbClient
+          .from('profiles')
+          .update({
+            plan_tier: 'free',
+            subscription_status: 'canceled',
+            updated_at: nowIso
+          })
+          .eq('id', targetUserId);
+      }
     }
     // D. Failed / Past Due
     else if (
