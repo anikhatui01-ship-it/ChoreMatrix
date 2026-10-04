@@ -20,10 +20,10 @@ const corsHeaders = {
 };
 
 const CANONICAL_PRODUCT_MAP: Record<string, string> = {
-  'pro_monthly': Deno.env.get('VITE_DODO_PRO_MONTHLY_PRODUCT_ID') || 'pdt_01m3q8bc75wg442x3h217njd0k',
-  'pro_annual': Deno.env.get('VITE_DODO_PRO_ANNUAL_PRODUCT_ID') || 'pdt_01m3rbzjm8h0t0np80k7nqfz85',
-  'plus_monthly': Deno.env.get('VITE_DODO_PLUS_MONTHLY_PRODUCT_ID') || 'pdt_01m3rc6mfgdq0b7fys5s3j4t98',
-  'plus_annual': Deno.env.get('VITE_DODO_PLUS_ANNUAL_PRODUCT_ID') || 'pdt_01m3rc42y9mdz16q2cn48q9z95'
+  'pro_monthly': Deno.env.get('VITE_DODO_PRO_MONTHLY_PRODUCT_ID') || 'pdt_0NozKZ3sZ6h0vplb451YK',
+  'pro_annual': Deno.env.get('VITE_DODO_PRO_ANNUAL_PRODUCT_ID') || 'pdt_0NozL7OvhpMonCSMw99Ng',
+  'plus_monthly': Deno.env.get('VITE_DODO_PLUS_MONTHLY_PRODUCT_ID') || 'pdt_0NozLK4XCjDSCbkADEtQL',
+  'plus_annual': Deno.env.get('VITE_DODO_PLUS_ANNUAL_PRODUCT_ID') || 'pdt_0NozLba96vBrtNtGdFONX'
 };
 
 function normalizePlan(plan: string | null | undefined): string {

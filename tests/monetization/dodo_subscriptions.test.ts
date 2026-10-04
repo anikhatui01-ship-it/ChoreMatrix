@@ -243,10 +243,10 @@ describe('Dodo Payments Subscriptions & Security Suite (Test Mode)', () => {
     });
 
     it('isDodoProductId validates only recognized allowlisted product IDs', () => {
-      assert.strictEqual(isDodoProductId('pdt_01m3q8bc75wg442x3h217njd0k'), true);
-      assert.strictEqual(isDodoProductId('pdt_01m3rbzjm8h0t0np80k7nqfz85'), true);
-      assert.strictEqual(isDodoProductId('pdt_01m3rc6mfgdq0b7fys5s3j4t98'), true);
-      assert.strictEqual(isDodoProductId('pdt_01m3rc42y9mdz16q2cn48q9z95'), true);
+      assert.strictEqual(isDodoProductId('pdt_0NozKZ3sZ6h0vplb451YK'), true);
+      assert.strictEqual(isDodoProductId('pdt_0NozL7OvhpMonCSMw99Ng'), true);
+      assert.strictEqual(isDodoProductId('pdt_0NozLK4XCjDSCbkADEtQL'), true);
+      assert.strictEqual(isDodoProductId('pdt_0NozLba96vBrtNtGdFONX'), true);
       assert.strictEqual(isDodoProductId('pdt_unauthorized_fake'), false);
       assert.strictEqual(isDodoProductId(null), false);
     });
@@ -312,7 +312,7 @@ describe('Dodo Payments Subscriptions & Security Suite (Test Mode)', () => {
         data: {
           id: 'sub_dodo_100',
           customer_id: 'cus_dodo_100',
-          product_id: 'pdt_01m3q8bc75wg442x3h217njd0k',
+          product_id: 'pdt_0NozKZ3sZ6h0vplb451YK',
           metadata: { user_id: 'user_123' }
         }
       };
@@ -339,7 +339,7 @@ describe('Dodo Payments Subscriptions & Security Suite (Test Mode)', () => {
 
       const payload = {
         type: 'subscription.active',
-        data: { id: 'sub_dodo_100', product_id: 'pdt_01m3q8bc75wg442x3h217njd0k' }
+        data: { id: 'sub_dodo_100', product_id: 'pdt_0NozKZ3sZ6h0vplb451YK' }
       };
       const rawBody = JSON.stringify(payload);
       const headers = generateTestDodoSignature('msg_idemp_duplicate', Math.floor(Date.now() / 1000), rawBody, testSecret);
@@ -373,7 +373,7 @@ describe('Dodo Payments Subscriptions & Security Suite (Test Mode)', () => {
         data: {
           id: 'sub_trial_1',
           customer_id: 'cus_1',
-          product_id: 'pdt_01m3q8bc75wg442x3h217njd0k',
+          product_id: 'pdt_0NozKZ3sZ6h0vplb451YK',
           status: 'trialing',
           trial_period_days: 7,
           metadata: { user_id: 'user_trial_1' }
@@ -409,7 +409,7 @@ describe('Dodo Payments Subscriptions & Security Suite (Test Mode)', () => {
         type: 'subscription.trialing',
         data: {
           id: 'sub_repeat_trial',
-          product_id: 'pdt_01m3q8bc75wg442x3h217njd0k',
+          product_id: 'pdt_0NozKZ3sZ6h0vplb451YK',
           trial_period_days: 7,
           metadata: { user_id: 'user_abuser' }
         }
@@ -442,7 +442,7 @@ describe('Dodo Payments Subscriptions & Security Suite (Test Mode)', () => {
         data: {
           id: 'sub_resub',
           customer_id: 'cus_resub',
-          product_id: 'pdt_01m3rc42y9mdz16q2cn48q9z95',
+          product_id: 'pdt_0NozLba96vBrtNtGdFONX',
           status: 'active',
           trial_period_days: 0,
           metadata: { user_id: 'user_resubscribe' }
@@ -477,7 +477,7 @@ describe('Dodo Payments Subscriptions & Security Suite (Test Mode)', () => {
         type: 'subscription.cancelled',
         data: {
           id: 'sub_active_to_cancel',
-          product_id: 'pdt_01m3q8bc75wg442x3h217njd0k',
+          product_id: 'pdt_0NozKZ3sZ6h0vplb451YK',
           status: 'cancelled',
           metadata: { user_id: 'user_active_cancel' }
         }
@@ -516,7 +516,7 @@ describe('Dodo Payments Subscriptions & Security Suite (Test Mode)', () => {
         type: 'subscription.active',
         data: {
           id: 'sub_terminal_cancel',
-          product_id: 'pdt_01m3q8bc75wg442x3h217njd0k',
+          product_id: 'pdt_0NozKZ3sZ6h0vplb451YK',
           status: 'active',
           metadata: { user_id: 'user_locked_cancelled' }
         }
@@ -549,7 +549,7 @@ describe('Dodo Payments Subscriptions & Security Suite (Test Mode)', () => {
         type: 'subscription.failed',
         data: {
           id: 'sub_fail_1',
-          product_id: 'pdt_01m3q8bc75wg442x3h217njd0k',
+          product_id: 'pdt_0NozKZ3sZ6h0vplb451YK',
           status: 'past_due',
           metadata: { user_id: 'user_failing' }
         }
@@ -595,7 +595,7 @@ describe('Dodo Payments Subscriptions & Security Suite (Test Mode)', () => {
 
       assert.strictEqual(result.success, true);
       assert.strictEqual(result.checkout_url, 'https://test.checkout.dodopayments.com/session/sess_123');
-      assert.strictEqual(capturedPayload.product_cart[0].product_id, 'pdt_01m3q8bc75wg442x3h217njd0k');
+      assert.strictEqual(capturedPayload.product_cart[0].product_id, 'pdt_0NozKZ3sZ6h0vplb451YK');
       assert.strictEqual(capturedPayload.subscription_data?.trial_period_days, 7);
       assert.strictEqual(capturedPayload.metadata?.user_id, 'usr_1');
     });
@@ -623,7 +623,7 @@ describe('Dodo Payments Subscriptions & Security Suite (Test Mode)', () => {
       });
 
       assert.strictEqual(result.success, true);
-      assert.strictEqual(capturedPayload.product_cart[0].product_id, 'pdt_01m3rc42y9mdz16q2cn48q9z95');
+      assert.strictEqual(capturedPayload.product_cart[0].product_id, 'pdt_0NozLba96vBrtNtGdFONX');
       assert.strictEqual(capturedPayload.subscription_data, undefined);
     });
 

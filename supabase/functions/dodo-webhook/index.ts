@@ -19,10 +19,10 @@ import crypto from 'node:crypto';
 import { Buffer } from 'node:buffer';
 
 const CANONICAL_PRODUCT_MAP: Record<string, { tier: 'pro' | 'plus'; interval: 'monthly' | 'annual' }> = {
-  'pdt_01m3q8bc75wg442x3h217njd0k': { tier: 'pro', interval: 'monthly' },
-  'pdt_01m3rbzjm8h0t0np80k7nqfz85': { tier: 'pro', interval: 'annual' },
-  'pdt_01m3rc6mfgdq0b7fys5s3j4t98': { tier: 'plus', interval: 'monthly' },
-  'pdt_01m3rc42y9mdz16q2cn48q9z95': { tier: 'plus', interval: 'annual' }
+  'pdt_0NozKZ3sZ6h0vplb451YK': { tier: 'pro', interval: 'monthly' },
+  'pdt_0NozL7OvhpMonCSMw99Ng': { tier: 'pro', interval: 'annual' },
+  'pdt_0NozLK4XCjDSCbkADEtQL': { tier: 'plus', interval: 'monthly' },
+  'pdt_0NozLba96vBrtNtGdFONX': { tier: 'plus', interval: 'annual' }
 };
 
 function resolveProductEntitlement(productId: string | null | undefined): { tier: 'pro' | 'plus'; interval: 'monthly' | 'annual' } | null {

@@ -57,28 +57,28 @@ export const CANONICAL_DODO_PLAN_MATRIX: Record<`${PlanTier}_${BillingInterval}`
     tier: 'pro',
     interval: 'monthly',
     displayAmount: 5.99,
-    productId: getEnvVar('VITE_DODO_PRO_MONTHLY_PRODUCT_ID') || 'pdt_01m3q8bc75wg442x3h217njd0k',
+    productId: getEnvVar('VITE_DODO_PRO_MONTHLY_PRODUCT_ID') || 'pdt_0NozKZ3sZ6h0vplb451YK',
     trialDurationDays: 7
   },
   pro_annual: {
     tier: 'pro',
     interval: 'annual',
     displayAmount: 59.99,
-    productId: getEnvVar('VITE_DODO_PRO_ANNUAL_PRODUCT_ID') || 'pdt_01m3rbzjm8h0t0np80k7nqfz85',
+    productId: getEnvVar('VITE_DODO_PRO_ANNUAL_PRODUCT_ID') || 'pdt_0NozL7OvhpMonCSMw99Ng',
     trialDurationDays: 7
   },
   plus_monthly: {
     tier: 'plus',
     interval: 'monthly',
     displayAmount: 9.99,
-    productId: getEnvVar('VITE_DODO_PLUS_MONTHLY_PRODUCT_ID') || 'pdt_01m3rc6mfgdq0b7fys5s3j4t98',
+    productId: getEnvVar('VITE_DODO_PLUS_MONTHLY_PRODUCT_ID') || 'pdt_0NozLK4XCjDSCbkADEtQL',
     trialDurationDays: 7
   },
   plus_annual: {
     tier: 'plus',
     interval: 'annual',
     displayAmount: 99.99,
-    productId: getEnvVar('VITE_DODO_PLUS_ANNUAL_PRODUCT_ID') || 'pdt_01m3rc42y9mdz16q2cn48q9z95',
+    productId: getEnvVar('VITE_DODO_PLUS_ANNUAL_PRODUCT_ID') || 'pdt_0NozLba96vBrtNtGdFONX',
     trialDurationDays: 7
   }
 } as const;
