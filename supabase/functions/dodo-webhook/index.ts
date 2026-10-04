@@ -98,14 +98,26 @@ serve(async (req: Request) => {
   }
 
   try {
-    const webhookId = req.headers.get('webhook-id');
-    const webhookTimestamp = req.headers.get('webhook-timestamp');
-    const webhookSignature = req.headers.get('webhook-signature');
+    const webhookId =
+      req.headers.get('webhook-id') ||
+      req.headers.get('svix-id') ||
+      req.headers.get('webhook_id');
+    const webhookTimestamp =
+      req.headers.get('webhook-timestamp') ||
+      req.headers.get('svix-timestamp') ||
+      req.headers.get('webhook_timestamp');
+    const webhookSignature =
+      req.headers.get('webhook-signature') ||
+      req.headers.get('svix-signature') ||
+      req.headers.get('webhook_signature');
     const rawBody = await req.text();
 
-    const webhookSecret = Deno.env.get('DODO_WEBHOOK_SECRET');
+    const webhookSecret =
+      Deno.env.get('DODO_WEBHOOK_SECRET') ||
+      Deno.env.get('DODO_PAYMENTS_WEBHOOK_KEY') ||
+      Deno.env.get('ODO_WEBHOOK_SECRET');
     if (!webhookSecret) {
-      console.error('[Dodo Webhook] DODO_WEBHOOK_SECRET not configured');
+      console.error('[Dodo Webhook] Webhook secret not configured in environment (checked DODO_WEBHOOK_SECRET, DODO_PAYMENTS_WEBHOOK_KEY, ODO_WEBHOOK_SECRET)');
       return new Response(JSON.stringify({ error: 'Webhook misconfigured' }), { status: 500 });
     }
 
