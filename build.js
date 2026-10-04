@@ -194,6 +194,61 @@ export function getClientSafeEnv(options = {}) {
     safeEnv.VITE_PADDLE_PLUS_ANNUAL_STANDARD_PRICE_ID = candidatePaddlePlusAnnualStdPrice;
   }
 
+  // Client-safe Dodo Payments test variables (Product IDs and test environment only; NEVER secret keys)
+  const candidateDodoEnv = (
+    options.env?.VITE_DODO_ENV ??
+    options.env?.VITE_DODO_ENVIRONMENT ??
+    fileEnv.VITE_DODO_ENV ??
+    fileEnv.VITE_DODO_ENVIRONMENT ??
+    process.env.VITE_DODO_ENV ??
+    process.env.VITE_DODO_ENVIRONMENT ??
+    ''
+  ).trim();
+
+  const candidateDodoProMonthly = (
+    options.env?.VITE_DODO_PRO_MONTHLY_PRODUCT_ID ??
+    fileEnv.VITE_DODO_PRO_MONTHLY_PRODUCT_ID ??
+    process.env.VITE_DODO_PRO_MONTHLY_PRODUCT_ID ??
+    ''
+  ).trim();
+
+  const candidateDodoProAnnual = (
+    options.env?.VITE_DODO_PRO_ANNUAL_PRODUCT_ID ??
+    fileEnv.VITE_DODO_PRO_ANNUAL_PRODUCT_ID ??
+    process.env.VITE_DODO_PRO_ANNUAL_PRODUCT_ID ??
+    ''
+  ).trim();
+
+  const candidateDodoPlusMonthly = (
+    options.env?.VITE_DODO_PLUS_MONTHLY_PRODUCT_ID ??
+    fileEnv.VITE_DODO_PLUS_MONTHLY_PRODUCT_ID ??
+    process.env.VITE_DODO_PLUS_MONTHLY_PRODUCT_ID ??
+    ''
+  ).trim();
+
+  const candidateDodoPlusAnnual = (
+    options.env?.VITE_DODO_PLUS_ANNUAL_PRODUCT_ID ??
+    fileEnv.VITE_DODO_PLUS_ANNUAL_PRODUCT_ID ??
+    process.env.VITE_DODO_PLUS_ANNUAL_PRODUCT_ID ??
+    ''
+  ).trim();
+
+  if (candidateDodoEnv && !candidateDodoEnv.includes('placeholder')) {
+    safeEnv.VITE_DODO_ENVIRONMENT = candidateDodoEnv;
+  }
+  if (candidateDodoProMonthly && !candidateDodoProMonthly.includes('placeholder')) {
+    safeEnv.VITE_DODO_PRO_MONTHLY_PRODUCT_ID = candidateDodoProMonthly;
+  }
+  if (candidateDodoProAnnual && !candidateDodoProAnnual.includes('placeholder')) {
+    safeEnv.VITE_DODO_PRO_ANNUAL_PRODUCT_ID = candidateDodoProAnnual;
+  }
+  if (candidateDodoPlusMonthly && !candidateDodoPlusMonthly.includes('placeholder')) {
+    safeEnv.VITE_DODO_PLUS_MONTHLY_PRODUCT_ID = candidateDodoPlusMonthly;
+  }
+  if (candidateDodoPlusAnnual && !candidateDodoPlusAnnual.includes('placeholder')) {
+    safeEnv.VITE_DODO_PLUS_ANNUAL_PRODUCT_ID = candidateDodoPlusAnnual;
+  }
+
   return safeEnv;
 }
 

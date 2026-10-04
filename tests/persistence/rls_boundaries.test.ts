@@ -340,5 +340,33 @@ describe('Database Schema & Row Level Security (RLS) Boundaries', () => {
     assert.strictEqual(webhookUpdateResult.plan_tier, 'pro', 'service_role is authorized to update plan_tier');
     assert.strictEqual(webhookUpdateResult.subscription_status, 'active', 'service_role is authorized to update status');
   });
+
+  it('verifies 06_dodo_subscriptions.sql defines Dodo schema, RLS, and protects Dodo identifiers', () => {
+    const dodoMigrationPath = path.resolve('supabase', 'migrations', '06_dodo_subscriptions.sql');
+    assert.ok(fs.existsSync(dodoMigrationPath), '06_dodo_subscriptions.sql must exist');
+    const dodoSql = fs.readFileSync(dodoMigrationPath, 'utf8');
+
+    // 1. Check profile columns
+    assert.ok(dodoSql.includes('alter table public.profiles add column if not exists dodo_customer_id text;'));
+    assert.ok(dodoSql.includes('alter table public.profiles add column if not exists dodo_subscription_id text;'));
+
+    // 2. Check table creation & RLS
+    assert.ok(dodoSql.includes('create table if not exists public.dodo_subscriptions'));
+    assert.ok(dodoSql.includes('create table if not exists public.dodo_webhook_events'));
+    assert.ok(dodoSql.includes('alter table public.dodo_subscriptions enable row level security;'));
+    assert.ok(dodoSql.includes('alter table public.dodo_webhook_events enable row level security;'));
+
+    // 3. Check RLS policies & permissions
+    assert.ok(dodoSql.includes('create policy "Users can view own dodo subscriptions"'));
+    assert.ok(dodoSql.includes('grant select on public.dodo_subscriptions to authenticated;'));
+    assert.ok(dodoSql.includes('grant all on public.dodo_subscriptions to service_role;'));
+    assert.ok(dodoSql.includes('grant all on public.dodo_webhook_events to service_role;'));
+
+    // 4. Check trigger protection for Dodo columns
+    assert.ok(dodoSql.includes('NEW.dodo_subscription_id := OLD.dodo_subscription_id;'));
+    assert.ok(dodoSql.includes('NEW.dodo_customer_id := OLD.dodo_customer_id;'));
+    assert.ok(dodoSql.includes('trg_protect_profile_entitlements'));
+  });
 });
+
 

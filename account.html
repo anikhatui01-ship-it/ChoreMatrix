@@ -382,7 +382,20 @@ document.getElementById('btnCancelSub')?.addEventListener('click', async () => {
     if (!supabaseUrl) {
       throw new Error('Supabase URL is not configured in client environment.');
     }
-    const directEndpoint = `${supabaseUrl}/functions/v1/paddle-cancel-subscription`;
+    
+    // Determine provider endpoint based on profile record
+    let directEndpoint = `${supabaseUrl}/functions/v1/dodo-cancel-subscription`;
+    try {
+      const user = await authService.getUser();
+      if (user) {
+        const profile = await persistenceAdapter.getProfile(user.id);
+        if (profile?.payment_provider === 'paddle') {
+          directEndpoint = `${supabaseUrl}/functions/v1/paddle-cancel-subscription`;
+        }
+      }
+    } catch (e) {
+      console.warn('[Account] Provider check exception:', e);
+    }
 
     const res = await fetch(directEndpoint, {
       method: 'POST',

@@ -94,7 +94,7 @@
     <div class="upgrade-wrap">
       <div style="text-align: center; margin-bottom: 24px;">
         <span class="badge" style="background: var(--badge-amber-bg); color: var(--badge-amber-text); margin-bottom: 8px;">
-          Paddle Subscriptions (Sandbox Mode)
+          Dodo Payments (Test Mode)
         </span>
         <h1 style="font-size: 28px; font-weight: 800; margin: 0 0 6px; color: var(--ink);">
           Upgrade to ChoreMatrix Pro
@@ -122,10 +122,12 @@ import {
   PRICING_CONFIG,
   getTierById,
   getDefaultPaidTier,
+  DODO_CONFIG,
+  getDodoProductId,
+  initiateDodoSubscription,
   PADDLE_CONFIG,
   getPaddlePriceId,
   initiatePaddleSubscription,
-  initializePaddleInstance,
   persistenceAdapter,
   authService,
   renderNavbar,
@@ -136,7 +138,6 @@ import {
 renderNavbar('pricing');
 renderFooter();
 initCookieBanner();
-initializePaddleInstance().catch(err => console.warn('[Upgrade Page] Paddle warmup notice:', err));
 
 const params = new URLSearchParams(window.location.search);
 const requestedPlanId = params.get('plan');
@@ -248,24 +249,20 @@ async function renderUpgradeCard() {
       ` : `
         • Immediate Billing: USD ${renewalRateText} billed automatically today and every ${isAnnual ? 'year' : 'month'} until cancelled.<br>
       `}
-      • Reseller & MoR: Order process conducted by Paddle.com, Merchant of Record for ChoreMatrix.<br>
       • Online Cancellation: Cancel online anytime via Account Settings prior to scheduled billing or trial expiration.<br>
       • Refund Policy: For full refund eligibility and statutory consumer rights, see our <a href="/refund.html" style="color:var(--primary); text-decoration:underline;">Cancellation & Refund Policy</a>.
     </div>
 
     <div style="background: var(--badge-amber-bg); border: 1px solid var(--warn); border-radius: 8px; padding: 14px; margin-bottom: 20px; font-size: 12px; color: var(--ink); line-height: 1.45;">
       <strong>Upgrade Checkout Coming Soon:</strong><br>
-      Payment processing is currently being finalized for production. Live credit card checkout and subscription activation will open soon. Paddle Sandbox test mode subscription checkout is active below for testing. Live card charges will not be incurred.
+      Payment processing is currently being finalized for production. Live credit card checkout and subscription activation will open soon. Dodo Payments test mode subscription checkout is active below for testing. Live card charges will not be incurred.
     </div>
 
     <div style="margin-bottom: 20px;">
-      <button type="button" id="btnPaddleUpgrade" class="btn primary" style="width: 100%; font-size: 15px; font-weight: 700; padding: 12px 18px; text-align: center;">
+      <button type="button" id="btnDodoUpgrade" class="btn primary" style="width: 100%; font-size: 15px; font-weight: 700; padding: 12px 18px; text-align: center;">
         ${escapeHtml(checkoutButtonLabel)}
       </button>
       <div id="inlineCheckoutError" style="display: none; margin-top: 12px; padding: 12px 14px; background: #fef2f2; border: 1px solid #ef4444; border-radius: 8px; color: #991b1b; font-size: 13px; font-weight: 600; line-height: 1.45; text-align: left; word-break: break-word;"></div>
-      <div style="font-size: 11px; color: var(--muted); text-align: center; margin-top: 6px;">
-        Paddle Sandbox Price: <code>${escapeHtml(paddlePriceId)}</code> (${isTrialEligible ? '7-Day Trial Price' : 'Standard Price'})
-      </div>
     </div>
 
     <div style="display: flex; gap: 10px; flex-wrap: wrap;">
@@ -278,8 +275,8 @@ async function renderUpgradeCard() {
     </div>
   `;
 
-  // Attach Paddle upgrade trigger
-  const upgradeBtn = document.getElementById('btnPaddleUpgrade');
+  // Attach Dodo upgrade trigger
+  const upgradeBtn = document.getElementById('btnDodoUpgrade');
   const inlineErrorEl = document.getElementById('inlineCheckoutError');
 
   function displayCheckoutError(msg) {
@@ -320,30 +317,27 @@ async function renderUpgradeCard() {
       // 2. Set button loading state
       const originalText = upgradeBtn.textContent;
       upgradeBtn.disabled = true;
-      upgradeBtn.textContent = 'Opening Paddle Checkout…';
+      upgradeBtn.textContent = 'Opening Dodo Checkout…';
 
       try {
-        console.log('[Upgrade Page] Initiating Paddle checkout for:', currentUser.id, 'price:', paddlePriceId);
-        const result = await initiatePaddleSubscription({
+        console.log('[Upgrade Page] Initiating Dodo checkout for:', currentUser.id, 'plan:', selectedTier.id, 'interval:', currentInterval);
+        const result = await initiateDodoSubscription({
           email: currentUser.email,
           userId: currentUser.id,
           plan: selectedTier.id,
-          interval: isAnnual ? 'annual' : 'monthly',
-          priceId: paddlePriceId
+          interval: currentInterval
         });
 
         if (!result.success) {
-          displayCheckoutError(result.error || 'Unable to open Paddle checkout overlay.');
+          displayCheckoutError(result.error || 'Unable to open Dodo checkout.');
           upgradeBtn.disabled = false;
           upgradeBtn.textContent = originalText;
         } else {
-          showFeedback('Paddle checkout opened. Please complete your details in the checkout modal.', 'info');
-          upgradeBtn.disabled = false;
-          upgradeBtn.textContent = originalText;
+          showFeedback('Dodo checkout opened. Redirecting to test payment page…', 'info');
         }
       } catch (err) {
         console.error('[Upgrade Checkout Exception]', err);
-        displayCheckoutError(err.message || 'An unexpected error occurred while launching Paddle checkout.');
+        displayCheckoutError(err.message || 'An unexpected error occurred while launching Dodo checkout.');
         upgradeBtn.disabled = false;
         upgradeBtn.textContent = originalText;
       }
