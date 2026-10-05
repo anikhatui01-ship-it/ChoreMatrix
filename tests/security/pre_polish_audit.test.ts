@@ -26,13 +26,13 @@ describe('Pre-Polish Production Launch Audit Suite', () => {
       }
     });
 
-    it('verifies official support email support@chorematrix.com is present on terms and privacy pages', () => {
+    it('verifies official support email chorematrixsupport@gmail.com is present on terms and privacy pages', () => {
       const legalPages = ['terms.html', 'privacy.html'];
       for (const file of legalPages) {
         const content = fs.readFileSync(path.join(rootDir, file), 'utf8');
         assert.ok(
-          content.includes('support@chorematrix.com'),
-          `${file} must contain official support email support@chorematrix.com`
+          content.includes('chorematrixsupport@gmail.com'),
+          `${file} must contain official support email chorematrixsupport@gmail.com`
         );
       }
     });
@@ -120,18 +120,20 @@ describe('Pre-Polish Production Launch Audit Suite', () => {
 
       const sitemap = fs.readFileSync(path.join(rootDir, 'sitemap.xml'), 'utf8');
       const expectedUrls = [
-        'https://www.chorematrix.online/',
-        'https://www.chorematrix.online/how-it-works.html',
-        'https://www.chorematrix.online/pricing.html',
-        'https://www.chorematrix.online/why-chorematrix.html',
-        'https://www.chorematrix.online/faq.html',
-        'https://www.chorematrix.online/privacy.html',
-        'https://www.chorematrix.online/terms.html',
-        'https://www.chorematrix.online/cookies.html',
-        'https://www.chorematrix.online/data-rights.html',
-        'https://www.chorematrix.online/login.html',
-        'https://www.chorematrix.online/signup.html',
-        'https://www.chorematrix.online/forgot-password.html'
+        'https://chorematrix.online/',
+        'https://chorematrix.online/how-it-works.html',
+        'https://chorematrix.online/pricing.html',
+        'https://chorematrix.online/why-chorematrix.html',
+        'https://chorematrix.online/faq.html',
+        'https://chorematrix.online/contact.html',
+        'https://chorematrix.online/refund.html',
+        'https://chorematrix.online/privacy.html',
+        'https://chorematrix.online/terms.html',
+        'https://chorematrix.online/cookies.html',
+        'https://chorematrix.online/data-rights.html',
+        'https://chorematrix.online/login.html',
+        'https://chorematrix.online/signup.html',
+        'https://chorematrix.online/forgot-password.html'
       ];
 
       for (const url of expectedUrls) {
@@ -148,13 +150,13 @@ describe('Pre-Polish Production Launch Audit Suite', () => {
       assert.ok(robots.includes('Disallow: /account.html'), 'robots.txt must disallow /account.html');
       assert.ok(robots.includes('Disallow: /reset-password.html'), 'robots.txt must disallow /reset-password.html');
       assert.ok(robots.includes('Disallow: /verify-email.html'), 'robots.txt must disallow /verify-email.html');
-      assert.ok(robots.includes('Sitemap: https://www.chorematrix.online/sitemap.xml'), 'robots.txt must link to sitemap.xml');
+      assert.ok(robots.includes('Sitemap: https://chorematrix.online/sitemap.xml'), 'robots.txt must link to sitemap.xml');
     });
 
     it('verifies all public pages contain canonical, OG, and Twitter metadata', () => {
       const publicFiles = [
         'index.html', 'how-it-works.html', 'pricing.html', 'why-chorematrix.html',
-        'faq.html', 'privacy.html', 'terms.html', 'cookies.html', 'data-rights.html',
+        'faq.html', 'contact.html', 'refund.html', 'privacy.html', 'terms.html', 'cookies.html', 'data-rights.html',
         'login.html', 'signup.html', 'forgot-password.html'
       ];
 
@@ -176,7 +178,7 @@ describe('Pre-Polish Production Launch Audit Suite', () => {
       }
     });
 
-    it('verifies exactly one single h1 element per page across all 17 HTML files', () => {
+    it('verifies exactly one single h1 element per page across all HTML files', () => {
       const htmlFiles = fs.readdirSync(rootDir).filter(f => f.endsWith('.html'));
       for (const file of htmlFiles) {
         const content = fs.readFileSync(path.join(rootDir, file), 'utf8');

@@ -40,6 +40,7 @@ export function renderFooter() {
               <li><a href="/signup.html">Create Account</a></li>
               <li><a href="/account.html">Account & Devices</a></li>
               <li><a href="/forgot-password.html">Reset Password</a></li>
+              <li><a href="/contact.html">Feedback & Support</a></li>
             </ul>
           </div>
 
@@ -62,6 +63,7 @@ export function renderFooter() {
           </div>
           <div style="display:flex; gap:16px;">
             <a href="/faq.html">FAQ</a>
+            <a href="/contact.html">Contact</a>
             <a href="/privacy.html">Privacy</a>
             <a href="/terms.html">Terms</a>
             <a href="/refund.html">Refunds</a>

@@ -214,6 +214,7 @@ export async function build(options = {}) {
     'cookies.html',
     'data-rights.html',
     'refund.html',
+    'contact.html',
     'login.html',
     'signup.html',
     'forgot-password.html',

@@ -1,10 +1,8 @@
 /**
  * ChoreMatrix Centralized Pricing Configuration
  *
- * IMPORTANT:
- * As documented in 13-monetization.md, final subscription pricing is NOT finalized.
- * The values below are PROVISIONAL monetization experiment hypotheses (Options A & B).
- * These values must NEVER be hardcoded into UI components.
+ * Live subscription plans: Pro and Plus with 7-day free trial.
+ * These values are maintained centrally for consistency across customer-facing surfaces.
  */
 
 export interface CheckoutDisclosures {
@@ -55,8 +53,8 @@ export interface PricingConfig {
 }
 
 export const PRICING_CONFIG: PricingConfig = {
-  isBusinessFinalized: false,
-  provisionalNotice: 'Informational Pricing & Test Mode Checkout: Subscription payment checkout is powered by Dodo Payments for testing. Core optimization and interactive planning remain accessible without entering payment details.',
+  isBusinessFinalized: true,
+  provisionalNotice: '',
   defaultTrialDays: 7,
   autoRenewalPolicyNotice: 'Automatic Renewal & Merchant of Record Disclosure: Paid subscriptions automatically renew at the applicable recurring rate ($5.99/mo or $59.99/yr for Pro; $9.99/mo or $99.99/yr for Plus) at the end of each billing cycle or promotional trial period until cancelled. Cancellations can be executed online anytime via Account Settings without phone or manual cancellation barriers. Orders are processed by Dodo Payments as Merchant of Record. Please review our Cancellation & Refund Policy for full terms on trial cancellation, statutory consumer rights, and refund requests.',
   tiers: [
@@ -116,7 +114,7 @@ export const PRICING_CONFIG: PricingConfig = {
       annualRenewalAmount: 59.99,
       renewalInterval: 'monthly',
       cancellationMethod: 'Online cancellation via Account Settings prior to renewal date',
-      isProvisional: true,
+      isProvisional: false,
       popular: true,
       features: [
         'everything in Free',
@@ -155,7 +153,7 @@ export const PRICING_CONFIG: PricingConfig = {
       annualRenewalAmount: 99.99,
       renewalInterval: 'monthly',
       cancellationMethod: 'Online cancellation via Account Settings prior to renewal date',
-      isProvisional: true,
+      isProvisional: false,
       features: [
         'everything in Pro',
         'priority feature feedback',
@@ -186,11 +184,11 @@ export const PRICING_CONFIG: PricingConfig = {
     },
     {
       question: 'How do free trials work?',
-      answer: 'Paid tiers include a 7-day free trial when subscription billing launches. You can cancel online anytime before the trial ends to avoid recurring charges.'
+      answer: 'Paid tiers include a 7-day free trial ($0 charged today). You can cancel online anytime before the trial ends in Account Settings to prevent any future recurring charges.'
     },
     {
-      question: 'Is payment processing active today?',
-      answer: 'Dodo Payments Test Mode subscription checkout is active for development testing. Live payment processing will open soon. Test cards can be used without incurring real charges.'
+      question: 'How does subscription payment processing work?',
+      answer: 'Subscription payments and billing for ChoreMatrix are securely processed by our Merchant of Record, Dodo Payments. You can start with a 7-day free trial on Pro or Plus plans and manage or cancel your subscription online at any time in Account Settings.'
     }
   ]
 };

@@ -5,19 +5,19 @@
 <meta name="viewport" content="width=device-width,initial-scale=1" />
 <title>ChoreMatrix Pricing — Free, Pro & Plus Plans</title>
 <meta name="description" content="Compare ChoreMatrix Free, Pro, and Plus plans, including planning horizons, features, trial terms, and subscription options." />
-<link rel="canonical" href="https://chorematrix.com/pricing.html" />
+<link rel="canonical" href="https://chorematrix.online/pricing.html" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <link rel="alternate icon" href="/favicon.ico" />
 <meta property="og:title" content="ChoreMatrix Pricing — Free, Pro & Plus Plans" />
 <meta property="og:description" content="Compare ChoreMatrix Free, Pro, and Plus plans, including planning horizons, features, trial terms, and subscription options." />
 <meta property="og:type" content="website" />
-<meta property="og:url" content="https://chorematrix.com/pricing.html" />
-<meta property="og:image" content="https://chorematrix.com/og-image.jpg" />
+<meta property="og:url" content="https://chorematrix.online/pricing.html" />
+<meta property="og:image" content="https://chorematrix.online/og-image.jpg" />
 <meta property="og:site_name" content="ChoreMatrix" />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="ChoreMatrix Pricing — Free, Pro & Plus Plans" />
 <meta name="twitter:description" content="Compare ChoreMatrix Free, Pro, and Plus plans, including planning horizons, features, trial terms, and subscription options." />
-<meta name="twitter:image" content="https://chorematrix.com/og-image.jpg" />
+<meta name="twitter:image" content="https://chorematrix.online/og-image.jpg" />
 <script>
   (function() {
     try {
@@ -193,14 +193,8 @@
       <span class="badge teal" style="margin-bottom:12px;">Fair, Transparent Planning</span>
       <h1>ChoreMatrix Pricing & Subscription Options</h1>
       <p>
-        Transparent household optimizer cost choices for every home. Start with a free chore optimizer plan for core balancing or select a paid chore planner subscription with a 14-day ChoreMatrix free trial.
+        Transparent household optimizer cost choices for every home. Start with a free chore optimizer plan for core balancing or select a paid chore planner subscription with a 7-day ChoreMatrix free trial.
       </p>
-
-      <!-- Centralized Provisional Pricing Notice -->
-      <div id="pricingNotice" class="notice-banner" style="text-align:left;">
-        <strong>Provisional Development Pricing:</strong>
-        <span id="noticeContent">Loading configuration...</span>
-      </div>
     </div>
 
     <!-- Monthly / Annual Billing Toggle -->
@@ -246,10 +240,6 @@ import { PRICING_CONFIG, renderNavbar, renderFooter, initCookieBanner } from './
 renderNavbar('pricing');
 renderFooter();
 initCookieBanner();
-
-// Inject centralized provisional notice
-const noticeEl = document.getElementById('noticeContent');
-if (noticeEl) noticeEl.textContent = PRICING_CONFIG.provisionalNotice;
 
 const grid = document.getElementById('pricingCardsContainer');
 let currentInterval = 'monthly'; // 'monthly' | 'annually'
@@ -303,12 +293,6 @@ function renderTiers() {
         ${tier.trialDays > 0 ? `
           <div style="margin-bottom:14px;">
             <span class="badge teal">⭐ Includes ${tier.trialDays}-Day Free Trial</span>
-          </div>
-        ` : ''}
-
-        ${tier.isProvisional ? `
-          <div style="margin-bottom:12px;">
-            <span class="badge amber">Provisional Monetization Hypothesis</span>
           </div>
         ` : ''}
 

@@ -1,62 +1,72 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://www.chorematrix.online/</loc>
+    <loc>https://chorematrix.online/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://www.chorematrix.online/how-it-works.html</loc>
+    <loc>https://chorematrix.online/how-it-works.html</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://www.chorematrix.online/pricing.html</loc>
+    <loc>https://chorematrix.online/pricing.html</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://www.chorematrix.online/why-chorematrix.html</loc>
+    <loc>https://chorematrix.online/why-chorematrix.html</loc>
     <changefreq>monthly</changefreq>
     <priority>0.8</priority>
   </url>
   <url>
-    <loc>https://www.chorematrix.online/faq.html</loc>
+    <loc>https://chorematrix.online/faq.html</loc>
     <changefreq>weekly</changefreq>
     <priority>0.7</priority>
   </url>
   <url>
-    <loc>https://www.chorematrix.online/privacy.html</loc>
+    <loc>https://chorematrix.online/contact.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://chorematrix.online/refund.html</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://www.chorematrix.online/terms.html</loc>
+    <loc>https://chorematrix.online/privacy.html</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://www.chorematrix.online/cookies.html</loc>
+    <loc>https://chorematrix.online/terms.html</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://www.chorematrix.online/data-rights.html</loc>
+    <loc>https://chorematrix.online/cookies.html</loc>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://www.chorematrix.online/login.html</loc>
+    <loc>https://chorematrix.online/data-rights.html</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://chorematrix.online/login.html</loc>
     <changefreq>monthly</changefreq>
     <priority>0.4</priority>
   </url>
   <url>
-    <loc>https://www.chorematrix.online/signup.html</loc>
+    <loc>https://chorematrix.online/signup.html</loc>
     <changefreq>monthly</changefreq>
     <priority>0.6</priority>
   </url>
   <url>
-    <loc>https://www.chorematrix.online/forgot-password.html</loc>
+    <loc>https://chorematrix.online/forgot-password.html</loc>
     <changefreq>monthly</changefreq>
     <priority>0.3</priority>
   </url>

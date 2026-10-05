@@ -226,19 +226,19 @@ describe('Account Lifecycle & Redirect Architecture', () => {
 
     // Success token hash
     assert.strictEqual(
-      parseVerificationState('https://chorematrix.vercel.app/verify-email.html#access_token=token123&type=signup'),
+      parseVerificationState('https://chorematrix.online/verify-email.html#access_token=token123&type=signup'),
       'VERIFYING'
     );
 
     // PKCE code query param
     assert.strictEqual(
-      parseVerificationState('https://chorematrix.vercel.app/verify-email.html?code=auth_code_xyz'),
+      parseVerificationState('https://chorematrix.online/verify-email.html?code=auth_code_xyz'),
       'VERIFYING'
     );
 
     // Normal post-signup prompt
     assert.strictEqual(
-      parseVerificationState('https://chorematrix.vercel.app/verify-email.html?email=user@example.com'),
+      parseVerificationState('https://chorematrix.online/verify-email.html?email=user@example.com'),
       'INBOX_PROMPT'
     );
   });
@@ -278,12 +278,12 @@ describe('Account Lifecycle & Redirect Architecture', () => {
 
     // Case A: Explicit VITE_PUBLIC_SITE_URL set (e.g. production or mobile LAN IP)
     (globalThis as any).window = {
-      __ENV__: { VITE_PUBLIC_SITE_URL: 'https://chorematrix.vercel.app' },
+      __ENV__: { VITE_PUBLIC_SITE_URL: 'https://chorematrix.online' },
       location: { origin: 'http://localhost:4173' }
     };
-    assert.strictEqual(getSiteUrl(), 'https://chorematrix.vercel.app');
-    assert.strictEqual(getAuthRedirectUrl('/verify-email.html'), 'https://chorematrix.vercel.app/verify-email.html');
-    assert.strictEqual(getAuthRedirectUrl('reset-password.html'), 'https://chorematrix.vercel.app/reset-password.html');
+    assert.strictEqual(getSiteUrl(), 'https://chorematrix.online');
+    assert.strictEqual(getAuthRedirectUrl('/verify-email.html'), 'https://chorematrix.online/verify-email.html');
+    assert.strictEqual(getAuthRedirectUrl('reset-password.html'), 'https://chorematrix.online/reset-password.html');
 
     // Case B: In local browser without explicit VITE_PUBLIC_SITE_URL
     (globalThis as any).window = {
@@ -294,8 +294,8 @@ describe('Account Lifecycle & Redirect Architecture', () => {
 
     // Case C: Server-side or non-browser fallback
     (globalThis as any).window = undefined;
-    assert.strictEqual(getSiteUrl(), 'https://chorematrix.vercel.app');
-    assert.strictEqual(getAuthRedirectUrl('/verify-email.html'), 'https://chorematrix.vercel.app/verify-email.html');
+    assert.strictEqual(getSiteUrl(), 'https://chorematrix.online');
+    assert.strictEqual(getAuthRedirectUrl('/verify-email.html'), 'https://chorematrix.online/verify-email.html');
 
     (globalThis as any).window = previousWindow;
   });

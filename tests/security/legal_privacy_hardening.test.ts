@@ -320,7 +320,7 @@ describe('Legal, Privacy & Product-Security Hardening Suite', () => {
       assert.ok(pricingHtml.includes('autoRenewalPolicyContent'), 'pricing.html must include auto-renewal policy container');
       assert.ok(pricingHtml.includes('Renewal & Billing Terms'), 'pricing.html must render renewal terms in card');
       assert.ok(pricingHtml.includes('PRICING_CONFIG.autoRenewalPolicyNotice'), 'pricing.html must bind auto-renewal policy notice');
-      assert.ok(pricingHtml.includes('Informational Pricing Only') || pricingHtml.includes('Provisional Development Pricing'), 'pricing.html must emphasize informational pricing');
+      assert.ok(pricingHtml.includes('Subscription Auto-Renewal, Merchant of Record & Cancellation Disclosure'), 'pricing.html must emphasize transparent renewal and disclosure');
     });
   });
 

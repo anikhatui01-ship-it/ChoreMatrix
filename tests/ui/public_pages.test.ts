@@ -17,6 +17,7 @@ describe('Public Pages & Legal Suite Verification', () => {
     'cookies.html',
     'data-rights.html',
     'refund.html',
+    'contact.html',
     'login.html',
     'signup.html',
     'forgot-password.html',
@@ -26,7 +27,7 @@ describe('Public Pages & Legal Suite Verification', () => {
     'app.html'
   ];
 
-  it('verifies all 17 required HTML pages exist and contain core head tags', () => {
+  it('verifies all 18 required HTML pages exist and contain core head tags', () => {
     for (const page of requiredPages) {
       const filePath = path.join(rootDir, page);
       assert.ok(fs.existsSync(filePath), `Page ${page} must exist in project root`);
@@ -108,10 +109,10 @@ describe('Public Pages & Legal Suite Verification', () => {
     assert.ok(!faqHtml.includes("world's first"), 'FAQ must avoid hype term world\'s first');
   });
 
-  it('verifies pricing page embeds centralized configuration, provisional notices, and refund link', () => {
+  it('verifies pricing page embeds centralized configuration, plan notices, and refund link', () => {
     const pricingHtml = fs.readFileSync(path.join(rootDir, 'pricing.html'), 'utf8');
     assert.ok(pricingHtml.includes('PRICING_CONFIG'), 'pricing.html must import PRICING_CONFIG');
-    assert.ok(pricingHtml.includes('Provisional Development Pricing'), 'pricing.html must show provisional notice');
+    assert.ok(!pricingHtml.includes('Provisional Monetization Hypothesis'), 'pricing.html must not contain provisional hypothesis badges');
     assert.ok(pricingHtml.includes('Free Trial') && pricingHtml.includes('trialDays'), 'pricing.html must display free trial representation');
     assert.ok(pricingHtml.includes('/refund.html'), 'pricing.html must link to Cancellation & Refund Policy');
   });
@@ -131,7 +132,7 @@ describe('Public Pages & Legal Suite Verification', () => {
   it('verifies refund page contains complete Dodo compliance and statutory disclosures', () => {
     const refundHtml = fs.readFileSync(path.join(rootDir, 'refund.html'), 'utf8');
     assert.ok(refundHtml.includes('<title>Cancellation & Refund Policy — ChoreMatrix</title>'), 'refund.html must have correct title');
-    assert.ok(refundHtml.includes('rel="canonical" href="https://chorematrix.com/refund.html"'), 'refund.html must have canonical link');
+    assert.ok(refundHtml.includes('rel="canonical" href="https://chorematrix.online/refund.html"'), 'refund.html must have canonical link');
     assert.ok(refundHtml.includes('Merchant of Record'), 'refund.html must disclose Merchant of Record');
     assert.ok(refundHtml.includes('Dodo Payments'), 'refund.html must name Dodo Payments');
     assert.ok(refundHtml.includes('7-day'), 'refund.html must explain 7-day trial refund terms');

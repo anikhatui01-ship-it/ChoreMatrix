@@ -1,7 +1,7 @@
 {
   "name": "chorematrix",
   "version": "0.1.0",
-  "description": "Deterministic household workload optimizer and prototype",
+  "description": "Deterministic household workload optimizer",
   "type": "module",
   "scripts": {
     "build": "node build.js",

@@ -40,7 +40,7 @@ describe('Environment Variable Injection & Offline Fallback', () => {
     const maliciousEnv = {
       VITE_SUPABASE_URL: 'https://valid-url.supabase.co',
       VITE_SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_valid_key',
-      VITE_PUBLIC_SITE_URL: 'https://chorematrix.vercel.app',
+      VITE_PUBLIC_SITE_URL: 'https://chorematrix.online',
       SUPABASE_SERVICE_ROLE_KEY: 'secret_service_role_key_that_must_never_leak',
       SUPABASE_SECRET_KEY: 'secret_jwt_master_key',
       DATABASE_PASSWORD: 'supersecretpassword',
@@ -50,7 +50,7 @@ describe('Environment Variable Injection & Offline Fallback', () => {
     const safe = getClientSafeEnv({ env: maliciousEnv, envFile: '/nonexistent/.env' });
     assert.strictEqual(safe.VITE_SUPABASE_URL, 'https://valid-url.supabase.co');
     assert.strictEqual(safe.VITE_SUPABASE_PUBLISHABLE_KEY, 'sb_publishable_valid_key');
-    assert.strictEqual(safe.VITE_PUBLIC_SITE_URL, 'https://chorematrix.vercel.app');
+    assert.strictEqual(safe.VITE_PUBLIC_SITE_URL, 'https://chorematrix.online');
     assert.strictEqual((safe as any).SUPABASE_SERVICE_ROLE_KEY, undefined);
     assert.strictEqual((safe as any).SUPABASE_SECRET_KEY, undefined);
     assert.strictEqual((safe as any).DATABASE_PASSWORD, undefined);

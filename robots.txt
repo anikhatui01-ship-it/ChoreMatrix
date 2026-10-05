@@ -6,4 +6,4 @@ Disallow: /upgrade.html
 Disallow: /reset-password.html
 Disallow: /verify-email.html
 
-Sitemap: https://www.chorematrix.online/sitemap.xml
+Sitemap: https://chorematrix.online/sitemap.xml

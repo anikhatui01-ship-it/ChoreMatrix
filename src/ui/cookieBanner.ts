@@ -49,6 +49,10 @@ function hideModal() {
 
 export function initCookieBanner() {
   const existing = getCookieConsent();
+  let isDismissed = false;
+  try {
+    isDismissed = sessionStorage.getItem('chorematrix_cookie_dismissed') === 'true';
+  } catch (e) {}
 
   // Create containers if not present
   if (!document.getElementById('cookieBannerContainer')) {
@@ -67,7 +71,7 @@ export function initCookieBanner() {
     openCookieModal();
   });
 
-  if (!existing) {
+  if (!existing && !isDismissed) {
     showBanner();
   }
 }
@@ -79,6 +83,7 @@ function showBanner() {
   container.style.display = 'block';
   container.innerHTML = `
     <div class="cookie-banner" role="region" aria-label="Cookie & Storage Preferences">
+      <button type="button" class="cookie-close-btn" id="btnCloseCookieBanner" aria-label="Close cookie preferences">✕</button>
       <div>
         <h3>Cookie & Privacy Choices</h3>
         <p>
@@ -93,6 +98,13 @@ function showBanner() {
       </div>
     </div>
   `;
+
+  document.getElementById('btnCloseCookieBanner')?.addEventListener('click', () => {
+    try {
+      sessionStorage.setItem('chorematrix_cookie_dismissed', 'true');
+    } catch (e) {}
+    hideBanner();
+  });
 
   document.getElementById('btnAcceptAllCookies')?.addEventListener('click', () => {
     saveCookieConsent({ preferences: true });

@@ -19,7 +19,7 @@ export type SignOutScope = 'local' | 'others' | 'global';
  * Resolves the base site URL for redirects based on environment:
  * 1. Explicit configured site URL (VITE_PUBLIC_SITE_URL)
  * 2. In-browser location origin (local development or runtime origin)
- * 3. Default production URL fallback ('https://chorematrix.vercel.app')
+ * 3. Default production URL fallback ('https://chorematrix.online')
  */
 export function getSiteUrl(): string {
   const configured = getEnvVar('VITE_PUBLIC_SITE_URL');
@@ -29,7 +29,7 @@ export function getSiteUrl(): string {
   if (typeof window !== 'undefined' && window.location && window.location.origin) {
     return window.location.origin.replace(/\/+$/, '');
   }
-  return 'https://chorematrix.vercel.app';
+  return 'https://chorematrix.online';
 }
 
 /**
