@@ -28,7 +28,7 @@ const TEST_PRODUCT_MAP: Record<string, string> = {
 
 const LIVE_PRODUCT_MAP: Record<string, string> = {
   'pro_monthly': 'pdt_0Np1eZsemtECph1HLoDb0',
-  'pro_annual': 'pdt_0Np1ec3oUFACgeOKI4ktP',
+  'pro_annual': 'pdt_0Np1ec3oUFACgeOKl4ktP',
   'plus_monthly': 'pdt_0Np1ean3rbxLUQs6d1QAb',
   'plus_annual': 'pdt_0Np1ebMsCqGBWntrkX3fK'
 };

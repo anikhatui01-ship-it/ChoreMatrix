@@ -236,7 +236,7 @@ describe('Dodo Payments Subscriptions & Security Suite (Test Mode)', () => {
 
       it('maps LIVE Pro Annual ($59.99/yr) exactly to canonical Dodo product ID', () => {
         const pid = getDodoProductId('pro', 'annual', 'live_mode');
-        assert.strictEqual(pid, 'pdt_0Np1ec3oUFACgeOKI4ktP');
+        assert.strictEqual(pid, 'pdt_0Np1ec3oUFACgeOKl4ktP');
         const meta = mapDodoProductToTier(pid);
         assert.ok(meta);
         assert.strictEqual(meta.tier, 'pro');
@@ -299,7 +299,7 @@ describe('Dodo Payments Subscriptions & Security Suite (Test Mode)', () => {
 
       // Live mode product IDs
       assert.strictEqual(isDodoProductId('pdt_0Np1eZsemtECph1HLoDb0'), true);
-      assert.strictEqual(isDodoProductId('pdt_0Np1ec3oUFACgeOKI4ktP'), true);
+      assert.strictEqual(isDodoProductId('pdt_0Np1ec3oUFACgeOKl4ktP'), true);
       assert.strictEqual(isDodoProductId('pdt_0Np1ean3rbxLUQs6d1QAb'), true);
       assert.strictEqual(isDodoProductId('pdt_0Np1ebMsCqGBWntrkX3fK'), true);
 
@@ -719,7 +719,7 @@ describe('Dodo Payments Subscriptions & Security Suite (Test Mode)', () => {
     it('verifies LIVE environment creates correct product IDs for all 4 plans', async () => {
       const livePlans = [
         { plan: 'pro', interval: 'monthly', expected: 'pdt_0Np1eZsemtECph1HLoDb0' },
-        { plan: 'pro', interval: 'annual', expected: 'pdt_0Np1ec3oUFACgeOKI4ktP' },
+        { plan: 'pro', interval: 'annual', expected: 'pdt_0Np1ec3oUFACgeOKl4ktP' },
         { plan: 'plus', interval: 'monthly', expected: 'pdt_0Np1ean3rbxLUQs6d1QAb' },
         { plan: 'plus', interval: 'annual', expected: 'pdt_0Np1ebMsCqGBWntrkX3fK' }
       ];
@@ -882,7 +882,7 @@ describe('Dodo Payments Subscriptions & Security Suite (Test Mode)', () => {
 
       // LIVE product IDs
       assert.ok(content.includes('pdt_0Np1eZsemtECph1HLoDb0'), 'Must include LIVE Pro Monthly ID');
-      assert.ok(content.includes('pdt_0Np1ec3oUFACgeOKI4ktP'), 'Must include LIVE Pro Annual ID');
+      assert.ok(content.includes('pdt_0Np1ec3oUFACgeOKl4ktP'), 'Must include LIVE Pro Annual ID');
       assert.ok(content.includes('pdt_0Np1ean3rbxLUQs6d1QAb'), 'Must include LIVE Plus Monthly ID');
       assert.ok(content.includes('pdt_0Np1ebMsCqGBWntrkX3fK'), 'Must include LIVE Plus Annual ID');
 

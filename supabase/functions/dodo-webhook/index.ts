@@ -26,7 +26,7 @@ const CANONICAL_PRODUCT_MAP: Record<string, { tier: 'pro' | 'plus'; interval: 'm
   'pdt_0NozLba96vBrtNtGdFONX': { tier: 'plus', interval: 'annual' },
   // Live Mode Product IDs
   'pdt_0Np1eZsemtECph1HLoDb0': { tier: 'pro', interval: 'monthly' },
-  'pdt_0Np1ec3oUFACgeOKI4ktP': { tier: 'pro', interval: 'annual' },
+  'pdt_0Np1ec3oUFACgeOKl4ktP': { tier: 'pro', interval: 'annual' },
   'pdt_0Np1ean3rbxLUQs6d1QAb': { tier: 'plus', interval: 'monthly' },
   'pdt_0Np1ebMsCqGBWntrkX3fK': { tier: 'plus', interval: 'annual' }
 };
