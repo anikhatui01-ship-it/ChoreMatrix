@@ -19,12 +19,61 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'POST, OPTIONS'
 };
 
-const CANONICAL_PRODUCT_MAP: Record<string, string> = {
-  'pro_monthly': Deno.env.get('VITE_DODO_PRO_MONTHLY_PRODUCT_ID') || 'pdt_0NozKZ3sZ6h0vplb451YK',
-  'pro_annual': Deno.env.get('VITE_DODO_PRO_ANNUAL_PRODUCT_ID') || 'pdt_0NozL7OvhpMonCSMw99Ng',
-  'plus_monthly': Deno.env.get('VITE_DODO_PLUS_MONTHLY_PRODUCT_ID') || 'pdt_0NozLK4XCjDSCbkADEtQL',
-  'plus_annual': Deno.env.get('VITE_DODO_PLUS_ANNUAL_PRODUCT_ID') || 'pdt_0NozLba96vBrtNtGdFONX'
+const TEST_PRODUCT_MAP: Record<string, string> = {
+  'pro_monthly': 'pdt_0NozKZ3sZ6h0vplb451YK',
+  'pro_annual': 'pdt_0NozL7OvhpMonCSMw99Ng',
+  'plus_monthly': 'pdt_0NozLK4XCjDSCbkADEtQL',
+  'plus_annual': 'pdt_0NozLba96vBrtNtGdFONX'
 };
+
+const LIVE_PRODUCT_MAP: Record<string, string> = {
+  'pro_monthly': 'pdt_0Np1eZsemtECph1HLoDb0',
+  'pro_annual': 'pdt_0Np1ec3oUFACgeOKI4ktP',
+  'plus_monthly': 'pdt_0Np1ean3rbxLUQs6d1QAb',
+  'plus_annual': 'pdt_0Np1ebMsCqGBWntrkX3fK'
+};
+
+function isLiveEnvironment(baseUrl: string, envName?: string): boolean {
+  if (envName) {
+    const cleanEnv = envName.trim().toLowerCase();
+    if (cleanEnv === 'live_mode' || cleanEnv === 'live' || cleanEnv === 'production' || cleanEnv === 'prod') {
+      return true;
+    }
+    if (cleanEnv === 'test_mode' || cleanEnv === 'test' || cleanEnv === 'sandbox' || cleanEnv === 'dev' || cleanEnv === 'development') {
+      return false;
+    }
+  }
+
+  if (baseUrl) {
+    const cleanUrl = baseUrl.trim().toLowerCase();
+    if (cleanUrl.includes('test.dodopayments.com') || cleanUrl.includes('sandbox')) {
+      return false;
+    }
+    if (cleanUrl.includes('live.dodopayments.com') || cleanUrl.includes('api.dodopayments.com')) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+function resolveServerProductId(planKey: string, isLive: boolean): string | null {
+  const overrideKey = `DODO_${planKey.toUpperCase()}_PRODUCT_ID`;
+  const viteOverrideKey = `VITE_DODO_${planKey.toUpperCase()}_PRODUCT_ID`;
+  const liveOverrideKey = `DODO_LIVE_${planKey.toUpperCase()}_PRODUCT_ID`;
+  const testOverrideKey = `DODO_TEST_${planKey.toUpperCase()}_PRODUCT_ID`;
+
+  const override = isLive
+    ? (Deno.env.get(liveOverrideKey) || Deno.env.get(overrideKey) || Deno.env.get(viteOverrideKey))
+    : (Deno.env.get(testOverrideKey) || Deno.env.get(overrideKey) || Deno.env.get(viteOverrideKey));
+
+  if (override && override.trim().startsWith('pdt_')) {
+    return override.trim();
+  }
+
+  const catalog = isLive ? LIVE_PRODUCT_MAP : TEST_PRODUCT_MAP;
+  return catalog[planKey] || null;
+}
 
 function normalizePlan(plan: string | null | undefined): string {
   if (!plan) throw new Error('Missing plan parameter');
@@ -89,10 +138,21 @@ serve(async (req: Request) => {
       });
     }
 
+    const dodoApiKey = Deno.env.get('DODO_API_KEY');
+    const dodoBaseUrl = Deno.env.get('DODO_BASE_URL') || 'https://test.dodopayments.com';
+    const dodoEnv =
+      Deno.env.get('DODO_ENVIRONMENT') ||
+      Deno.env.get('DODO_ENV') ||
+      Deno.env.get('DODO_PAYMENTS_ENVIRONMENT') ||
+      Deno.env.get('VITE_DODO_ENVIRONMENT') ||
+      Deno.env.get('VITE_DODO_ENV');
+
+    const isLive = isLiveEnvironment(dodoBaseUrl, dodoEnv);
+
     const plan = normalizePlan(reqBody.plan);
     const interval = normalizeInterval(reqBody.interval);
     const planKey = `${plan}_${interval}`;
-    const productId = CANONICAL_PRODUCT_MAP[planKey];
+    const productId = resolveServerProductId(planKey, isLive);
 
     if (!productId) {
       return new Response(JSON.stringify({ error: `Unmapped plan/interval: ${planKey}` }), {
@@ -123,9 +183,6 @@ serve(async (req: Request) => {
 
     const isTrialConsumed = Boolean(profile?.trial_consumed);
     const isTrialEligible = !isTrialConsumed;
-
-    const dodoApiKey = Deno.env.get('DODO_API_KEY');
-    const dodoBaseUrl = Deno.env.get('DODO_BASE_URL') || 'https://test.dodopayments.com';
 
     if (!dodoApiKey) {
       console.error('[dodo-create-checkout] DODO_API_KEY not configured.');

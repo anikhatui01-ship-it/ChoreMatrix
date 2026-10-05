@@ -48,6 +48,20 @@ export const DODO_SUBSCRIPTION_STATUSES = [
 
 export type DodoSubscriptionStatus = typeof DODO_SUBSCRIPTION_STATUSES[number];
 
+export const DODO_TEST_PRODUCTS = {
+  pro_monthly: 'pdt_0NozKZ3sZ6h0vplb451YK',
+  pro_annual: 'pdt_0NozL7OvhpMonCSMw99Ng',
+  plus_monthly: 'pdt_0NozLK4XCjDSCbkADEtQL',
+  plus_annual: 'pdt_0NozLba96vBrtNtGdFONX'
+} as const;
+
+export const DODO_LIVE_PRODUCTS = {
+  pro_monthly: 'pdt_0Np1eZsemtECph1HLoDb0',
+  pro_annual: 'pdt_0Np1ec3oUFACgeOKI4ktP',
+  plus_monthly: 'pdt_0Np1ean3rbxLUQs6d1QAb',
+  plus_annual: 'pdt_0Np1ebMsCqGBWntrkX3fK'
+} as const;
+
 /**
  * 1. Canonical Plan Matrix for all 4 subscription tiers and intervals.
  * Uses exact Dodo Test Mode catalog IDs with environment variable overrides.
@@ -57,28 +71,28 @@ export const CANONICAL_DODO_PLAN_MATRIX: Record<`${PlanTier}_${BillingInterval}`
     tier: 'pro',
     interval: 'monthly',
     displayAmount: 5.99,
-    productId: getEnvVar('VITE_DODO_PRO_MONTHLY_PRODUCT_ID') || 'pdt_0NozKZ3sZ6h0vplb451YK',
+    productId: getEnvVar('VITE_DODO_PRO_MONTHLY_PRODUCT_ID') || DODO_TEST_PRODUCTS.pro_monthly,
     trialDurationDays: 7
   },
   pro_annual: {
     tier: 'pro',
     interval: 'annual',
     displayAmount: 59.99,
-    productId: getEnvVar('VITE_DODO_PRO_ANNUAL_PRODUCT_ID') || 'pdt_0NozL7OvhpMonCSMw99Ng',
+    productId: getEnvVar('VITE_DODO_PRO_ANNUAL_PRODUCT_ID') || DODO_TEST_PRODUCTS.pro_annual,
     trialDurationDays: 7
   },
   plus_monthly: {
     tier: 'plus',
     interval: 'monthly',
     displayAmount: 9.99,
-    productId: getEnvVar('VITE_DODO_PLUS_MONTHLY_PRODUCT_ID') || 'pdt_0NozLK4XCjDSCbkADEtQL',
+    productId: getEnvVar('VITE_DODO_PLUS_MONTHLY_PRODUCT_ID') || DODO_TEST_PRODUCTS.plus_monthly,
     trialDurationDays: 7
   },
   plus_annual: {
     tier: 'plus',
     interval: 'annual',
     displayAmount: 99.99,
-    productId: getEnvVar('VITE_DODO_PLUS_ANNUAL_PRODUCT_ID') || 'pdt_0NozLba96vBrtNtGdFONX',
+    productId: getEnvVar('VITE_DODO_PLUS_ANNUAL_PRODUCT_ID') || DODO_TEST_PRODUCTS.plus_annual,
     trialDurationDays: 7
   }
 } as const;
@@ -93,11 +107,53 @@ export const DODO_CONFIG = {
 } as const;
 
 /**
- * 2. Canonical Map of recognized Dodo product IDs to their metadata.
+ * 2. Canonical Map of recognized Dodo product IDs to their metadata (both Test and Live).
  */
 export const DODO_PRODUCTS: Record<string, DodoProductDefinition> = {
-  [CANONICAL_DODO_PLAN_MATRIX.pro_monthly.productId]: {
-    productId: CANONICAL_DODO_PLAN_MATRIX.pro_monthly.productId,
+  // Test Mode Products
+  [DODO_TEST_PRODUCTS.pro_monthly]: {
+    productId: DODO_TEST_PRODUCTS.pro_monthly,
+    planName: 'ChoreMatrix Pro Monthly (Test)',
+    tier: 'pro',
+    interval: 'monthly',
+    currency: 'USD',
+    amount: 5.99,
+    amountInCents: 599,
+    trialDays: 7
+  },
+  [DODO_TEST_PRODUCTS.pro_annual]: {
+    productId: DODO_TEST_PRODUCTS.pro_annual,
+    planName: 'ChoreMatrix Pro Annual (Test)',
+    tier: 'pro',
+    interval: 'annual',
+    currency: 'USD',
+    amount: 59.99,
+    amountInCents: 5999,
+    trialDays: 7
+  },
+  [DODO_TEST_PRODUCTS.plus_monthly]: {
+    productId: DODO_TEST_PRODUCTS.plus_monthly,
+    planName: 'ChoreMatrix Plus Monthly (Test)',
+    tier: 'plus',
+    interval: 'monthly',
+    currency: 'USD',
+    amount: 9.99,
+    amountInCents: 999,
+    trialDays: 7
+  },
+  [DODO_TEST_PRODUCTS.plus_annual]: {
+    productId: DODO_TEST_PRODUCTS.plus_annual,
+    planName: 'ChoreMatrix Plus Annual (Test)',
+    tier: 'plus',
+    interval: 'annual',
+    currency: 'USD',
+    amount: 99.99,
+    amountInCents: 9999,
+    trialDays: 7
+  },
+  // Live Mode Products
+  [DODO_LIVE_PRODUCTS.pro_monthly]: {
+    productId: DODO_LIVE_PRODUCTS.pro_monthly,
     planName: 'ChoreMatrix Pro Monthly',
     tier: 'pro',
     interval: 'monthly',
@@ -106,8 +162,8 @@ export const DODO_PRODUCTS: Record<string, DodoProductDefinition> = {
     amountInCents: 599,
     trialDays: 7
   },
-  [CANONICAL_DODO_PLAN_MATRIX.pro_annual.productId]: {
-    productId: CANONICAL_DODO_PLAN_MATRIX.pro_annual.productId,
+  [DODO_LIVE_PRODUCTS.pro_annual]: {
+    productId: DODO_LIVE_PRODUCTS.pro_annual,
     planName: 'ChoreMatrix Pro Annual',
     tier: 'pro',
     interval: 'annual',
@@ -116,8 +172,8 @@ export const DODO_PRODUCTS: Record<string, DodoProductDefinition> = {
     amountInCents: 5999,
     trialDays: 7
   },
-  [CANONICAL_DODO_PLAN_MATRIX.plus_monthly.productId]: {
-    productId: CANONICAL_DODO_PLAN_MATRIX.plus_monthly.productId,
+  [DODO_LIVE_PRODUCTS.plus_monthly]: {
+    productId: DODO_LIVE_PRODUCTS.plus_monthly,
     planName: 'ChoreMatrix Plus Monthly',
     tier: 'plus',
     interval: 'monthly',
@@ -126,8 +182,8 @@ export const DODO_PRODUCTS: Record<string, DodoProductDefinition> = {
     amountInCents: 999,
     trialDays: 7
   },
-  [CANONICAL_DODO_PLAN_MATRIX.plus_annual.productId]: {
-    productId: CANONICAL_DODO_PLAN_MATRIX.plus_annual.productId,
+  [DODO_LIVE_PRODUCTS.plus_annual]: {
+    productId: DODO_LIVE_PRODUCTS.plus_annual,
     planName: 'ChoreMatrix Plus Annual',
     tier: 'plus',
     interval: 'annual',
@@ -182,11 +238,22 @@ export function normalizeBillingInterval(interval: string | null | undefined): B
  */
 export function getDodoProductId(
   plan: string,
-  interval: string
+  interval: string,
+  environment?: DodoEnvironment
 ): string {
   const normPlan = normalizePlanTier(plan);
   const normInterval = normalizeBillingInterval(interval);
   const key = `${normPlan}_${normInterval}` as const;
+
+  const env = environment || DODO_CONFIG.environment;
+  if (env === 'live_mode') {
+    const override = getEnvVar(`VITE_DODO_${key.toUpperCase()}_PRODUCT_ID`);
+    if (override && override.startsWith('pdt_')) {
+      return override;
+    }
+    return DODO_LIVE_PRODUCTS[key];
+  }
+
   const config = CANONICAL_DODO_PLAN_MATRIX[key];
   if (!config) {
     throw new Error(`No canonical Dodo configuration found for plan "${plan}" and interval "${interval}".`);

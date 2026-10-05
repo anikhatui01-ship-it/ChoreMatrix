@@ -175,49 +175,97 @@ function createMockSupabase(initialProfile?: {
 }
 
 describe('Dodo Payments Subscriptions & Security Suite (Test Mode)', () => {
-  describe('1. Catalog & Plan Mapping Audit', () => {
-    it('maps Pro Monthly ($5.99/mo) exactly to canonical Dodo product ID', () => {
-      const pid = getDodoProductId('pro', 'monthly');
-      assert.strictEqual(pid, CANONICAL_DODO_PLAN_MATRIX.pro_monthly.productId);
-      const meta = mapDodoProductToTier(pid);
-      assert.ok(meta);
-      assert.strictEqual(meta.tier, 'pro');
-      assert.strictEqual(meta.interval, 'monthly');
-      assert.strictEqual(meta.amount, 5.99);
-      assert.strictEqual(meta.trialDays, 7);
+  describe('1. Catalog & Plan Mapping Audit (TEST & LIVE)', () => {
+    describe('TEST Environment Catalog', () => {
+      it('maps TEST Pro Monthly ($5.99/mo) exactly to canonical Dodo product ID', () => {
+        const pid = getDodoProductId('pro', 'monthly', 'test_mode');
+        assert.strictEqual(pid, 'pdt_0NozKZ3sZ6h0vplb451YK');
+        const meta = mapDodoProductToTier(pid);
+        assert.ok(meta);
+        assert.strictEqual(meta.tier, 'pro');
+        assert.strictEqual(meta.interval, 'monthly');
+        assert.strictEqual(meta.amount, 5.99);
+        assert.strictEqual(meta.trialDays, 7);
+      });
+
+      it('maps TEST Pro Annual ($59.99/yr) exactly to canonical Dodo product ID', () => {
+        const pid = getDodoProductId('pro', 'annual', 'test_mode');
+        assert.strictEqual(pid, 'pdt_0NozL7OvhpMonCSMw99Ng');
+        const meta = mapDodoProductToTier(pid);
+        assert.ok(meta);
+        assert.strictEqual(meta.tier, 'pro');
+        assert.strictEqual(meta.interval, 'annual');
+        assert.strictEqual(meta.amount, 59.99);
+        assert.strictEqual(meta.trialDays, 7);
+      });
+
+      it('maps TEST Plus Monthly ($9.99/mo) exactly to canonical Dodo product ID', () => {
+        const pid = getDodoProductId('plus', 'monthly', 'test_mode');
+        assert.strictEqual(pid, 'pdt_0NozLK4XCjDSCbkADEtQL');
+        const meta = mapDodoProductToTier(pid);
+        assert.ok(meta);
+        assert.strictEqual(meta.tier, 'plus');
+        assert.strictEqual(meta.interval, 'monthly');
+        assert.strictEqual(meta.amount, 9.99);
+        assert.strictEqual(meta.trialDays, 7);
+      });
+
+      it('maps TEST Plus Annual ($99.99/yr) exactly to canonical Dodo product ID', () => {
+        const pid = getDodoProductId('plus', 'annual', 'test_mode');
+        assert.strictEqual(pid, 'pdt_0NozLba96vBrtNtGdFONX');
+        const meta = mapDodoProductToTier(pid);
+        assert.ok(meta);
+        assert.strictEqual(meta.tier, 'plus');
+        assert.strictEqual(meta.interval, 'annual');
+        assert.strictEqual(meta.amount, 99.99);
+        assert.strictEqual(meta.trialDays, 7);
+      });
     });
 
-    it('maps Pro Annual ($59.99/yr) exactly to canonical Dodo product ID', () => {
-      const pid = getDodoProductId('pro', 'annual');
-      assert.strictEqual(pid, CANONICAL_DODO_PLAN_MATRIX.pro_annual.productId);
-      const meta = mapDodoProductToTier(pid);
-      assert.ok(meta);
-      assert.strictEqual(meta.tier, 'pro');
-      assert.strictEqual(meta.interval, 'annual');
-      assert.strictEqual(meta.amount, 59.99);
-      assert.strictEqual(meta.trialDays, 7);
-    });
+    describe('LIVE Environment Catalog', () => {
+      it('maps LIVE Pro Monthly ($5.99/mo) exactly to canonical Dodo product ID', () => {
+        const pid = getDodoProductId('pro', 'monthly', 'live_mode');
+        assert.strictEqual(pid, 'pdt_0Np1eZsemtECph1HLoDb0');
+        const meta = mapDodoProductToTier(pid);
+        assert.ok(meta);
+        assert.strictEqual(meta.tier, 'pro');
+        assert.strictEqual(meta.interval, 'monthly');
+        assert.strictEqual(meta.amount, 5.99);
+        assert.strictEqual(meta.trialDays, 7);
+      });
 
-    it('maps Plus Monthly ($9.99/mo) exactly to canonical Dodo product ID', () => {
-      const pid = getDodoProductId('plus', 'monthly');
-      assert.strictEqual(pid, CANONICAL_DODO_PLAN_MATRIX.plus_monthly.productId);
-      const meta = mapDodoProductToTier(pid);
-      assert.ok(meta);
-      assert.strictEqual(meta.tier, 'plus');
-      assert.strictEqual(meta.interval, 'monthly');
-      assert.strictEqual(meta.amount, 9.99);
-      assert.strictEqual(meta.trialDays, 7);
-    });
+      it('maps LIVE Pro Annual ($59.99/yr) exactly to canonical Dodo product ID', () => {
+        const pid = getDodoProductId('pro', 'annual', 'live_mode');
+        assert.strictEqual(pid, 'pdt_0Np1ec3oUFACgeOKI4ktP');
+        const meta = mapDodoProductToTier(pid);
+        assert.ok(meta);
+        assert.strictEqual(meta.tier, 'pro');
+        assert.strictEqual(meta.interval, 'annual');
+        assert.strictEqual(meta.amount, 59.99);
+        assert.strictEqual(meta.trialDays, 7);
+      });
 
-    it('maps Plus Annual ($99.99/yr) exactly to canonical Dodo product ID', () => {
-      const pid = getDodoProductId('plus', 'annual');
-      assert.strictEqual(pid, CANONICAL_DODO_PLAN_MATRIX.plus_annual.productId);
-      const meta = mapDodoProductToTier(pid);
-      assert.ok(meta);
-      assert.strictEqual(meta.tier, 'plus');
-      assert.strictEqual(meta.interval, 'annual');
-      assert.strictEqual(meta.amount, 99.99);
-      assert.strictEqual(meta.trialDays, 7);
+      it('maps LIVE Plus Monthly ($9.99/mo) exactly to canonical Dodo product ID', () => {
+        const pid = getDodoProductId('plus', 'monthly', 'live_mode');
+        assert.strictEqual(pid, 'pdt_0Np1ean3rbxLUQs6d1QAb');
+        const meta = mapDodoProductToTier(pid);
+        assert.ok(meta);
+        assert.strictEqual(meta.tier, 'plus');
+        assert.strictEqual(meta.interval, 'monthly');
+        assert.strictEqual(meta.amount, 9.99);
+        assert.strictEqual(meta.trialDays, 7);
+      });
+
+      it('maps LIVE Plus Annual ($99.99/yr) exactly to canonical Dodo product ID', () => {
+        const pid = getDodoProductId('plus', 'annual', 'live_mode');
+        assert.strictEqual(pid, 'pdt_0Np1ebMsCqGBWntrkX3fK');
+        const meta = mapDodoProductToTier(pid);
+        assert.ok(meta);
+        assert.strictEqual(meta.tier, 'plus');
+        assert.strictEqual(meta.interval, 'annual');
+        assert.strictEqual(meta.amount, 99.99);
+        assert.strictEqual(meta.trialDays, 7);
+      });
     });
 
     it('strictly normalizes valid tier and interval aliases', () => {
@@ -242,11 +290,20 @@ describe('Dodo Payments Subscriptions & Security Suite (Test Mode)', () => {
       assert.throws(() => getDodoProductId('pro', ''), /Missing interval parameter/);
     });
 
-    it('isDodoProductId validates only recognized allowlisted product IDs', () => {
+    it('isDodoProductId validates all 8 allowlisted TEST and LIVE product IDs', () => {
+      // Test mode product IDs
       assert.strictEqual(isDodoProductId('pdt_0NozKZ3sZ6h0vplb451YK'), true);
       assert.strictEqual(isDodoProductId('pdt_0NozL7OvhpMonCSMw99Ng'), true);
       assert.strictEqual(isDodoProductId('pdt_0NozLK4XCjDSCbkADEtQL'), true);
       assert.strictEqual(isDodoProductId('pdt_0NozLba96vBrtNtGdFONX'), true);
+
+      // Live mode product IDs
+      assert.strictEqual(isDodoProductId('pdt_0Np1eZsemtECph1HLoDb0'), true);
+      assert.strictEqual(isDodoProductId('pdt_0Np1ec3oUFACgeOKI4ktP'), true);
+      assert.strictEqual(isDodoProductId('pdt_0Np1ean3rbxLUQs6d1QAb'), true);
+      assert.strictEqual(isDodoProductId('pdt_0Np1ebMsCqGBWntrkX3fK'), true);
+
+      // Invalid product IDs
       assert.strictEqual(isDodoProductId('pdt_unauthorized_fake'), false);
       assert.strictEqual(isDodoProductId(null), false);
     });
@@ -627,6 +684,71 @@ describe('Dodo Payments Subscriptions & Security Suite (Test Mode)', () => {
       assert.strictEqual(capturedPayload.subscription_data, undefined);
     });
 
+    it('creates LIVE checkout session with LIVE product ID when baseUrl or environment is LIVE', async () => {
+      let capturedPayload: any = null;
+      let capturedEndpoint = '';
+      const customFetch = (async (url: string, init: any) => {
+        capturedEndpoint = url;
+        capturedPayload = JSON.parse(init.body);
+        return {
+          ok: true,
+          headers: new Headers({ 'content-type': 'application/json' }),
+          json: async () => ({
+            checkout_url: 'https://checkout.dodopayments.com/session/sess_live_123',
+            session_id: 'sess_live_123'
+          })
+        };
+      }) as any;
+
+      const result = await createDodoCheckoutSession({
+        plan: 'pro',
+        interval: 'monthly',
+        user: { id: 'usr_live_1', email: 'live@example.com' },
+        credentials: { apiKey: 'live_dodo_key', baseUrl: 'https://live.dodopayments.com' },
+        isTrialEligible: true,
+        customFetch
+      });
+
+      assert.strictEqual(result.success, true);
+      assert.strictEqual(result.checkout_url, 'https://checkout.dodopayments.com/session/sess_live_123');
+      assert.strictEqual(capturedPayload.product_cart[0].product_id, 'pdt_0Np1eZsemtECph1HLoDb0');
+      assert.notStrictEqual(capturedPayload.product_cart[0].product_id, 'pdt_0NozKZ3sZ6h0vplb451YK');
+      assert.strictEqual(capturedEndpoint, 'https://live.dodopayments.com/checkouts');
+    });
+
+    it('verifies LIVE environment creates correct product IDs for all 4 plans', async () => {
+      const livePlans = [
+        { plan: 'pro', interval: 'monthly', expected: 'pdt_0Np1eZsemtECph1HLoDb0' },
+        { plan: 'pro', interval: 'annual', expected: 'pdt_0Np1ec3oUFACgeOKI4ktP' },
+        { plan: 'plus', interval: 'monthly', expected: 'pdt_0Np1ean3rbxLUQs6d1QAb' },
+        { plan: 'plus', interval: 'annual', expected: 'pdt_0Np1ebMsCqGBWntrkX3fK' }
+      ];
+
+      for (const item of livePlans) {
+        let capturedPayload: any = null;
+        const customFetch = (async (_url: string, init: any) => {
+          capturedPayload = JSON.parse(init.body);
+          return {
+            ok: true,
+            headers: new Headers({ 'content-type': 'application/json' }),
+            json: async () => ({ checkout_url: 'https://checkout.dodopayments.com/session/s', session_id: 's' })
+          };
+        }) as any;
+
+        const result = await createDodoCheckoutSession({
+          plan: item.plan,
+          interval: item.interval,
+          user: { id: 'usr_live_test' },
+          credentials: { apiKey: 'live_key', baseUrl: 'https://live.dodopayments.com' },
+          customFetch
+        });
+
+        assert.strictEqual(result.success, true);
+        assert.strictEqual(capturedPayload.product_cart[0].product_id, item.expected);
+        assert.ok(!capturedPayload.product_cart[0].product_id.startsWith('pdt_0No'), 'LIVE checkout must never use TEST product ID');
+      }
+    });
+
     it('rejects unallowlisted or invalid plan selections server-side', async () => {
       const result = await createDodoCheckoutSession({
         plan: 'vip_tier',
@@ -750,6 +872,29 @@ describe('Dodo Payments Subscriptions & Security Suite (Test Mode)', () => {
         'dodo-create-checkout',
         'dodo-webhook'
       ].sort());
+    });
+  });
+
+  describe('10. Supabase Edge Function (dodo-create-checkout) Environment Mapping Audit', () => {
+    it('verifies edge function source contains accurate LIVE and TEST product IDs', () => {
+      const edgeFuncPath = path.resolve('supabase', 'functions', 'dodo-create-checkout', 'index.ts');
+      const content = fs.readFileSync(edgeFuncPath, 'utf8');
+
+      // LIVE product IDs
+      assert.ok(content.includes('pdt_0Np1eZsemtECph1HLoDb0'), 'Must include LIVE Pro Monthly ID');
+      assert.ok(content.includes('pdt_0Np1ec3oUFACgeOKI4ktP'), 'Must include LIVE Pro Annual ID');
+      assert.ok(content.includes('pdt_0Np1ean3rbxLUQs6d1QAb'), 'Must include LIVE Plus Monthly ID');
+      assert.ok(content.includes('pdt_0Np1ebMsCqGBWntrkX3fK'), 'Must include LIVE Plus Annual ID');
+
+      // TEST product IDs
+      assert.ok(content.includes('pdt_0NozKZ3sZ6h0vplb451YK'), 'Must include TEST Pro Monthly ID');
+      assert.ok(content.includes('pdt_0NozL7OvhpMonCSMw99Ng'), 'Must include TEST Pro Annual ID');
+      assert.ok(content.includes('pdt_0NozLK4XCjDSCbkADEtQL'), 'Must include TEST Plus Monthly ID');
+      assert.ok(content.includes('pdt_0NozLba96vBrtNtGdFONX'), 'Must include TEST Plus Annual ID');
+
+      // Verifies server-side resolution function exists and checks environment
+      assert.ok(content.includes('isLiveEnvironment'), 'Must include environment detection');
+      assert.ok(content.includes('resolveServerProductId'), 'Must include server product resolution');
     });
   });
 });

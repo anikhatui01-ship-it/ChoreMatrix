@@ -568,7 +568,7 @@ export interface CreateDodoCheckoutSessionOptions {
   interval: string;
   user: { id: string; email?: string; name?: string };
   returnUrl?: string;
-  credentials: { apiKey: string; baseUrl?: string };
+  credentials: { apiKey: string; baseUrl?: string; environment?: 'test_mode' | 'live_mode' };
   isTrialEligible?: boolean;
   customFetch?: typeof fetch;
 }
@@ -585,7 +585,7 @@ export async function createDodoCheckoutSession(
   options: CreateDodoCheckoutSessionOptions
 ): Promise<{ success: boolean; checkout_url?: string; session_id?: string; error?: string }> {
   const { plan, interval, user, returnUrl, credentials, isTrialEligible = false, customFetch = fetch } = options;
-  const { apiKey, baseUrl = 'https://test.dodopayments.com' } = credentials;
+  const { apiKey, baseUrl = 'https://test.dodopayments.com', environment } = credentials;
 
   if (!apiKey) {
     throw new Error('Dodo Payments API key unconfigured.');
@@ -595,10 +595,14 @@ export async function createDodoCheckoutSession(
     throw new Error('User authentication required for checkout session.');
   }
 
+  const isLive = environment === 'live_mode' ||
+    (Boolean(baseUrl) && (baseUrl.includes('live.dodopayments.com') || baseUrl.includes('api.dodopayments.com')) && !baseUrl.includes('test'));
+  const targetEnv = isLive ? 'live_mode' : 'test_mode';
+
   // Server-side mapping to allowlisted product ID
   let productId: string;
   try {
-    productId = getDodoProductId(plan, interval);
+    productId = getDodoProductId(plan, interval, targetEnv);
   } catch (err: any) {
     return { success: false, error: err.message || 'Invalid plan or interval selection.' };
   }
