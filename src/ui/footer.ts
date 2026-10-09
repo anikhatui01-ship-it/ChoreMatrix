@@ -29,6 +29,7 @@ export function renderFooter() {
               <li><a href="/pricing.html">Pricing & Trials</a></li>
               <li><a href="/why-chorematrix.html">Why ChoreMatrix</a></li>
               <li><a href="/faq.html">FAQ</a></li>
+              <li><a href="/feedback.html">Share Feedback</a></li>
               <li><a href="/app.html">Launch Optimizer</a></li>
             </ul>
           </div>
@@ -40,7 +41,7 @@ export function renderFooter() {
               <li><a href="/signup.html">Create Account</a></li>
               <li><a href="/account.html">Account & Devices</a></li>
               <li><a href="/forgot-password.html">Reset Password</a></li>
-              <li><a href="/contact.html">Feedback & Support</a></li>
+              <li><a href="/contact.html">Support</a></li>
             </ul>
           </div>
 
@@ -63,6 +64,7 @@ export function renderFooter() {
           </div>
           <div style="display:flex; gap:16px;">
             <a href="/faq.html">FAQ</a>
+            <a href="/feedback.html">Feedback</a>
             <a href="/contact.html">Contact</a>
             <a href="/privacy.html">Privacy</a>
             <a href="/terms.html">Terms</a>

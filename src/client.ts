@@ -17,6 +17,7 @@ export * from './monetization/adSlot.ts';
 export * from './monetization/entitlements.ts';
 export * from './monetization/dodoCheckout.ts';
 export * from './analytics/ga4.ts';
+export * from './feedback/feedbackService.ts';
 
 import { initGoogleAnalytics } from './analytics/ga4.ts';
 

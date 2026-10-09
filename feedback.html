@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Help Shape ChoreMatrix — Early User Feedback</title>
+<meta name="description" content="Share your experience with ChoreMatrix. Tell us what worked, what felt confusing, and what would make managing household chores easier." />
+<link rel="canonical" href="https://chorematrix.online/feedback.html" />
+<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+<link rel="alternate icon" href="/favicon.ico" />
+<meta property="og:title" content="Help Shape ChoreMatrix — Early User Feedback" />
+<meta property="og:description" content="Share your experience with ChoreMatrix. Tell us what worked, what felt confusing, and what would make managing household chores easier." />
+<meta property="og:type" content="website" />
+<meta property="og:url" content="https://chorematrix.online/feedback.html" />
+<meta property="og:image" content="https://chorematrix.online/og-image.jpg" />
+<meta property="og:site_name" content="ChoreMatrix" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Help Shape ChoreMatrix — Early User Feedback" />
+<meta name="twitter:description" content="Share your experience with ChoreMatrix. Tell us what worked, what felt confusing, and what would make managing household chores easier." />
+<meta name="twitter:image" content="https://chorematrix.online/og-image.jpg" />
+<script>
+  (function() {
+    try {
+      var s = localStorage.getItem('chorematrix_theme') || 'system';
+      var d = s === 'dark' || (s === 'system' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.setAttribute('data-theme', d ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme-setting', s);
+    } catch(e){}
+  })();
+</script>
+<link rel="stylesheet" href="/src/styles/common.css" />
+<style>
+  .char-counter {
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+    margin-top: 4px;
+  }
+  .rating-group {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-top: 6px;
+  }
+  .rating-opt {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: var(--panel-subtle);
+    color: var(--ink);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .rating-opt input {
+    margin: 0;
+    accent-color: var(--primary);
+  }
+  .rating-opt:hover {
+    border-color: var(--line-subtle);
+  }
+</style>
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6399557140317733"
+     crossorigin="anonymous"></script>
+</head>
+<body>
+
+<div id="globalNavbar"></div>
+
+<main class="main-content" style="padding-top:32px; padding-bottom:48px;">
+  <div class="shell" style="max-width:720px;">
+    <!-- Page Header -->
+    <div style="text-align:center; margin-bottom:28px;">
+      <span class="badge teal" style="margin-bottom:8px;">Early Product Feedback</span>
+      <h1 style="font-size:32px; font-weight:800; margin:0 0 10px; color:var(--ink); letter-spacing:-0.02em;">Help shape ChoreMatrix.</h1>
+      <p style="font-size:15px; color:var(--muted); margin:0 auto; max-width:580px; line-height:1.55;">
+        Tell us what worked, what felt confusing, and what would make managing household chores easier. Honest feedback — positive or negative — directly shapes future updates.
+      </p>
+    </div>
+
+    <!-- Alert / Status Notice -->
+    <div id="formAlert" class="alert-box" style="display:none; margin-bottom:20px;" role="alert"></div>
+
+    <!-- Success Confirmation View -->
+    <div id="successPanel" class="panel" style="display:none; text-align:center; padding:36px 24px;">
+      <div style="width:48px; height:48px; border-radius:50%; background:var(--primary-soft); color:var(--primary); display:grid; place-items:center; margin:0 auto 16px; font-size:22px; font-weight:700;">
+        ✓
+      </div>
+      <h2 style="font-size:20px; font-weight:800; margin:0 0 8px; color:var(--ink);">Thank you for your feedback!</h2>
+      <p style="font-size:14px; color:var(--muted); max-width:480px; margin:0 auto 24px; line-height:1.5;">
+        Your submission has been recorded privately. We read every response to improve household workload balancing.
+      </p>
+      <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
+        <a href="/" class="btn primary">Return to Calculator</a>
+        <a href="/app.html" class="btn">Open Workspace</a>
+      </div>
+    </div>
+
+    <!-- Feedback Form -->
+    <form id="feedbackForm" class="panel" style="display:grid; gap:20px; padding:28px;">
+      <!-- 1. Household Type -->
+      <div class="field">
+        <label for="selHouseholdType" style="font-weight:700; color:var(--ink);">Household Structure <span style="color:var(--bad);">*</span></label>
+        <span class="sub">Which best describes your living arrangement?</span>
+        <select id="selHouseholdType" name="householdType" required style="margin-top:6px;">
+          <option value="" disabled selected>Select household structure</option>
+          <option value="couple">Couple</option>
+          <option value="roommates">Roommates / Flatmates</option>
+          <option value="family">Family (with children/teens)</option>
+          <option value="living_alone">Living alone</option>
+          <option value="other">Other arrangement</option>
+        </select>
+        <div id="errHouseholdType" class="field-error" style="display:none; font-size:12px; color:var(--bad); margin-top:4px;"></div>
+      </div>
+
+      <!-- 2. Rating -->
+      <div class="field">
+        <label style="font-weight:700; color:var(--ink);">Overall Experience (Optional)</label>
+        <span class="sub">How was your initial experience using the calculator?</span>
+        <div class="rating-group" role="radiogroup" aria-label="Overall Experience">
+          <label class="rating-opt">
+            <input type="radio" name="experienceRating" value="1"> 1 — Confusing
+          </label>
+          <label class="rating-opt">
+            <input type="radio" name="experienceRating" value="2"> 2 — Needs work
+          </label>
+          <label class="rating-opt">
+            <input type="radio" name="experienceRating" value="3"> 3 — Okay
+          </label>
+          <label class="rating-opt">
+            <input type="radio" name="experienceRating" value="4"> 4 — Good
+          </label>
+          <label class="rating-opt">
+            <input type="radio" name="experienceRating" value="5"> 5 — Very helpful
+          </label>
+        </div>
+      </div>
+
+      <!-- 3. What was useful -->
+      <div class="field">
+        <label for="txtUseful" style="font-weight:700; color:var(--ink);">What did you find useful?</label>
+        <span class="sub">Did any features or views make planning clearer?</span>
+        <textarea id="txtUseful" name="usefulFeedback" rows="3" maxlength="2000" placeholder="e.g. Setting unavailable days, capacity-aware distribution, calendar view..." style="margin-top:6px; resize:vertical;"></textarea>
+        <div class="char-counter" id="countUseful">0 / 2000</div>
+      </div>
+
+      <!-- 4. What was confusing -->
+      <div class="field">
+        <label for="txtConfusing" style="font-weight:700; color:var(--ink);">What was confusing or missing?</label>
+        <span class="sub">Where did you get stuck, and what information felt unclear?</span>
+        <textarea id="txtConfusing" name="confusingFeedback" rows="3" maxlength="2000" placeholder="e.g. Hard to understand effort scores, wanted more day options, rebalance was unclear..." style="margin-top:6px; resize:vertical;"></textarea>
+        <div class="char-counter" id="countConfusing">0 / 2000</div>
+      </div>
+
+      <!-- 5. What would make you use again -->
+      <div class="field">
+        <label for="txtImprovement" style="font-weight:700; color:var(--ink);">What would make you use ChoreMatrix regularly?</label>
+        <span class="sub">What changes would make this an indispensable tool for your household?</span>
+        <textarea id="txtImprovement" name="improvementFeedback" rows="3" maxlength="2000" placeholder="e.g. Faster setup, export options, reminder alerts..." style="margin-top:6px; resize:vertical;"></textarea>
+        <div class="char-counter" id="countImprovement">0 / 2000</div>
+      </div>
+
+      <!-- 6. Email (Optional) -->
+      <div class="field">
+        <label for="txtEmail" style="font-weight:700; color:var(--ink);">Email Address (Optional)</label>
+        <span class="sub">Only provide an email if you would like us to follow up on your feedback.</span>
+        <input type="email" id="txtEmail" name="email" maxlength="255" placeholder="you@example.com" style="margin-top:6px;">
+        <div id="errEmail" class="field-error" style="display:none; font-size:12px; color:var(--bad); margin-top:4px;"></div>
+      </div>
+
+      <!-- 7. Permission to Quote (Optional separate consent) -->
+      <div style="border-top:1px solid var(--line); padding-top:16px;">
+        <label style="display:flex; align-items:flex-start; gap:8px; font-size:13px; color:var(--ink); cursor:pointer;">
+          <input type="checkbox" id="chkAllowQuote" name="allowQuote" style="margin-top:2px; accent-color:var(--primary);">
+          <span>
+            You may quote this feedback anonymously in product improvement discussions or public testimonials. (Optional, unchecked by default)
+          </span>
+        </label>
+      </div>
+
+      <!-- Submit Action -->
+      <div style="display:flex; justify-content:flex-end; gap:12px; align-items:center; margin-top:8px;">
+        <a href="/" class="btn" style="text-decoration:none;">Cancel</a>
+        <button type="submit" id="btnSubmitFeedback" class="btn primary" style="font-weight:700; padding:10px 24px;">
+          Submit Feedback
+        </button>
+      </div>
+    </form>
+  </div>
+</main>
+
+<div id="globalFooter"></div>
+
+<script type="module">
+import {
+  renderNavbar,
+  renderFooter,
+  initCookieBanner,
+  authService,
+  submitUserFeedback,
+  validateFeedbackInput
+} from './src/client.bundle.js';
+
+renderNavbar('feedback');
+renderFooter();
+initCookieBanner();
+
+let currentUserId = null;
+
+authService.getUser().then(user => {
+  if (user) {
+    currentUserId = user.id;
+    const emailInput = document.getElementById('txtEmail');
+    if (emailInput && !emailInput.value && user.email) {
+      emailInput.value = user.email;
+    }
+  }
+}).catch(() => {});
+
+// Character counter helper
+function wireCharCounter(textareaId, counterId) {
+  const ta = document.getElementById(textareaId);
+  const cnt = document.getElementById(counterId);
+  if (ta && cnt) {
+    ta.addEventListener('input', () => {
+      cnt.textContent = `${ta.value.length} / ${ta.maxLength}`;
+    });
+  }
+}
+
+wireCharCounter('txtUseful', 'countUseful');
+wireCharCounter('txtConfusing', 'countConfusing');
+wireCharCounter('txtImprovement', 'countImprovement');
+
+// Form submission handler
+const form = document.getElementById('feedbackForm');
+const formAlert = document.getElementById('formAlert');
+const successPanel = document.getElementById('successPanel');
+const submitBtn = document.getElementById('btnSubmitFeedback');
+
+form?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  if (formAlert) formAlert.style.display = 'none';
+
+  const householdType = document.getElementById('selHouseholdType')?.value;
+  const ratingChecked = document.querySelector('input[name="experienceRating"]:checked');
+  const experienceRating = ratingChecked ? Number(ratingChecked.value) : null;
+  const usefulFeedback = document.getElementById('txtUseful')?.value;
+  const confusingFeedback = document.getElementById('txtConfusing')?.value;
+  const improvementFeedback = document.getElementById('txtImprovement')?.value;
+  const email = document.getElementById('txtEmail')?.value;
+  const allowQuote = document.getElementById('chkAllowQuote')?.checked;
+
+  const submission = {
+    householdType,
+    experienceRating,
+    usefulFeedback,
+    confusingFeedback,
+    improvementFeedback,
+    email,
+    allowQuote
+  };
+
+  const validation = validateFeedbackInput(submission);
+  if (!validation.valid) {
+    const errorMsg = Object.values(validation.errors)[0];
+    if (formAlert) {
+      formAlert.textContent = errorMsg;
+      formAlert.style.display = 'block';
+    }
+    return;
+  }
+
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting...';
+  }
+
+  try {
+    const result = await submitUserFeedback(submission, currentUserId);
+    if (result.success) {
+      form.style.display = 'none';
+      if (successPanel) successPanel.style.display = 'block';
+    } else {
+      if (formAlert) {
+        formAlert.textContent = result.error || 'Failed to submit feedback. Please try again.';
+        formAlert.style.display = 'block';
+      }
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Submit Feedback';
+      }
+    }
+  } catch (err) {
+    if (formAlert) {
+      formAlert.textContent = 'A network error occurred while submitting your feedback.';
+      formAlert.style.display = 'block';
+    }
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Submit Feedback';
+    }
+  }
+});
+</script>
+</body>
+</html>

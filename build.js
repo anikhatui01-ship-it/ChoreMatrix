@@ -222,6 +222,7 @@ export async function build(options = {}) {
     'verify-email.html',
     'account.html',
     'upgrade.html',
+    'feedback.html',
     'app.html',
     '404.html'
   ];

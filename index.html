@@ -401,7 +401,7 @@
     <!-- Public Hero -->
     <div style="text-align:center; padding:20px 0 32px; max-width:840px; margin:0 auto;">
       <span class="badge teal" style="margin-bottom:10px;">First-Use Planning Aid · No Account Required</span>
-      <h1 style="font-size:34px; font-weight:800; margin:0 0 10px; color:var(--ink); line-height:1.2; letter-spacing:-0.02em;">A chore plan your household can actually agree on.</h1>
+      <h1 style="font-size:34px; font-weight:800; margin:0 0 10px; color:var(--ink); line-height:1.2; letter-spacing:-0.02em;">Stop arguing over who does what.<br>Let our household workload optimizer calculate the plan.</h1>
       <p style="font-size:16px; color:var(--muted); margin:0 0 20px; line-height:1.55;">
         Turn your chores, household members, available time, and task effort into a practical household workload plan. Powered by a capacity-aware optimizer, ChoreMatrix replaces guesswork and daily negotiations with transparent, fair schedules.
       </p>
@@ -529,6 +529,12 @@
                 <a href="/login.html" class="btn small" id="btnPostPlanLogin">Log In</a>
                 <a href="/app.html" class="btn small" id="btnPostPlanWorkspace">Open Workspace →</a>
               </div>
+            </div>
+            <div id="postPlanBannerFeedback" style="margin-top:12px; padding-top:10px; border-top:1px dashed var(--line); display:flex; justify-content:space-between; align-items:center; gap:8px;">
+              <span style="font-size:12px; color:var(--muted);">
+                Was this plan useful? <a href="/feedback.html" style="color:var(--primary); text-decoration:underline; font-weight:600;">Help us improve ChoreMatrix</a>
+              </span>
+              <button type="button" id="btnDismissFeedbackNotice" style="background:none; border:none; color:var(--muted); cursor:pointer; font-size:11px; padding:2px 4px;" title="Dismiss">✕</button>
             </div>
           </div>
 
@@ -1348,6 +1354,11 @@ function attachListeners() {
   $('#btnPresetCouple')?.addEventListener('click', (e) => { e.preventDefault(); safeLoadPreset('couple'); });
   $('#btnPresetRoommates')?.addEventListener('click', (e) => { e.preventDefault(); safeLoadPreset('roommates'); });
   $('#btnTrySample')?.addEventListener('click', (e) => { e.preventDefault(); safeLoadPreset('couple'); });
+  $('#btnDismissFeedbackNotice')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    const el = $('#postPlanBannerFeedback');
+    if (el) el.style.display = 'none';
+  });
 
   $('#btnOptimize')?.addEventListener('click', (e) => {
     e.preventDefault();

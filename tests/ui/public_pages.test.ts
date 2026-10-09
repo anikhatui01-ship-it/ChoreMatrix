@@ -18,6 +18,7 @@ describe('Public Pages & Legal Suite Verification', () => {
     'data-rights.html',
     'refund.html',
     'contact.html',
+    'feedback.html',
     'login.html',
     'signup.html',
     'forgot-password.html',
@@ -27,7 +28,7 @@ describe('Public Pages & Legal Suite Verification', () => {
     'app.html'
   ];
 
-  it('verifies all 18 required HTML pages exist and contain core head tags', () => {
+  it('verifies all 19 required HTML pages exist and contain core head tags', () => {
     for (const page of requiredPages) {
       const filePath = path.join(rootDir, page);
       assert.ok(fs.existsSync(filePath), `Page ${page} must exist in project root`);

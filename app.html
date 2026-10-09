@@ -278,6 +278,12 @@
                 <button type="button" class="btn small primary" id="btnPostPlanSave">Save Changes</button>
               </div>
             </div>
+            <div id="postPlanBannerFeedback" style="margin-top:12px; padding-top:10px; border-top:1px dashed var(--line); display:flex; justify-content:space-between; align-items:center; gap:8px;">
+              <span style="font-size:12px; color:var(--muted);">
+                Was this plan useful? <a href="/feedback.html" style="color:var(--primary); text-decoration:underline; font-weight:600;">Help us improve ChoreMatrix</a>
+              </span>
+              <button type="button" id="btnDismissFeedbackNotice" style="background:none; border:none; color:var(--muted); cursor:pointer; font-size:11px; padding:2px 4px;" title="Dismiss">✕</button>
+            </div>
           </div>
 
           <!-- Summary & Diagnostics -->
@@ -1277,6 +1283,11 @@ function attachListeners() {
   $('#btnPresetCouple')?.addEventListener('click', (e) => { e.preventDefault(); safeLoadPreset('couple'); });
   $('#btnPresetRoommates')?.addEventListener('click', (e) => { e.preventDefault(); safeLoadPreset('roommates'); });
   $('#btnTrySample')?.addEventListener('click', (e) => { e.preventDefault(); safeLoadPreset('couple'); });
+  $('#btnDismissFeedbackNotice')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    const el = $('#postPlanBannerFeedback');
+    if (el) el.style.display = 'none';
+  });
 
   $('#btnSave')?.addEventListener('click', (e) => {
     e.preventDefault();
