@@ -245,6 +245,12 @@ export function trackPageView(pagePath?: string, pageTitle?: string): void {
 // Global browser window helper bindings
 if (typeof window !== 'undefined') {
   const win = window as any;
+  win.dataLayer = win.dataLayer || [];
+  if (!win.gtag) {
+    win.gtag = function(...args: any[]) {
+      win.dataLayer.push(args);
+    };
+  }
   if (!win.trackEvent) win.trackEvent = trackEvent;
   if (!win.trackPageView) win.trackPageView = trackPageView;
   if (!win.initGoogleAnalytics) win.initGoogleAnalytics = initGoogleAnalytics;

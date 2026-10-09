@@ -22,13 +22,19 @@ export * from './feedback/feedbackService.ts';
 
 import { initGoogleAnalytics } from './analytics/ga4.ts';
 
-// Automatically initialize Google Analytics 4 exactly once in the browser runtime
+// Automatically initialize Google Analytics 4 non-blockingly during browser idle time
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', () => {
-      initGoogleAnalytics();
-    }, { once: true });
+  const scheduleInit = () => {
+    if ('requestIdleCallback' in window) {
+      (window as any).requestIdleCallback(() => initGoogleAnalytics(), { timeout: 2500 });
+    } else {
+      setTimeout(() => initGoogleAnalytics(), 1000);
+    }
+  };
+
+  if (document.readyState === 'complete') {
+    scheduleInit();
   } else {
-    initGoogleAnalytics();
+    window.addEventListener('load', scheduleInit, { once: true });
   }
 }
