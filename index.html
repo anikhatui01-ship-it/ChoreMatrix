@@ -407,14 +407,20 @@
 
     <!-- Interactive Optimizer Controls -->
     <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding-bottom:14px; border-bottom:1px solid var(--line); margin-bottom:20px; flex-wrap:wrap;">
-      <span style="font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase;">Interactive Calculator:</span>
-      <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase;">Interactive Calculator:</span>
         <span id="calcIndicator" style="font-size:12px; color:var(--good); font-weight:700; opacity:0; transition:opacity 0.25s ease;">✓ Calculated</span>
-        <button type="button" class="btn small" id="btnPresetFamily">Preset: Family</button>
-        <button type="button" class="btn small" id="btnPresetCouple">Preset: Couple</button>
-        <button type="button" class="btn small" id="btnPresetRoommates">Preset: Roommates</button>
-        <button type="button" class="btn small" id="btnRebalance" title="Re-optimize with minimum changes to settled tasks">Rebalance</button>
-        <button type="button" class="btn small primary" id="btnOptimize">Calculate Plan</button>
+      </div>
+      <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+        <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+          <span style="font-size:11px; font-weight:600; color:var(--muted);">Samples:</span>
+          <button type="button" class="btn small" id="btnPresetCouple" title="Load Couple sample household">Preset: Couple</button>
+          <button type="button" class="btn small" id="btnPresetFamily" title="Load Family sample household">Preset: Family</button>
+          <button type="button" class="btn small" id="btnPresetRoommates" title="Load Roommates sample household">Preset: Roommates</button>
+        </div>
+        <div style="height:20px; width:1px; background:var(--line); margin:0 2px;"></div>
+        <button type="button" class="btn small" id="btnRebalance" title="Calculate a plan first to enable differential rebalancing" disabled>Rebalance</button>
+        <button type="button" class="btn primary" id="btnOptimize" style="font-weight:700; padding:8px 18px;" title="Add household members and tasks to calculate a plan" disabled>Calculate Plan</button>
       </div>
     </div>
 
@@ -478,91 +484,131 @@
 
       <!-- RIGHT COLUMN: RESULTS & DIAGNOSTICS -->
       <section class="stack">
-        <!-- Summary & Diagnostics -->
-        <div class="panel">
-          <div class="panel-head">
-            <div>
-              <h2>Optimizer Results & Diagnostics</h2>
-              <div class="sub">Evaluation metrics and fairness breakdown.</div>
-            </div>
-            <div class="score-badge" id="balanceScoreVal">
-              --<small>fairness index</small>
-            </div>
+        <!-- Welcoming Empty State (shown when no plan is generated) -->
+        <div id="emptyStateContainer" class="panel" style="padding:32px 24px; text-align:center; border:1px dashed var(--line); background:var(--panel);">
+          <div style="width:48px; height:48px; border-radius:12px; background:var(--primary-soft); color:var(--primary); display:grid; place-items:center; margin:0 auto 16px; font-size:22px;">
+            ✨
           </div>
-
-          <!-- Rebalance Diff Notice -->
-          <div id="diffBannerContainer" class="diff-banner" style="display:none;"></div>
-
-          <!-- Unassigned Alerts -->
-          <div id="alertContainer" class="alert-box" style="display:none;"></div>
-
-          <!-- Metric Cards -->
-          <div class="metrics-strip">
-            <div class="metric-card">
-              <label>Total Capacity</label>
-              <div id="metricTotalCap">0 min</div>
-            </div>
-            <div class="metric-card">
-              <label>Total Work</label>
-              <div id="metricTotalWork">0 min</div>
-            </div>
-            <div class="metric-card">
-              <label>Weighted Load</label>
-              <div id="metricWeightedWork">0 pts</div>
-            </div>
+          <h2 style="font-size:18px; font-weight:700; margin:0 0 8px; color:var(--ink);">Ready to balance your household workload?</h2>
+          <p style="font-size:13px; color:var(--muted); max-width:460px; margin:0 auto 20px; line-height:1.5;">
+            Add your household members and recurring chores on the left to calculate an equitable, constraint-aware schedule — or try our sample couple household to see the optimizer in action.
+          </p>
+          <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap;">
+            <button type="button" class="btn primary" id="btnTrySample" style="font-weight:600; padding:9px 18px;">
+              Try a sample household (Couple)
+            </button>
           </div>
-
-          <!-- Member Utilization Bars -->
-          <h3 style="font-size:13px; font-weight:700; margin:16px 0 8px;">Member Capacity Utilization</h3>
-          <div id="memberBarsContainer"></div>
         </div>
 
-        <!-- Calendar Schedule & Assignments -->
-        <div class="panel">
-          <div class="panel-head">
-            <div>
-              <h2>Weekly Schedule & Assignments</h2>
-              <div class="sub">Calendar day slotting, effort weights, and explainability tags.</div>
+        <!-- Calculated Results Area (shown when a plan exists) -->
+        <div id="resultsContent" style="display:none;" class="stack">
+          <!-- Post-Plan Next Step Banner -->
+          <div id="postPlanBanner" class="panel" style="padding:16px 20px; border-left:4px solid var(--primary); background:var(--panel-subtle);">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:16px; flex-wrap:wrap;">
+              <div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span style="display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:50%; background:var(--good); color:#fff; font-size:11px; font-weight:700;">✓</span>
+                  <strong style="font-size:14px; color:var(--ink);">Household Plan Calculated</strong>
+                  <span class="badge teal" id="postPlanScoreBadge">-- Fairness</span>
+                </div>
+                <p style="font-size:12px; color:var(--muted); margin:4px 0 0; line-height:1.4;">
+                  Save this optimized schedule to sync with your household and access it anytime.
+                </p>
+              </div>
+              <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                <a href="/signup.html" class="btn small primary" id="btnPostPlanSignup" title="Create a free account to save this schedule">Save Plan (Free Account)</a>
+                <a href="/login.html" class="btn small" id="btnPostPlanLogin">Log In</a>
+                <a href="/app.html" class="btn small" id="btnPostPlanWorkspace">Open Workspace →</a>
+              </div>
             </div>
           </div>
 
-          <!-- Week Selection Tabs -->
-          <div class="tab-strip" id="weekTabsContainer">
-            <button type="button" class="tab-btn active" data-week="0">Week 1</button>
-            <button type="button" class="tab-btn" data-week="1">Week 2</button>
-            <button type="button" class="tab-btn" data-week="2">Week 3</button>
-            <button type="button" class="tab-btn" data-week="3">Week 4</button>
-          </div>
-
-          <!-- Schedule View Toggle -->
-          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-            <span style="font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase;">View Layout</span>
-            <div style="display:flex; gap:6px;">
-              <button type="button" class="btn small active-view" id="btnViewCalendar">Calendar</button>
-              <button type="button" class="btn small" id="btnViewTable">Table</button>
+          <!-- Summary & Diagnostics -->
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Optimizer Results & Diagnostics</h2>
+                <div class="sub">Evaluation metrics and fairness breakdown.</div>
+              </div>
+              <div class="score-badge" id="balanceScoreVal">
+                --<small>fairness index</small>
+              </div>
             </div>
+
+            <!-- Rebalance Diff Notice -->
+            <div id="diffBannerContainer" class="diff-banner" style="display:none;"></div>
+
+            <!-- Unassigned Alerts -->
+            <div id="alertContainer" class="alert-box" style="display:none;"></div>
+
+            <!-- Metric Cards -->
+            <div class="metrics-strip">
+              <div class="metric-card">
+                <label>Total Capacity</label>
+                <div id="metricTotalCap">0 min</div>
+              </div>
+              <div class="metric-card">
+                <label>Total Work</label>
+                <div id="metricTotalWork">0 min</div>
+              </div>
+              <div class="metric-card">
+                <label>Weighted Load</label>
+                <div id="metricWeightedWork">0 pts</div>
+              </div>
+            </div>
+
+            <!-- Member Utilization Bars -->
+            <h3 style="font-size:13px; font-weight:700; margin:16px 0 8px;">Member Capacity Utilization</h3>
+            <div id="memberBarsContainer"></div>
           </div>
 
-          <!-- Calendar Matrix Container -->
-          <div id="calendarView">
-            <div class="calendar-grid" id="calendarGridContainer"></div>
-          </div>
+          <!-- Calendar Schedule & Assignments -->
+          <div class="panel">
+            <div class="panel-head">
+              <div>
+                <h2>Weekly Schedule & Assignments</h2>
+                <div class="sub">Calendar day slotting, effort weights, and explainability tags.</div>
+              </div>
+            </div>
 
-          <!-- Table View Container -->
-          <div id="tableView" style="display:none; overflow-x:auto; -webkit-overflow-scrolling:touch;">
-            <table>
-              <thead>
-                <tr>
-                  <th>Day</th>
-                  <th>Task</th>
-                  <th>Owner</th>
-                  <th>Duration</th>
-                  <th>Effort</th>
-                  <th>Reason</th>
-                </tr>
-              </thead>
-              <tbody id="tableBodyContainer"></tbody>
-            </table>
+            <!-- Week Selection Tabs -->
+            <div class="tab-strip" id="weekTabsContainer">
+              <button type="button" class="tab-btn active" data-week="0">Week 1</button>
+              <button type="button" class="tab-btn" data-week="1">Week 2</button>
+              <button type="button" class="tab-btn" data-week="2">Week 3</button>
+              <button type="button" class="tab-btn" data-week="3">Week 4</button>
+            </div>
+
+            <!-- Schedule View Toggle -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+              <span style="font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase;">View Layout</span>
+              <div style="display:flex; gap:6px;">
+                <button type="button" class="btn small active-view" id="btnViewCalendar">Calendar</button>
+                <button type="button" class="btn small" id="btnViewTable">Table</button>
+              </div>
+            </div>
+
+            <!-- Calendar Matrix Container -->
+            <div id="calendarView">
+              <div class="calendar-grid" id="calendarGridContainer"></div>
+            </div>
+
+            <!-- Table View Container -->
+            <div id="tableView" style="display:none; overflow-x:auto; -webkit-overflow-scrolling:touch;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Day</th>
+                    <th>Task</th>
+                    <th>Owner</th>
+                    <th>Duration</th>
+                    <th>Effort</th>
+                    <th>Reason</th>
+                  </tr>
+                </thead>
+                <tbody id="tableBodyContainer"></tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -722,12 +768,46 @@ const PRESETS = {
 };
 
 let currentEntitlement = getPlanningEntitlement(null); // Defaults strictly to Free (1 week)
-let currentRequest = JSON.parse(JSON.stringify(PRESETS.family));
+let currentRequest = {
+  household: { id: 'h_initial', name: 'My Household', type: 'couple', mode: 'capacity_aware', planningHorizonWeeks: 1 },
+  members: [],
+  tasks: []
+};
 let currentResult = null;
 let activeWeek = 0;
 let activeView = 'calendar';
 
 const $ = s => document.querySelector(s);
+
+/**
+ * Checks if the user has entered any custom household members or chores.
+ */
+function hasUserEnteredData() {
+  return Boolean(currentRequest.members.length > 0 || currentRequest.tasks.length > 0);
+}
+
+/**
+ * Updates primary and secondary button states (disabled/enabled, titles) based on current inputs & calculation status.
+ */
+function updateControlsState() {
+  const hasInputs = currentRequest.members.length > 0 && currentRequest.tasks.length > 0;
+  const btnOptimize = $('#btnOptimize');
+  if (btnOptimize) {
+    btnOptimize.disabled = !hasInputs;
+    btnOptimize.title = hasInputs
+      ? 'Calculate an optimized schedule for your household'
+      : 'Add at least one member and one chore to calculate a plan';
+  }
+
+  const hasPlan = Boolean(currentResult && currentResult.assignments && currentResult.assignments.length > 0);
+  const btnRebalance = $('#btnRebalance');
+  if (btnRebalance) {
+    btnRebalance.disabled = !hasPlan;
+    btnRebalance.title = hasPlan
+      ? 'Re-optimize with minimum changes to settled tasks'
+      : 'Calculate a plan first to enable differential rebalancing';
+  }
+}
 
 /**
  * Dynamically renders planning horizon select options based on authoritative entitlement.
@@ -762,7 +842,9 @@ function init() {
   attachListeners();
   currentEntitlement = getPlanningEntitlement(null);
   renderPlanningHorizonOptions(currentEntitlement, 1);
-  loadPreset('family');
+  renderInputs();
+  renderResults();
+  updateControlsState();
 
   const urlParams = new URLSearchParams(window.location.search);
   const requestedUrlWeeks = urlParams.get('weeks') || urlParams.get('horizon');
@@ -770,8 +852,18 @@ function init() {
     const safeUrlWeeks = enforcePlanningHorizon(requestedUrlWeeks, currentEntitlement);
     currentRequest.household.planningHorizonWeeks = safeUrlWeeks;
     renderPlanningHorizonOptions(currentEntitlement, safeUrlWeeks);
-    executeOptimization(true);
+    if (currentRequest.members.length > 0 && currentRequest.tasks.length > 0) {
+      executeOptimization(true);
+    }
   }
+}
+
+function safeLoadPreset(key) {
+  if (hasUserEnteredData()) {
+    const ok = window.confirm('Load sample household? This will replace your current inputs.');
+    if (!ok) return;
+  }
+  loadPreset(key);
 }
 
 function loadPreset(key) {
@@ -780,16 +872,30 @@ function loadPreset(key) {
   $('#selMode').value = currentRequest.household.mode;
   renderPlanningHorizonOptions(currentEntitlement, currentRequest.household.planningHorizonWeeks);
   renderInputs();
-  executeOptimization();
+  executeOptimization(true);
 }
 
 function renderInputs() {
   renderMembers();
   renderTasks();
+  updateControlsState();
 }
 
 function renderMembers() {
   const container = $('#memberListContainer');
+  if (!container) return;
+
+  if (currentRequest.members.length === 0) {
+    container.innerHTML = `
+      <div style="text-align:center; padding:20px 16px; color:var(--muted); font-size:12px; border:1px dashed var(--line); border-radius:10px; background:var(--panel-subtle);">
+        No household members added yet.<br>
+        Click <strong>+ Add Member</strong> above or <button type="button" style="background:none; border:none; color:var(--primary); font-weight:700; text-decoration:underline; padding:0; cursor:pointer;" id="btnInlineSampleMembers">load sample household</button>.
+      </div>
+    `;
+    $('#btnInlineSampleMembers')?.addEventListener('click', () => safeLoadPreset('couple'));
+    return;
+  }
+
   container.innerHTML = currentRequest.members.map((m, i) => {
     const unavSet = new Set(m.unavailableDays || []);
     return `
@@ -799,7 +905,7 @@ function renderMembers() {
             <input style="font-weight:700; width:120px; padding:3px 6px;" value="${escapeHtml(m.name)}" data-member-idx="${i}" data-field="name">
             <span class="badge teal">${escapeHtml(m.role)}</span>
           </div>
-          ${currentRequest.members.length > 1 ? `<button type="button" class="del-btn" data-del-member="${i}" title="Remove member">✕</button>` : ''}
+          <button type="button" class="del-btn" data-del-member="${i}" title="Remove member">✕</button>
         </div>
         <div class="form-row">
           <div class="field">
@@ -835,6 +941,18 @@ function renderMembers() {
 
 function renderTasks() {
   const container = $('#taskListContainer');
+  if (!container) return;
+
+  if (currentRequest.tasks.length === 0) {
+    container.innerHTML = `
+      <div style="text-align:center; padding:20px 16px; color:var(--muted); font-size:12px; border:1px dashed var(--line); border-radius:10px; background:var(--panel-subtle);">
+        No household chores added yet.<br>
+        Click <strong>+ Add Task</strong> above to add your first chore.
+      </div>
+    `;
+    return;
+  }
+
   const members = currentRequest.members;
   container.innerHTML = currentRequest.tasks.map((t, i) => {
     const eligSet = new Set(t.eligibleMemberIds || []);
@@ -845,7 +963,7 @@ function renderTasks() {
             <input style="font-weight:700; width:150px; padding:3px 6px;" value="${escapeHtml(t.name)}" data-task-idx="${i}" data-field="name">
             <span class="badge">${escapeHtml(t.category)}</span>
           </div>
-          ${currentRequest.tasks.length > 1 ? `<button type="button" class="del-btn" data-del-task="${i}" title="Remove task">✕</button>` : ''}
+          <button type="button" class="del-btn" data-del-task="${i}" title="Remove task">✕</button>
         </div>
         <div class="form-row" style="grid-template-columns: repeat(4, 1fr);">
           <div class="field">
@@ -877,12 +995,12 @@ function renderTasks() {
         <div>
           <label style="font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase;">Eligible Members</label>
           <div class="member-checks">
-            ${members.map(m => `
+            ${members.length > 0 ? members.map(m => `
               <label class="member-check-label">
                 <input type="checkbox" data-task-idx="${i}" data-elig-member="${m.id}" ${eligSet.has(m.id) ? 'checked' : ''}>
                 ${escapeHtml(m.name)}
               </label>
-            `).join('')}
+            `).join('') : '<span style="font-size:11px; color:var(--muted); font-style:italic;">Add members first</span>'}
           </div>
         </div>
       </div>
@@ -948,8 +1066,14 @@ let lastCalculatedHash = '';
 
 function executeOptimization(force = false) {
   if (isCalculating) return;
-  isCalculating = true;
   syncDOMToState();
+
+  if (currentRequest.members.length === 0 || currentRequest.tasks.length === 0) {
+    updateControlsState();
+    return;
+  }
+
+  isCalculating = true;
   currentRequest.household.planningHorizonWeeks = enforcePlanningHorizon(
     currentRequest.household.planningHorizonWeeks,
     currentEntitlement
@@ -972,8 +1096,14 @@ function executeOptimization(force = false) {
 
 function executeRebalance() {
   if (isCalculating) return;
-  isCalculating = true;
   syncDOMToState();
+
+  if (currentRequest.members.length === 0 || currentRequest.tasks.length === 0) {
+    updateControlsState();
+    return;
+  }
+
+  isCalculating = true;
   currentRequest.household.planningHorizonWeeks = enforcePlanningHorizon(
     currentRequest.household.planningHorizonWeeks,
     currentEntitlement
@@ -993,7 +1123,18 @@ function executeRebalance() {
 }
 
 function renderResults() {
-  if (!currentResult) return;
+  const emptyStateEl = $('#emptyStateContainer');
+  const resultsContentEl = $('#resultsContent');
+
+  if (!currentResult || !currentResult.assignments || currentResult.assignments.length === 0) {
+    if (emptyStateEl) emptyStateEl.style.display = 'block';
+    if (resultsContentEl) resultsContentEl.style.display = 'none';
+    updateControlsState();
+    return;
+  }
+
+  if (emptyStateEl) emptyStateEl.style.display = 'none';
+  if (resultsContentEl) resultsContentEl.style.display = 'grid';
 
   // Authoritative entitlement safety: ensure result never exceeds maximum authorized weeks
   if (currentResult.weeks > currentEntitlement.maxPlanningWeeks) {
@@ -1002,6 +1143,11 @@ function renderResults() {
   }
 
   const diag = currentResult.diagnostics;
+
+  const postPlanScoreBadge = $('#postPlanScoreBadge');
+  if (postPlanScoreBadge) {
+    postPlanScoreBadge.textContent = `${diag.balanceScore}% Fairness`;
+  }
 
   $('#balanceScoreVal').innerHTML = `${diag.balanceScore}%<small>fairness index</small>`;
   $('#metricTotalCap').textContent = `${diag.totalHouseholdCapacityMinutes} min`;
@@ -1057,6 +1203,7 @@ function renderResults() {
   `).join('');
 
   renderSchedule();
+  updateControlsState();
 }
 
 function renderSchedule() {
@@ -1108,9 +1255,10 @@ function renderSchedule() {
 }
 
 function attachListeners() {
-  $('#btnPresetFamily')?.addEventListener('click', (e) => { e.preventDefault(); loadPreset('family'); });
-  $('#btnPresetCouple')?.addEventListener('click', (e) => { e.preventDefault(); loadPreset('couple'); });
-  $('#btnPresetRoommates')?.addEventListener('click', (e) => { e.preventDefault(); loadPreset('roommates'); });
+  $('#btnPresetFamily')?.addEventListener('click', (e) => { e.preventDefault(); safeLoadPreset('family'); });
+  $('#btnPresetCouple')?.addEventListener('click', (e) => { e.preventDefault(); safeLoadPreset('couple'); });
+  $('#btnPresetRoommates')?.addEventListener('click', (e) => { e.preventDefault(); safeLoadPreset('roommates'); });
+  $('#btnTrySample')?.addEventListener('click', (e) => { e.preventDefault(); safeLoadPreset('couple'); });
 
   $('#btnOptimize')?.addEventListener('click', (e) => {
     e.preventDefault();
@@ -1138,9 +1286,12 @@ function attachListeners() {
       preferredTaskIds: [],
       avoidedTaskIds: []
     });
-    currentRequest.tasks.forEach(t => t.eligibleMemberIds.push(newId));
+    currentRequest.tasks.forEach(t => {
+      if (!t.eligibleMemberIds.includes(newId)) {
+        t.eligibleMemberIds.push(newId);
+      }
+    });
     renderInputs();
-    executeOptimization();
   });
 
   $('#btnAddTask')?.addEventListener('click', (e) => {
@@ -1157,7 +1308,6 @@ function attachListeners() {
       eligibleMemberIds: currentRequest.members.map(m => m.id)
     });
     renderInputs();
-    executeOptimization();
   });
 
   $('#weekTabsContainer')?.addEventListener('click', e => {
@@ -1196,6 +1346,7 @@ function attachListeners() {
       if (currentRequest.members[idx]) {
         currentRequest.members[idx][field] = field === 'weeklyCapacityMinutes' ? Number(t.value) || 1 : t.value;
       }
+      updateControlsState();
     }
     if (t.matches('[data-task-idx]')) {
       const idx = Number(t.dataset.taskIdx);
@@ -1207,6 +1358,7 @@ function attachListeners() {
           currentRequest.tasks[idx][field] = t.value;
         }
       }
+      updateControlsState();
     }
   });
 
@@ -1219,6 +1371,7 @@ function attachListeners() {
       if (currentRequest.members[idx]) {
         currentRequest.members[idx][field] = field === 'weeklyCapacityMinutes' ? Number(t.value) || 1 : t.value;
       }
+      updateControlsState();
     }
     if (t.matches('[data-task-idx]')) {
       const idx = Number(t.dataset.taskIdx);
@@ -1232,6 +1385,7 @@ function attachListeners() {
           currentRequest.tasks[idx][field] = t.value;
         }
       }
+      updateControlsState();
     }
     if (t.matches('[data-unav-day]')) {
       const idx = Number(t.dataset.memberIdx);
@@ -1242,6 +1396,7 @@ function attachListeners() {
         if (t.checked) set.add(day); else set.delete(day);
         member.unavailableDays = Array.from(set);
       }
+      updateControlsState();
     }
     if (t.matches('[data-elig-member]')) {
       const idx = Number(t.dataset.taskIdx);
@@ -1252,6 +1407,7 @@ function attachListeners() {
         if (t.checked) set.add(mId); else set.delete(mId);
         task.eligibleMemberIds = Array.from(set);
       }
+      updateControlsState();
     }
   });
 
@@ -1268,7 +1424,12 @@ function attachListeners() {
           task.eligibleMemberIds = task.eligibleMemberIds.filter(id => id !== mId);
         });
         renderInputs();
-        executeOptimization();
+        if (currentRequest.members.length > 0 && currentRequest.tasks.length > 0) {
+          executeOptimization();
+        } else {
+          currentResult = null;
+          renderResults();
+        }
       }
       return;
     }
@@ -1279,7 +1440,12 @@ function attachListeners() {
       const idx = Number(delTask.dataset.delTask);
       currentRequest.tasks.splice(idx, 1);
       renderInputs();
-      executeOptimization();
+      if (currentRequest.members.length > 0 && currentRequest.tasks.length > 0) {
+        executeOptimization();
+      } else {
+        currentResult = null;
+        renderResults();
+      }
       return;
     }
   });
