@@ -9,6 +9,7 @@ export * from './config/dodo.ts';
 export * from './config/email.ts';
 export * from './auth/session.ts';
 export * from './persistence/supabaseAdapter.ts';
+export * from './persistence/localDraft.ts';
 export * from './persistence/types.ts';
 export * from './ui/nav.ts';
 export * from './ui/footer.ts';

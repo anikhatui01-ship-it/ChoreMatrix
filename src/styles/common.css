@@ -736,3 +736,240 @@ select option {
   .footer-grid { grid-template-columns: 1fr; }
   .footer-bottom { flex-direction: column; gap: 10px; text-align: center; }
 }
+
+/* ==========================================================================
+   Print Stylesheet — Practical Household Plan Export & Clean PDF Output
+   ========================================================================== */
+@media print {
+  @page {
+    margin: 12mm;
+    size: auto;
+  }
+
+  body {
+    background: #ffffff !important;
+    color: #111827 !important;
+    font-size: 11pt !important;
+    line-height: 1.4 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  /* Force clean light theme styling for paper output */
+  :root, html, html[data-theme="dark"], html[data-theme="light"] {
+    --bg: #ffffff !important;
+    --panel: #ffffff !important;
+    --panel-subtle: #f9fafb !important;
+    --ink: #111827 !important;
+    --text-secondary: #374151 !important;
+    --muted: #4b5563 !important;
+    --line: #e5e7eb !important;
+    --line-subtle: #e5e7eb !important;
+    --card: #ffffff !important;
+    --cal-col-bg: #f9fafb !important;
+    --cal-card-bg: #ffffff !important;
+    --cal-card-border: #e5e7eb !important;
+    --primary-soft: #ecfdf5 !important;
+    --bar-track: #f3f4f6 !important;
+    --shadow: none !important;
+    --shadow-subtle: none !important;
+    --shadow-lg: none !important;
+  }
+
+  /* Hide navigation, footers, ads, form editing panels, and interactive chrome */
+  #globalNavbar,
+  #globalFooter,
+  #cookieBannerContainer,
+  #cookieModalContainer,
+  .cookie-banner,
+  .site-nav,
+  .site-footer,
+  .hero-section,
+  .why-hero,
+  .landing-hero,
+  #demoAdSlot,
+  #resultsAdSlot,
+  .ad-banner,
+  ins.adsbygoogle,
+  .theme-strip,
+  .no-print,
+  .action-bar,
+  #btnOptimize,
+  #btnRebalance,
+  #btnSave,
+  #btnPostPlanSave,
+  #btnPostPlanSignup,
+  #btnPostPlanLogin,
+  #btnPostPlanWorkspace,
+  #btnAddMember,
+  #btnAddTask,
+  #btnPrintPlan,
+  #btnViewCalendar,
+  #btnViewTable,
+  #btnInlineSampleMembers,
+  .tab-strip,
+  #postPlanBanner,
+  #draftNotice,
+  #draftStatusBadge,
+  #cloudStatus,
+  #unsavedIndicator,
+  #saveStatusIndicator,
+  #calcIndicator,
+  .del-btn,
+  #emptyStateContainer,
+  .cta-banner,
+  .scenario-panel,
+  .diff-banner {
+    display: none !important;
+  }
+
+  /* Hide the input editing column on split calculator layout during print */
+  #calculatorSection .grid-2 > :first-child,
+  .main-content .grid-2 > :first-child,
+  .workspace-shell .grid > :first-child,
+  .grid-2 > :first-child {
+    display: none !important;
+  }
+
+  /* Make results full width */
+  #calculatorSection .grid-2,
+  .main-content .grid-2,
+  .workspace-shell .grid,
+  .grid-2,
+  .grid,
+  #resultsContent,
+  .shell,
+  .workspace-shell {
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .panel {
+    border: 1px solid #d1d5db !important;
+    box-shadow: none !important;
+    margin-bottom: 12px !important;
+    padding: 14px !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .panel-head {
+    border-bottom: 1px solid #e5e7eb !important;
+    padding-bottom: 8px !important;
+    margin-bottom: 10px !important;
+  }
+
+  .panel-head h2 {
+    font-size: 15pt !important;
+    color: #111827 !important;
+  }
+
+  .cal-col {
+    border: 1px solid #e5e7eb !important;
+    background: #f9fafb !important;
+    padding: 6px !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .cal-col-head {
+    font-weight: 700 !important;
+    font-size: 9pt !important;
+    border-bottom: 1px solid #e5e7eb !important;
+    padding-bottom: 4px !important;
+    margin-bottom: 6px !important;
+    color: #374151 !important;
+  }
+
+  .cal-task-card {
+    border: 1px solid #d1d5db !important;
+    background: #ffffff !important;
+    padding: 6px !important;
+    margin-bottom: 6px !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .cal-task-name {
+    font-weight: 700 !important;
+    font-size: 9pt !important;
+    color: #111827 !important;
+  }
+
+  .cal-task-owner, .cal-task-time {
+    font-size: 8pt !important;
+    color: #4b5563 !important;
+  }
+
+  .metrics-strip {
+    display: flex !important;
+    gap: 12px !important;
+  }
+
+  .metric-card {
+    border: 1px solid #e5e7eb !important;
+    padding: 8px 12px !important;
+    flex: 1 !important;
+  }
+
+  .calendar-grid {
+    display: grid !important;
+    grid-template-columns: repeat(7, 1fr) !important;
+    gap: 6px !important;
+  }
+
+  .calendar-day-col {
+    border: 1px solid #e5e7eb !important;
+    background: #f9fafb !important;
+    padding: 6px !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .assignment-card {
+    border: 1px solid #d1d5db !important;
+    background: #ffffff !important;
+    padding: 6px !important;
+    margin-bottom: 6px !important;
+    box-shadow: none !important;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  table th, table td {
+    border: 1px solid #e5e7eb !important;
+    padding: 6px 8px !important;
+    font-size: 10pt !important;
+  }
+
+  table tr {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .member-bar-row {
+    page-break-inside: avoid;
+    break-inside: avoid;
+    margin-bottom: 6px !important;
+  }
+
+  .bar-track {
+    background: #f3f4f6 !important;
+    border: 1px solid #e5e7eb !important;
+  }
+
+  .bar-fill {
+    background: #3b82f6 !important;
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+}

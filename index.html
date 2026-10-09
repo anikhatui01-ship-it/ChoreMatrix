@@ -434,6 +434,12 @@
     <div class="grid">
       <!-- LEFT COLUMN: INPUTS -->
       <section class="stack">
+        <!-- Draft Recovery Notice -->
+        <div id="draftStatusBadge" style="display:none; font-size:12px; color:var(--muted); background:var(--panel-subtle); border:1px solid var(--line); border-radius:8px; padding:8px 12px; margin-bottom:12px; justify-content:space-between; align-items:center;">
+          <span>📝 <strong>Draft restored from your browser</strong> (<span id="draftTimestamp">recently</span>)</span>
+          <button type="button" id="btnClearDraft" style="background:none; border:none; color:var(--bad); font-weight:600; cursor:pointer; font-size:11px; text-decoration:underline; padding:0 4px;">Clear draft</button>
+        </div>
+
         <!-- Household & Optimizer Settings -->
         <div class="panel">
           <div class="panel-head">
@@ -589,6 +595,9 @@
                 <h2>Weekly Schedule & Assignments</h2>
                 <div class="sub">Calendar day slotting, effort weights, and explainability tags.</div>
               </div>
+              <div>
+                <button type="button" class="btn small" id="btnPrintPlan" title="Print or Save Household Schedule as PDF">🖨️ Print / Save PDF</button>
+              </div>
             </div>
 
             <!-- Week Selection Tabs -->
@@ -712,7 +721,10 @@ import {
   AdSlot,
   getPlanningEntitlement,
   enforcePlanningHorizon,
-  trackEvent
+  trackEvent,
+  saveLocalDraft,
+  loadLocalDraft,
+  clearLocalDraft
 } from './src/client.bundle.js';
 
 renderFooter();
@@ -941,6 +953,34 @@ function notifyCalculatorStarted() {
   }
 }
 
+let saveDraftTimer = null;
+function autoSaveDraft() {
+  clearTimeout(saveDraftTimer);
+  saveDraftTimer = setTimeout(() => {
+    try {
+      syncDOMToState();
+      saveLocalDraft(currentRequest, currentResult);
+    } catch (e) {}
+  }, 400);
+}
+
+function showDraftBanner(timestamp) {
+  const badge = $('#draftStatusBadge');
+  const tsEl = $('#draftTimestamp');
+  if (badge) {
+    badge.style.display = 'flex';
+    if (tsEl && timestamp) {
+      const d = new Date(timestamp);
+      tsEl.textContent = !isNaN(d.getTime()) ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'recently';
+    }
+  }
+}
+
+function hideDraftBanner() {
+  const badge = $('#draftStatusBadge');
+  if (badge) badge.style.display = 'none';
+}
+
 function init() {
   initTheme();
   attachListeners();
@@ -955,6 +995,24 @@ function init() {
   const requestedPreset = urlParams.get('preset');
   if (requestedPreset && PRESETS[requestedPreset]) {
     loadPreset(requestedPreset);
+  } else {
+    // Attempt to recover previous in-progress draft from local browser storage
+    const loadedDraft = loadLocalDraft();
+    if (loadedDraft && loadedDraft.request && (loadedDraft.request.members.length > 0 || loadedDraft.request.tasks.length > 0)) {
+      currentRequest = loadedDraft.request;
+      currentRequest.household.planningHorizonWeeks = enforcePlanningHorizon(currentRequest.household.planningHorizonWeeks, currentEntitlement);
+      if ($('#selMode')) $('#selMode').value = currentRequest.household.mode || 'capacity_aware';
+      updateModeExplanation();
+      renderPlanningHorizonOptions(currentEntitlement, currentRequest.household.planningHorizonWeeks);
+      renderInputs();
+      if (loadedDraft.result && loadedDraft.result.assignments && loadedDraft.result.assignments.length > 0) {
+        currentResult = loadedDraft.result;
+        renderResults();
+      } else if (currentRequest.members.length > 0 && currentRequest.tasks.length > 0) {
+        executeOptimization(true);
+      }
+      showDraftBanner(loadedDraft.timestamp);
+    }
   }
 
   const requestedUrlWeeks = urlParams.get('weeks') || urlParams.get('horizon');
@@ -973,6 +1031,7 @@ function safeLoadPreset(key) {
     const ok = window.confirm('Load sample household? This will replace your current inputs.');
     if (!ok) return;
   }
+  hideDraftBanner();
   loadPreset(key);
 }
 
@@ -1398,6 +1457,41 @@ function attachListeners() {
     if (el) el.style.display = 'none';
   });
 
+  $('#btnClearDraft')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (window.confirm('Reset calculator and clear your saved draft?')) {
+      clearLocalDraft();
+      hideDraftBanner();
+      currentRequest = {
+        household: { id: 'h_initial', name: 'My Household', type: 'couple', mode: 'capacity_aware', planningHorizonWeeks: 1 },
+        members: [],
+        tasks: []
+      };
+      currentResult = null;
+      renderInputs();
+      renderResults();
+      updateControlsState();
+    }
+  });
+
+  $('#btnPrintPlan')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (!currentResult || !currentResult.assignments || currentResult.assignments.length === 0) {
+      alert('Please calculate a household plan first before printing or saving as PDF.');
+      return;
+    }
+    if (typeof trackEvent === 'function') {
+      trackEvent('plan_printed', {
+        member_count: currentRequest.members.length,
+        task_count: currentRequest.tasks.length,
+        mode: currentRequest.household.mode,
+        fairness_score: Math.round(currentResult.fairnessIndex || 0),
+        horizon_weeks: currentRequest.household.planningHorizonWeeks
+      });
+    }
+    window.print();
+  });
+
   $('#btnOptimize')?.addEventListener('click', (e) => {
     e.preventDefault();
     executeOptimization();
@@ -1411,8 +1505,12 @@ function attachListeners() {
   $('#selMode')?.addEventListener('change', () => {
     updateModeExplanation();
     executeOptimization();
+    autoSaveDraft();
   });
-  $('#selWeeks')?.addEventListener('change', () => executeOptimization());
+  $('#selWeeks')?.addEventListener('change', () => {
+    executeOptimization();
+    autoSaveDraft();
+  });
 
   $('#btnAddMember')?.addEventListener('click', (e) => {
     e.preventDefault();
@@ -1434,6 +1532,7 @@ function attachListeners() {
       }
     });
     renderInputs();
+    autoSaveDraft();
   });
 
   $('#btnAddTask')?.addEventListener('click', (e) => {
@@ -1451,6 +1550,7 @@ function attachListeners() {
       eligibleMemberIds: currentRequest.members.map(m => m.id)
     });
     renderInputs();
+    autoSaveDraft();
   });
 
   $('#weekTabsContainer')?.addEventListener('click', e => {
@@ -1490,6 +1590,7 @@ function attachListeners() {
         currentRequest.members[idx][field] = field === 'weeklyCapacityMinutes' ? Number(t.value) || 1 : t.value;
       }
       updateControlsState();
+      autoSaveDraft();
     }
     if (t.matches('[data-task-idx]')) {
       const idx = Number(t.dataset.taskIdx);
@@ -1502,6 +1603,7 @@ function attachListeners() {
         }
       }
       updateControlsState();
+      autoSaveDraft();
     }
   });
 
@@ -1515,6 +1617,7 @@ function attachListeners() {
         currentRequest.members[idx][field] = field === 'weeklyCapacityMinutes' ? Number(t.value) || 1 : t.value;
       }
       updateControlsState();
+      autoSaveDraft();
     }
     if (t.matches('[data-task-idx]')) {
       const idx = Number(t.dataset.taskIdx);
@@ -1529,6 +1632,7 @@ function attachListeners() {
         }
       }
       updateControlsState();
+      autoSaveDraft();
     }
     if (t.matches('[data-unav-day]')) {
       const idx = Number(t.dataset.memberIdx);
@@ -1540,6 +1644,7 @@ function attachListeners() {
         member.unavailableDays = Array.from(set);
       }
       updateControlsState();
+      autoSaveDraft();
     }
     if (t.matches('[data-elig-member]')) {
       const idx = Number(t.dataset.taskIdx);
@@ -1551,6 +1656,7 @@ function attachListeners() {
         task.eligibleMemberIds = Array.from(set);
       }
       updateControlsState();
+      autoSaveDraft();
     }
   });
 
@@ -1573,6 +1679,7 @@ function attachListeners() {
           currentResult = null;
           renderResults();
         }
+        autoSaveDraft();
       }
       return;
     }
@@ -1589,6 +1696,7 @@ function attachListeners() {
         currentResult = null;
         renderResults();
       }
+      autoSaveDraft();
       return;
     }
   });
