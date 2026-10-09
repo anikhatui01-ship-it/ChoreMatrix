@@ -332,13 +332,15 @@
 
           <!-- Calendar Schedule & Assignments -->
           <div class="panel">
-            <div class="panel-head">
+            <div class="panel-head" style="align-items:center; flex-wrap:wrap; gap:10px;">
               <div>
                 <h2>Weekly Schedule & Assignments</h2>
                 <div class="sub">Calendar day slotting, effort weights, and explainability tags.</div>
               </div>
-              <div>
-                <button type="button" class="btn small" id="btnPrintPlan" title="Print or Save Household Schedule as PDF">🖨️ Print / Save PDF</button>
+              <div id="weekActionControls" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span id="weekSaveStatusBadge" class="badge" style="display:none; font-size:11px;">Not saved</span>
+                <button type="button" class="btn small" id="btnSaveWeek" style="display:none;" title="Save current week schedule snapshot to cloud">Save Week Snapshot</button>
+                <button type="button" class="btn small" id="btnExportPdf" style="display:none;" title="Download Saved Plan as PDF">Download Saved Plan as PDF</button>
               </div>
             </div>
 
@@ -391,6 +393,9 @@
 </main>
 
 <div id="globalFooter"></div>
+
+<!-- Dedicated Clean Print / PDF Plan Container -->
+<div id="printablePlan" class="print-only" style="display:none;"></div>
 
 <script type="module">
 import { runOptimization, rebalanceHousehold, DAYS_OF_WEEK } from './optimizer.bundle.js';
@@ -479,6 +484,8 @@ let currentUser = null;
 let lastSavedSnapshot = null;
 let hasUnsavedChanges = false;
 let isSaving = false;
+let savedWeeks = new Set();
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const $ = s => document.querySelector(s);
 
@@ -576,6 +583,124 @@ function getConfigurationSnapshot(req) {
 }
 
 /**
+ * Unified cloud save state machine.
+ * States: 'unauthenticated' | 'saved' | 'unsaved' | 'saving' | 'error'
+ * Guarantees Saved and Save failed never appear simultaneously.
+ */
+function setCloudSaveState(state, errorMsg = '') {
+  const cs = $('#cloudStatus');
+  const unsavedEl = $('#unsavedIndicator');
+  const saveStatus = $('#saveStatusIndicator');
+  const btnSave = $('#btnSave');
+  const postPlanBtnSave = $('#btnPostPlanSave');
+  const postPlanStatusText = $('#postPlanBannerStatusText');
+  const alertBox = $('#cloudAlert');
+
+  if (saveStatus && state !== 'saved') {
+    saveStatus.style.display = 'none';
+  }
+
+  if (!currentUser) {
+    if (cs) cs.textContent = 'Mode: Local Browser Storage (Unauthenticated)';
+    if (unsavedEl) unsavedEl.style.display = 'none';
+    if (btnSave) {
+      btnSave.classList.remove('primary', 'danger');
+      btnSave.disabled = false;
+      btnSave.textContent = 'Save Changes';
+    }
+    if (postPlanBtnSave) postPlanBtnSave.textContent = 'Save Plan (Free Account)';
+    if (postPlanStatusText) postPlanStatusText.textContent = 'Create a free account to save and sync this schedule to the cloud.';
+    if (alertBox) alertBox.style.display = 'none';
+    return;
+  }
+
+  const userEmail = escapeHtml(currentUser.email);
+
+  switch (state) {
+    case 'saved':
+      if (cs) cs.innerHTML = `Cloud Sync: <strong>${userEmail}</strong> · <span style="color:var(--good); font-weight:700;">Saved ✓</span>`;
+      if (unsavedEl) unsavedEl.style.display = 'none';
+      if (btnSave) {
+        btnSave.disabled = false;
+        btnSave.classList.remove('primary', 'danger');
+        btnSave.textContent = 'Saved';
+      }
+      if (postPlanBtnSave) {
+        postPlanBtnSave.disabled = false;
+        postPlanBtnSave.classList.remove('primary', 'danger');
+        postPlanBtnSave.textContent = 'Saved ✓';
+      }
+      if (postPlanStatusText) {
+        postPlanStatusText.textContent = 'All changes saved to your cloud account. You can adjust constraints anytime.';
+      }
+      if (alertBox) alertBox.style.display = 'none';
+      break;
+
+    case 'unsaved':
+      if (cs) cs.innerHTML = `Cloud Sync: <strong>${userEmail}</strong> · <span style="color:var(--accent); font-weight:700;">Unsaved changes</span>`;
+      if (unsavedEl) unsavedEl.style.display = 'inline-block';
+      if (btnSave && !isSaving) {
+        btnSave.disabled = false;
+        btnSave.classList.remove('danger');
+        btnSave.classList.add('primary');
+        btnSave.textContent = 'Save Plan to Cloud';
+      }
+      if (postPlanBtnSave && !isSaving) {
+        postPlanBtnSave.disabled = false;
+        postPlanBtnSave.classList.remove('danger');
+        postPlanBtnSave.classList.add('primary');
+        postPlanBtnSave.textContent = 'Save Plan to Cloud';
+      }
+      if (postPlanStatusText) {
+        postPlanStatusText.textContent = 'Your plan has unsaved changes. Click Save Plan to Cloud to persist.';
+      }
+      if (alertBox) alertBox.style.display = 'none';
+      break;
+
+    case 'saving':
+      if (cs) cs.innerHTML = `Cloud Sync: <strong>${userEmail}</strong> · <span style="color:var(--muted); font-weight:700;">Saving…</span>`;
+      if (unsavedEl) unsavedEl.style.display = 'none';
+      if (btnSave) {
+        btnSave.disabled = true;
+        btnSave.classList.remove('danger');
+        btnSave.textContent = 'Saving…';
+      }
+      if (postPlanBtnSave) {
+        postPlanBtnSave.disabled = true;
+        postPlanBtnSave.classList.remove('danger');
+        postPlanBtnSave.textContent = 'Saving…';
+      }
+      if (alertBox) alertBox.style.display = 'none';
+      break;
+
+    case 'error':
+      if (cs) cs.innerHTML = `Cloud Sync: <strong>${userEmail}</strong> · <span style="color:var(--bad); font-weight:700;">Save failed</span>`;
+      if (unsavedEl) unsavedEl.style.display = 'inline-block'; // Preserved in memory
+      if (btnSave) {
+        btnSave.disabled = false;
+        btnSave.classList.remove('primary');
+        btnSave.classList.add('danger');
+        btnSave.textContent = 'Save failed — Try again';
+      }
+      if (postPlanBtnSave) {
+        postPlanBtnSave.disabled = false;
+        postPlanBtnSave.classList.remove('primary');
+        postPlanBtnSave.classList.add('danger');
+        postPlanBtnSave.textContent = 'Save failed — Try again';
+      }
+      if (alertBox) {
+        alertBox.innerHTML = `
+          <strong>Save failed:</strong> ${escapeHtml(errorMsg || 'Network or server error')}. Your local changes are preserved in memory.
+          <button type="button" class="btn small" id="btnRetrySave" style="margin-left:12px; padding:2px 8px;">Retry Save</button>
+        `;
+        alertBox.style.display = 'block';
+        $('#btnRetrySave')?.addEventListener('click', () => handleSave());
+      }
+      break;
+  }
+}
+
+/**
  * Evaluates dirty state against the last successfully persisted cloud state.
  */
 function updateDirtyState() {
@@ -586,39 +711,11 @@ function updateDirtyState() {
     ? Boolean(currentUser && hasUserEnteredData())
     : (currentSnapshot !== lastSavedSnapshot);
 
-  const unsavedEl = $('#unsavedIndicator');
-  const btnSave = $('#btnSave');
-  const postPlanBtnSave = $('#btnPostPlanSave');
-  const postPlanStatusText = $('#postPlanBannerStatusText');
-
-  if (unsavedEl) {
-    unsavedEl.style.display = (hasUnsavedChanges && currentUser) ? 'inline-block' : 'none';
-  }
-
-  if (btnSave && !isSaving) {
-    if (btnSave.textContent !== 'Save failed — Try again') {
-      if (hasUnsavedChanges && currentUser) {
-        btnSave.classList.add('primary');
-        btnSave.textContent = 'Save Changes';
-      } else {
-        btnSave.classList.remove('primary');
-        if (btnSave.textContent !== 'Saved') {
-          btnSave.textContent = 'Save Changes';
-        }
-      }
-    }
-  }
-
-  if (postPlanBtnSave && !isSaving) {
-    if (!currentUser) {
-      postPlanBtnSave.textContent = 'Save Plan (Free Account)';
-      if (postPlanStatusText) postPlanStatusText.textContent = 'Create a free account to save and sync this schedule to the cloud.';
-    } else if (hasUnsavedChanges) {
-      postPlanBtnSave.textContent = 'Save Plan to Cloud';
-      if (postPlanStatusText) postPlanStatusText.textContent = 'Your calculated plan is ready to save to your cloud account.';
+  if (!isSaving) {
+    if (currentUser) {
+      setCloudSaveState(hasUnsavedChanges ? 'unsaved' : 'saved');
     } else {
-      postPlanBtnSave.textContent = 'Saved ✓';
-      if (postPlanStatusText) postPlanStatusText.textContent = 'All changes saved to your account. You can adjust constraints anytime.';
+      setCloudSaveState('unauthenticated');
     }
   }
 }
@@ -712,6 +809,8 @@ async function init() {
 
           if (cloudData.latestPlan && cloudData.latestPlan.weeks <= currentEntitlement.maxPlanningWeeks) {
             currentResult = cloudData.latestPlan;
+            const loadedSavedWeeks = cloudData.latestPlan.diagnostics?.savedWeeks;
+            savedWeeks = new Set(Array.isArray(loadedSavedWeeks) ? loadedSavedWeeks : [0]);
             renderResults();
           } else {
             executeOptimization();
@@ -719,8 +818,7 @@ async function init() {
 
           lastSavedSnapshot = getConfigurationSnapshot(currentRequest);
           hasUnsavedChanges = false;
-          updateDirtyState();
-          $('#cloudStatus').innerHTML = `Cloud Sync: <strong>${escapeHtml(currentUser.email)}</strong> · <span style="color:var(--good); font-weight:700;">Saved ✓</span>`;
+          setCloudSaveState('saved');
           return;
         }
 
@@ -730,7 +828,7 @@ async function init() {
       } catch (err) {
         // 3. LOAD FAILURE (Network or server error)
         console.error('Failed to load cloud household:', err);
-        $('#cloudStatus').innerHTML = `Cloud Sync: <strong>${escapeHtml(currentUser.email)}</strong> · <span style="color:var(--bad);">Load failed</span>`;
+        setCloudSaveState('error', err.message || 'Connection error');
         const alertBox = $('#cloudAlert');
         if (alertBox) {
           alertBox.innerHTML = `
@@ -756,7 +854,7 @@ async function init() {
   // Unauthenticated local/preview mode: Attempt restoring local draft if no URL preset is present
   lastSavedSnapshot = null;
   hasUnsavedChanges = false;
-  $('#cloudStatus').textContent = 'Mode: Local Browser Storage (Unauthenticated)';
+  setCloudSaveState('unauthenticated');
 
   const urlParams = new URLSearchParams(window.location.search);
   const requestedPreset = urlParams.get('preset');
@@ -827,33 +925,70 @@ function loadStarterForNewUser(isError = false) {
   renderInputs();
   executeOptimization();
   lastSavedSnapshot = null;
-  hasUnsavedChanges = true;
+  hasUnsavedChanges = Boolean(currentUser);
+  savedWeeks = new Set();
   updateDirtyState();
-  if (!isError && currentUser) {
-    $('#cloudStatus').innerHTML = `Cloud Sync: <strong>${escapeHtml(currentUser.email)}</strong> · <span style="color:var(--accent); font-weight:700;">Starter Plan (Unsaved)</span>`;
-  }
 }
 
-function safeLoadPreset(key) {
-  if (hasUserEnteredData()) {
-    const ok = window.confirm('Load sample household? This will replace your current inputs.');
+async function safeLoadPreset(key) {
+  if (hasUserEnteredData() && hasUnsavedChanges) {
+    const ok = window.confirm('Switch household preset? You have unsaved changes in your current household.');
     if (!ok) return;
   }
-  loadPreset(key);
+  await loadPreset(key);
 }
 
-function loadPreset(key) {
+async function loadPreset(key) {
   notifyCalculatorStarted();
   if (typeof trackEvent === 'function') {
     trackEvent('preset_selected', { preset_name: key });
   }
+
+  // If user is authenticated, check if they already have an existing saved household for this preset!
+  if (currentUser) {
+    try {
+      const savedData = await persistenceAdapter.loadActiveHousehold(currentUser.id, key);
+      if (savedData && savedData.request) {
+        currentRequest = savedData.request;
+        const cloudWeeks = currentRequest.household?.planningHorizonWeeks || 1;
+        const safeWeeks = enforcePlanningHorizon(cloudWeeks, currentEntitlement);
+        currentRequest.household.planningHorizonWeeks = safeWeeks;
+        renderPlanningHorizonOptions(currentEntitlement, safeWeeks);
+        if ($('#selMode')) $('#selMode').value = currentRequest.household.mode || 'capacity_aware';
+        updateModeExplanation();
+        renderInputs();
+
+        if (savedData.latestPlan && savedData.latestPlan.weeks <= currentEntitlement.maxPlanningWeeks) {
+          currentResult = savedData.latestPlan;
+          const loadedSavedWeeks = savedData.latestPlan.diagnostics?.savedWeeks;
+          savedWeeks = new Set(Array.isArray(loadedSavedWeeks) ? loadedSavedWeeks : [0]);
+          renderResults();
+        } else {
+          executeOptimization(true);
+        }
+
+        lastSavedSnapshot = getConfigurationSnapshot(currentRequest);
+        hasUnsavedChanges = false;
+        updateDirtyState();
+        return;
+      }
+    } catch (e) {
+      console.warn('Could not load preset household from cloud:', e);
+    }
+  }
+
+  // Template preset fallback
   currentRequest = JSON.parse(JSON.stringify(PRESETS[key]));
+  currentRequest.household.id = 'h_' + key;
   currentRequest.household.planningHorizonWeeks = enforcePlanningHorizon(currentRequest.household.planningHorizonWeeks, currentEntitlement);
-  $('#selMode').value = currentRequest.household.mode;
+  if ($('#selMode')) $('#selMode').value = currentRequest.household.mode || 'capacity_aware';
   updateModeExplanation();
   renderPlanningHorizonOptions(currentEntitlement, currentRequest.household.planningHorizonWeeks);
   renderInputs();
   executeOptimization(true);
+  savedWeeks = new Set();
+  lastSavedSnapshot = null;
+  hasUnsavedChanges = Boolean(currentUser);
   updateDirtyState();
 }
 
@@ -1158,10 +1293,6 @@ async function handleSave() {
   if (isSaving) return;
   syncDOMToState();
 
-  const btnSave = $('#btnSave');
-  const alertBox = $('#cloudAlert');
-  if (alertBox) alertBox.style.display = 'none';
-
   if (!currentUser) {
     // Unauthenticated: prompt redirect to sign in to save
     window.location.href = `/login.html?redirect=${encodeURIComponent(window.location.pathname)}`;
@@ -1169,60 +1300,57 @@ async function handleSave() {
   }
 
   isSaving = true;
-  btnSave.disabled = true;
-  btnSave.classList.remove('danger');
-  btnSave.textContent = 'Saving…';
+  setCloudSaveState('saving');
 
   try {
     const hId = await persistenceAdapter.saveHousehold(currentUser.id, currentRequest, currentResult);
     currentRequest.household.id = hId;
+
+    // Synchronize assignment identifiers in currentResult with mapped UUIDs
+    if (currentResult && currentResult.assignments) {
+      const memberMap = new Map(currentRequest.members.map(m => [m.name, m.id]));
+      const taskMap = new Map(currentRequest.tasks.map(t => [t.name, t.id]));
+      currentResult.assignments.forEach(a => {
+        if (memberMap.has(a.memberName)) a.memberId = memberMap.get(a.memberName);
+        if (taskMap.has(a.taskName)) a.taskId = taskMap.get(a.taskName);
+      });
+    }
+
+    // Mark current calculated weeks as saved
+    const weeksCount = currentResult ? currentResult.weeks : 1;
+    for (let w = 0; w < weeksCount; w++) {
+      savedWeeks.add(w);
+    }
+
+    // Re-render inputs so DOM datasets (data-elig-member) and select options strictly hold real UUIDs
+    renderInputs();
+    renderResults();
+
     lastSavedSnapshot = getConfigurationSnapshot(currentRequest);
     hasUnsavedChanges = false;
-    updateDirtyState();
+    setCloudSaveState('saved');
 
     if (typeof trackEvent === 'function') {
       trackEvent('plan_saved', {
         member_count: currentRequest.members.length,
-        task_count: currentRequest.tasks.length
+        task_count: currentRequest.tasks.length,
+        household_id: hId
       });
     }
 
-    btnSave.textContent = 'Saved';
-    btnSave.classList.remove('primary');
-
-    const statusEl = $('#saveStatusIndicator');
-    if (statusEl) {
-      statusEl.textContent = 'Changes saved.';
-      statusEl.style.display = 'inline-block';
-      statusEl.style.opacity = '1';
-      clearTimeout(window._saveTimeout);
-      window._saveTimeout = setTimeout(() => {
-        statusEl.style.opacity = '0';
-        setTimeout(() => { statusEl.style.display = 'none'; }, 250);
-      }, 2500);
-    }
-
-    const cs = $('#cloudStatus');
-    if (cs) {
-      cs.innerHTML = `Cloud Sync: <strong>${escapeHtml(currentUser.email)}</strong> · <span style="color:var(--good); font-weight:700;">Saved ✓</span>`;
-    }
-
     setTimeout(() => {
-      if (!isSaving && !hasUnsavedChanges && btnSave.textContent === 'Saved') {
-        btnSave.textContent = 'Save Changes';
+      if (!isSaving && !hasUnsavedChanges && currentUser) {
+        const btnSave = $('#btnSave');
+        if (btnSave && btnSave.textContent === 'Saved') {
+          btnSave.textContent = 'Save Plan to Cloud';
+        }
       }
     }, 2500);
   } catch (err) {
     console.error('Failed to save to cloud:', err);
-    btnSave.textContent = 'Save failed — Try again';
-    btnSave.classList.add('danger');
-    if (alertBox) {
-      alertBox.textContent = `Save failed: ${err.message || 'Network error'}. Your local changes are preserved in memory.`;
-      alertBox.style.display = 'block';
-    }
+    setCloudSaveState('error', err.message);
   } finally {
     isSaving = false;
-    btnSave.disabled = false;
   }
 }
 
@@ -1314,6 +1442,38 @@ function renderSchedule() {
   if (!currentResult) return;
   const weekAssignments = currentResult.assignments.filter(a => a.weekIndex === activeWeek);
 
+  // Update week save status and action buttons (Pro and Plus users)
+  const isPaidUser = Boolean(currentUser && currentEntitlement.isPaid && currentEntitlement.maxPlanningWeeks >= 4);
+  const statusBadge = $('#weekSaveStatusBadge');
+  const btnSaveWeek = $('#btnSaveWeek');
+  const btnExportPdf = $('#btnExportPdf');
+
+  if (isPaidUser) {
+    if (statusBadge) {
+      statusBadge.style.display = 'inline-block';
+      if (savedWeeks.has(activeWeek)) {
+        statusBadge.textContent = `Week ${activeWeek + 1}: Saved ✓`;
+        statusBadge.className = 'badge teal';
+        statusBadge.style.color = '';
+      } else {
+        statusBadge.textContent = `Week ${activeWeek + 1}: Not saved`;
+        statusBadge.className = 'badge';
+        statusBadge.style.color = '';
+      }
+    }
+    if (btnSaveWeek) {
+      btnSaveWeek.style.display = 'inline-block';
+      btnSaveWeek.textContent = savedWeeks.has(activeWeek) ? `Update Week ${activeWeek + 1}` : `Save Week ${activeWeek + 1}`;
+    }
+    if (btnExportPdf) {
+      btnExportPdf.style.display = 'inline-block';
+    }
+  } else {
+    if (statusBadge) statusBadge.style.display = 'none';
+    if (btnSaveWeek) btnSaveWeek.style.display = 'none';
+    if (btnExportPdf) btnExportPdf.style.display = 'none';
+  }
+
   if (activeView === 'calendar') {
     $('#calendarView').style.display = 'block';
     $('#tableView').style.display = 'none';
@@ -1358,6 +1518,111 @@ function renderSchedule() {
   }
 }
 
+function populatePrintablePlan() {
+  const container = $('#printablePlan');
+  if (!container || !currentResult) return;
+
+  const weekAssignments = currentResult.assignments.filter(a => a.weekIndex === activeWeek);
+  const householdName = currentRequest.household.name || 'My Household';
+  const presetType = currentRequest.household.type || 'family';
+  const presetLabel = presetType.charAt(0).toUpperCase() + presetType.slice(1);
+  const fairnessScore = Math.round(currentResult.fairnessIndex || currentResult.diagnostics?.balanceScore || 0);
+  const modeLabel = currentRequest.household.mode === 'capacity_aware' ? 'Capacity-Aware Proportional' : 'Equal Workload Flatten';
+
+  container.innerHTML = `
+    <div style="padding:16px 0; border-bottom:2px solid #111827; margin-bottom:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+        <div>
+          <div style="font-size:22pt; font-weight:800; margin:0 0 4px; color:#111827; letter-spacing:-0.02em;">ChoreMatrix</div>
+          <div style="font-size:12pt; font-weight:600; color:#374151;">Household Workload Optimization Plan</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:13pt; font-weight:700; color:#111827;">${escapeHtml(householdName)}</div>
+          <div style="font-size:10pt; color:#4b5563;">Preset: ${escapeHtml(presetLabel)} · Week ${activeWeek + 1} of ${currentResult.weeks}</div>
+          <div style="font-size:9pt; color:#6b7280; margin-top:2px;">Generated on ${new Date().toLocaleDateString(undefined, { dateStyle: 'medium' })}</div>
+        </div>
+      </div>
+      <div style="margin-top:10px; padding:8px 12px; background:#f9fafb; border:1px solid #e5e7eb; border-radius:6px; display:flex; justify-content:space-between; align-items:center;">
+        <div>
+          <span style="font-weight:700; font-size:10pt;">Fairness Score: ${fairnessScore} / 100</span>
+          <span style="font-size:9pt; color:#4b5563; margin-left:8px;">Optimization Mode: ${modeLabel}</span>
+        </div>
+        <div style="font-size:9pt; color:#4b5563;">
+          Total Workload: ${currentResult.totalHouseholdWorkMinutes} min · Capacity: ${currentResult.totalHouseholdCapacityMinutes} min
+        </div>
+      </div>
+    </div>
+
+    <!-- Member Workload Summary -->
+    <div style="margin-bottom:18px;">
+      <h2 style="font-size:11pt; font-weight:700; margin:0 0 8px; color:#111827; text-transform:uppercase; letter-spacing:0.04em;">Member Workload Breakdown</h2>
+      <table style="width:100%; border-collapse:collapse; font-size:9pt; margin-bottom:12px;">
+        <thead>
+          <tr style="background:#f3f4f6;">
+            <th style="padding:6px 8px; border:1px solid #e5e7eb; text-align:left;">Member</th>
+            <th style="padding:6px 8px; border:1px solid #e5e7eb; text-align:left;">Role</th>
+            <th style="padding:6px 8px; border:1px solid #e5e7eb; text-align:right;">Weekly Capacity</th>
+            <th style="padding:6px 8px; border:1px solid #e5e7eb; text-align:right;">Assigned Time</th>
+            <th style="padding:6px 8px; border:1px solid #e5e7eb; text-align:right;">Capacity Utilization</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${(currentResult.memberSummaries || []).map(m => `
+            <tr>
+              <td style="padding:6px 8px; border:1px solid #e5e7eb; font-weight:600;">${escapeHtml(m.memberName)}</td>
+              <td style="padding:6px 8px; border:1px solid #e5e7eb;">${escapeHtml(m.role)}</td>
+              <td style="padding:6px 8px; border:1px solid #e5e7eb; text-align:right;">${m.weeklyCapacityMinutes} min</td>
+              <td style="padding:6px 8px; border:1px solid #e5e7eb; text-align:right; font-weight:600;">${m.assignedMinutes} min</td>
+              <td style="padding:6px 8px; border:1px solid #e5e7eb; text-align:right;">${Math.round(m.utilizationRatio * 100)}%</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Week Chore Schedule -->
+    <div>
+      <h2 style="font-size:11pt; font-weight:700; margin:0 0 8px; color:#111827; text-transform:uppercase; letter-spacing:0.04em;">Week ${activeWeek + 1} Chore Assignments</h2>
+      <table style="width:100%; border-collapse:collapse; font-size:9pt;">
+        <thead>
+          <tr style="background:#f3f4f6;">
+            <th style="padding:6px 8px; border:1px solid #e5e7eb; text-align:left; width:65px;">Day</th>
+            <th style="padding:6px 8px; border:1px solid #e5e7eb; text-align:left;">Chore</th>
+            <th style="padding:6px 8px; border:1px solid #e5e7eb; text-align:left; width:90px;">Category</th>
+            <th style="padding:6px 8px; border:1px solid #e5e7eb; text-align:left; width:120px;">Assigned To</th>
+            <th style="padding:6px 8px; border:1px solid #e5e7eb; text-align:right; width:75px;">Duration</th>
+            <th style="padding:6px 8px; border:1px solid #e5e7eb; text-align:center; width:65px;">Effort</th>
+            <th style="padding:6px 8px; border:1px solid #e5e7eb; text-align:left;">Rationale</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${weekAssignments.length ? weekAssignments.map(a => `
+            <tr>
+              <td style="padding:6px 8px; border:1px solid #e5e7eb; font-weight:700;">${a.dayOfWeek.toUpperCase()}</td>
+              <td style="padding:6px 8px; border:1px solid #e5e7eb; font-weight:600;">${escapeHtml(a.taskName)}</td>
+              <td style="padding:6px 8px; border:1px solid #e5e7eb;">${escapeHtml(a.category)}</td>
+              <td style="padding:6px 8px; border:1px solid #e5e7eb; font-weight:700;">${escapeHtml(a.memberName)}</td>
+              <td style="padding:6px 8px; border:1px solid #e5e7eb; text-align:right;">${a.durationMinutes} min</td>
+              <td style="padding:6px 8px; border:1px solid #e5e7eb; text-align:center;">Level ${a.effortLevel}</td>
+              <td style="padding:6px 8px; border:1px solid #e5e7eb; font-size:8pt; color:#4b5563;">
+                ${(a.reasonCodes || []).map(r => r.replace(/_/g, ' ')).join(', ') || 'Optimized fit'}
+              </td>
+            </tr>
+          `).join('') : `
+            <tr>
+              <td colspan="7" style="text-align:center; padding:16px; color:#6b7280; font-style:italic;">No chore assignments scheduled for this week.</td>
+            </tr>
+          `}
+        </tbody>
+      </table>
+    </div>
+
+    <div style="margin-top:20px; padding-top:10px; border-top:1px solid #e5e7eb; font-size:8pt; color:#9ca3af; text-align:center;">
+      Generated by ChoreMatrix (chorematrix.online) · Deterministic Household Workload Optimizer
+    </div>
+  `;
+}
+
 function attachListeners() {
   $('#btnPresetFamily')?.addEventListener('click', (e) => { e.preventDefault(); safeLoadPreset('family'); });
   $('#btnPresetCouple')?.addEventListener('click', (e) => { e.preventDefault(); safeLoadPreset('couple'); });
@@ -1379,21 +1644,87 @@ function attachListeners() {
     handleSave();
   });
 
-  $('#btnPrintPlan')?.addEventListener('click', (e) => {
+  // Week Snapshot Saving (Pro & Plus accounts)
+  $('#btnSaveWeek')?.addEventListener('click', async (e) => {
     e.preventDefault();
+    if (!currentUser || !currentEntitlement.isPaid) return;
     if (!currentResult || !currentResult.assignments || currentResult.assignments.length === 0) {
-      alert('Please calculate a household plan first before printing or saving as PDF.');
+      alert('Calculate a plan first before saving a weekly schedule snapshot.');
       return;
     }
+
+    const btn = $('#btnSaveWeek');
+    const badge = $('#weekSaveStatusBadge');
+    if (btn) { btn.disabled = true; btn.textContent = 'Saving…'; }
+    if (badge) { badge.textContent = `Week ${activeWeek + 1}: Saving…`; badge.className = 'badge'; }
+
+    try {
+      if (!currentRequest.household.id || !UUID_REGEX.test(currentRequest.household.id)) {
+        const hId = await persistenceAdapter.saveHousehold(currentUser.id, currentRequest, currentResult);
+        currentRequest.household.id = hId;
+        renderInputs();
+      }
+
+      const weekAssignments = currentResult.assignments.filter(a => a.weekIndex === activeWeek);
+      const snapshot = {
+        weekIndex: activeWeek,
+        assignments: weekAssignments,
+        memberSummaries: currentResult.memberSummaries,
+        unassignedTasks: (currentResult.unassignedTasks || []).filter(u => u.weekIndex === activeWeek),
+        fairnessIndex: currentResult.fairnessIndex || currentResult.diagnostics?.balanceScore || 100,
+        savedAt: new Date().toISOString()
+      };
+
+      await persistenceAdapter.saveWeeklySnapshot(currentUser.id, currentRequest.household.id, activeWeek, snapshot);
+      savedWeeks.add(activeWeek);
+
+      if (badge) {
+        badge.textContent = `Week ${activeWeek + 1}: Saved ✓`;
+        badge.className = 'badge teal';
+      }
+      if (btn) {
+        btn.textContent = `Update Week ${activeWeek + 1}`;
+      }
+    } catch (err) {
+      console.error('Failed to save week snapshot:', err);
+      if (badge) {
+        badge.textContent = `Week ${activeWeek + 1}: Save failed`;
+        badge.className = 'badge';
+        badge.style.color = 'var(--bad)';
+      }
+      if (btn) {
+        btn.textContent = `Retry Save Week ${activeWeek + 1}`;
+      }
+      alert(`Could not save Week ${activeWeek + 1}: ${err.message || 'Network error'}`);
+    } finally {
+      if (btn) btn.disabled = false;
+    }
+  });
+
+  // Download Saved Plan as PDF (Paid Pro/Plus entitlement only)
+  $('#btnExportPdf')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (!currentUser || !currentEntitlement.isPaid || currentEntitlement.maxPlanningWeeks < 4) {
+      alert('PDF export is available for Pro and Plus subscription members.');
+      return;
+    }
+
+    if (!savedWeeks.has(activeWeek)) {
+      alert(`Please save Week ${activeWeek + 1} to your account before downloading the PDF. Click "Save Week ${activeWeek + 1}" above.`);
+      return;
+    }
+
+    populatePrintablePlan();
+
     if (typeof trackEvent === 'function') {
-      trackEvent('plan_printed', {
-        member_count: currentRequest.members.length,
-        task_count: currentRequest.tasks.length,
-        mode: currentRequest.household.mode,
-        fairness_score: Math.round(currentResult.fairnessIndex || 0),
-        horizon_weeks: currentRequest.household.planningHorizonWeeks
+      trackEvent('plan_pdf_downloaded', {
+        week: activeWeek + 1,
+        household_id: currentRequest.household.id,
+        preset: currentRequest.household.type,
+        plan_tier: currentEntitlement.tier
       });
     }
+
     window.print();
   });
 

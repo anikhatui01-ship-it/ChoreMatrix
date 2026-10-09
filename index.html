@@ -527,11 +527,16 @@
                   <span class="badge teal" id="postPlanScoreBadge">-- Fairness</span>
                 </div>
                 <p style="font-size:12px; color:var(--muted); margin:4px 0 0; line-height:1.4;">
-                  Save this optimized schedule to sync with your household and access it anytime.
+                  Save this optimized 1-week schedule directly to this device or create a free account to sync across devices in the cloud.
                 </p>
+                <div id="deviceSaveFeedback" style="font-size:11px; color:var(--good); font-weight:600; margin-top:4px; display:none;">
+                  ✓ Saved on this device (stored in this browser only — not synced across devices)
+                </div>
               </div>
               <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-                <a href="/signup.html" class="btn small primary" id="btnPostPlanSignup" title="Create a free account to save this schedule">Save Plan (Free Account)</a>
+                <button type="button" class="btn small primary" id="btnDeviceSave" title="Save this valid 1-week plan directly to this device (no account needed)">Save to This Device</button>
+                <button type="button" class="btn small" id="btnClearDevicePlan" style="display:none; color:var(--bad);" title="Clear saved plan from this device">Clear Saved Plan</button>
+                <a href="/signup.html" class="btn small" id="btnPostPlanSignup" title="Create a free account to save this schedule">Cloud Sync (Free Account)</a>
                 <a href="/login.html" class="btn small" id="btnPostPlanLogin">Log In</a>
                 <a href="/app.html" class="btn small" id="btnPostPlanWorkspace">Open Workspace →</a>
               </div>
@@ -594,9 +599,6 @@
               <div>
                 <h2>Weekly Schedule & Assignments</h2>
                 <div class="sub">Calendar day slotting, effort weights, and explainability tags.</div>
-              </div>
-              <div>
-                <button type="button" class="btn small" id="btnPrintPlan" title="Print or Save Household Schedule as PDF">🖨️ Print / Save PDF</button>
               </div>
             </div>
 
@@ -724,7 +726,11 @@ import {
   trackEvent,
   saveLocalDraft,
   loadLocalDraft,
-  clearLocalDraft
+  clearLocalDraft,
+  saveDevicePlan,
+  loadDevicePlan,
+  clearDevicePlan,
+  hasDevicePlan
 } from './src/client.bundle.js';
 
 renderFooter();
@@ -964,15 +970,44 @@ function autoSaveDraft() {
   }, 400);
 }
 
+function showDeviceSavedBanner(timestamp) {
+  const badge = $('#draftStatusBadge');
+  if (badge) {
+    badge.style.display = 'flex';
+    badge.innerHTML = `
+      <span>💾 <strong>Plan saved on this device (1-Week)</strong> · <span style="color:var(--good); font-weight:700;">Saved ✓</span> <span style="font-size:11px; color:var(--muted); margin-left:4px;">(Device storage only — not synced across devices)</span></span>
+      <button type="button" id="btnInlineClearDevicePlan" style="background:none; border:none; color:var(--bad); font-weight:600; cursor:pointer; font-size:11px; text-decoration:underline; padding:0 4px;">Clear saved plan</button>
+    `;
+    $('#btnInlineClearDevicePlan')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (window.confirm('Clear your saved plan from this device?')) {
+        clearDevicePlan();
+        badge.style.display = 'none';
+        const clearBtn = $('#btnClearDevicePlan');
+        if (clearBtn) clearBtn.style.display = 'none';
+      }
+    });
+  }
+}
+
 function showDraftBanner(timestamp) {
   const badge = $('#draftStatusBadge');
   const tsEl = $('#draftTimestamp');
   if (badge) {
     badge.style.display = 'flex';
-    if (tsEl && timestamp) {
-      const d = new Date(timestamp);
-      tsEl.textContent = !isNaN(d.getTime()) ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'recently';
-    }
+    const d = timestamp ? new Date(timestamp) : null;
+    const timeStr = d && !isNaN(d.getTime()) ? d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'recently';
+    badge.innerHTML = `
+      <span>📝 <strong>Unfinished draft restored from browser</strong> (${timeStr})</span>
+      <button type="button" id="btnClearDraft" style="background:none; border:none; color:var(--bad); font-weight:600; cursor:pointer; font-size:11px; text-decoration:underline; padding:0 4px;">Clear draft</button>
+    `;
+    $('#btnClearDraft')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (window.confirm('Reset calculator and clear your unfinished draft?')) {
+        clearLocalDraft();
+        badge.style.display = 'none';
+      }
+    });
   }
 }
 
@@ -996,22 +1031,42 @@ function init() {
   if (requestedPreset && PRESETS[requestedPreset]) {
     loadPreset(requestedPreset);
   } else {
-    // Attempt to recover previous in-progress draft from local browser storage
-    const loadedDraft = loadLocalDraft();
-    if (loadedDraft && loadedDraft.request && (loadedDraft.request.members.length > 0 || loadedDraft.request.tasks.length > 0)) {
-      currentRequest = loadedDraft.request;
+    // 1. First priority: Check for explicitly saved plan on this device
+    const devicePlan = loadDevicePlan();
+    if (devicePlan && devicePlan.request && (devicePlan.request.members.length > 0 || devicePlan.request.tasks.length > 0)) {
+      currentRequest = devicePlan.request;
       currentRequest.household.planningHorizonWeeks = enforcePlanningHorizon(currentRequest.household.planningHorizonWeeks, currentEntitlement);
       if ($('#selMode')) $('#selMode').value = currentRequest.household.mode || 'capacity_aware';
       updateModeExplanation();
       renderPlanningHorizonOptions(currentEntitlement, currentRequest.household.planningHorizonWeeks);
       renderInputs();
-      if (loadedDraft.result && loadedDraft.result.assignments && loadedDraft.result.assignments.length > 0) {
-        currentResult = loadedDraft.result;
+      if (devicePlan.result && devicePlan.result.assignments && devicePlan.result.assignments.length > 0) {
+        currentResult = devicePlan.result;
         renderResults();
       } else if (currentRequest.members.length > 0 && currentRequest.tasks.length > 0) {
         executeOptimization(true);
       }
-      showDraftBanner(loadedDraft.timestamp);
+      showDeviceSavedBanner(devicePlan.savedAt);
+      const clearBtn = $('#btnClearDevicePlan');
+      if (clearBtn) clearBtn.style.display = 'inline-block';
+    } else {
+      // 2. Second priority: Attempt to recover in-progress autosaved draft
+      const loadedDraft = loadLocalDraft();
+      if (loadedDraft && loadedDraft.request && (loadedDraft.request.members.length > 0 || loadedDraft.request.tasks.length > 0)) {
+        currentRequest = loadedDraft.request;
+        currentRequest.household.planningHorizonWeeks = enforcePlanningHorizon(currentRequest.household.planningHorizonWeeks, currentEntitlement);
+        if ($('#selMode')) $('#selMode').value = currentRequest.household.mode || 'capacity_aware';
+        updateModeExplanation();
+        renderPlanningHorizonOptions(currentEntitlement, currentRequest.household.planningHorizonWeeks);
+        renderInputs();
+        if (loadedDraft.result && loadedDraft.result.assignments && loadedDraft.result.assignments.length > 0) {
+          currentResult = loadedDraft.result;
+          renderResults();
+        } else if (currentRequest.members.length > 0 && currentRequest.tasks.length > 0) {
+          executeOptimization(true);
+        }
+        showDraftBanner(loadedDraft.timestamp);
+      }
     }
   }
 
@@ -1027,7 +1082,10 @@ function init() {
 }
 
 function safeLoadPreset(key) {
-  if (hasUserEnteredData()) {
+  if (hasDevicePlan()) {
+    const ok = window.confirm('You have a plan saved on this device. Loading this sample preset will let you explore another household without deleting your saved device plan unless you click "Save to This Device". Continue?');
+    if (!ok) return;
+  } else if (hasUserEnteredData()) {
     const ok = window.confirm('Load sample household? This will replace your current inputs.');
     if (!ok) return;
   }
@@ -1459,7 +1517,7 @@ function attachListeners() {
 
   $('#btnClearDraft')?.addEventListener('click', (e) => {
     e.preventDefault();
-    if (window.confirm('Reset calculator and clear your saved draft?')) {
+    if (window.confirm('Reset calculator and clear your unfinished draft?')) {
       clearLocalDraft();
       hideDraftBanner();
       currentRequest = {
@@ -1474,22 +1532,59 @@ function attachListeners() {
     }
   });
 
-  $('#btnPrintPlan')?.addEventListener('click', (e) => {
+  $('#btnDeviceSave')?.addEventListener('click', (e) => {
     e.preventDefault();
-    if (!currentResult || !currentResult.assignments || currentResult.assignments.length === 0) {
-      alert('Please calculate a household plan first before printing or saving as PDF.');
+    syncDOMToState();
+    if (currentRequest.members.length === 0 || currentRequest.tasks.length === 0) {
+      alert('Add at least one household member and one chore before saving.');
       return;
     }
-    if (typeof trackEvent === 'function') {
-      trackEvent('plan_printed', {
-        member_count: currentRequest.members.length,
-        task_count: currentRequest.tasks.length,
-        mode: currentRequest.household.mode,
-        fairness_score: Math.round(currentResult.fairnessIndex || 0),
-        horizon_weeks: currentRequest.household.planningHorizonWeeks
-      });
+    if (!currentResult || !currentResult.assignments || currentResult.assignments.length === 0) {
+      executeOptimization(true);
     }
-    window.print();
+    const success = saveDevicePlan(currentRequest, currentResult);
+    if (success) {
+      const btn = $('#btnDeviceSave');
+      if (btn) {
+        btn.textContent = 'Saved on this device ✓';
+        setTimeout(() => { btn.textContent = 'Save to This Device'; }, 3000);
+      }
+      const feedback = $('#deviceSaveFeedback');
+      if (feedback) {
+        feedback.style.display = 'block';
+        setTimeout(() => { feedback.style.display = 'none'; }, 5000);
+      }
+      const clearBtn = $('#btnClearDevicePlan');
+      if (clearBtn) clearBtn.style.display = 'inline-block';
+      showDeviceSavedBanner(Date.now());
+      if (typeof trackEvent === 'function') {
+        trackEvent('plan_saved_device', {
+          member_count: currentRequest.members.length,
+          task_count: currentRequest.tasks.length
+        });
+      }
+    } else {
+      alert('Failed to save plan to this device. Please ensure browser storage is enabled.');
+    }
+  });
+
+  $('#btnClearDevicePlan')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    if (window.confirm('Clear your saved plan from this device? This will remove the locally stored schedule.')) {
+      clearDevicePlan();
+      hideDraftBanner();
+      const clearBtn = $('#btnClearDevicePlan');
+      if (clearBtn) clearBtn.style.display = 'none';
+      const feedback = $('#deviceSaveFeedback');
+      if (feedback) {
+        feedback.textContent = 'Saved device plan cleared.';
+        feedback.style.display = 'block';
+        setTimeout(() => {
+          feedback.style.display = 'none';
+          feedback.textContent = '✓ Saved on this device (stored in this browser only — not synced across devices)';
+        }, 3000);
+      }
+    }
   });
 
   $('#btnOptimize')?.addEventListener('click', (e) => {

@@ -219,24 +219,57 @@ describe('Phase 5 — Retention and Practical Plan Use', () => {
     });
   });
 
+  describe('Device-Local Saved Plan Persistence', () => {
+    it('saves, loads, checks, and clears device saved plan', async () => {
+      const {
+        saveDevicePlan,
+        loadDevicePlan,
+        clearDevicePlan,
+        hasDevicePlan
+      } = await import('../../src/persistence/localDraft.ts');
+
+      clearDevicePlan();
+      assert.strictEqual(hasDevicePlan(), false);
+      assert.strictEqual(loadDevicePlan(), null);
+
+      const saved = saveDevicePlan(sampleRequest, sampleResult);
+      assert.strictEqual(saved, true);
+      assert.strictEqual(hasDevicePlan(), true);
+
+      const loaded = loadDevicePlan();
+      assert.ok(loaded);
+      assert.strictEqual(loaded.request.household.name, 'Sample Household');
+      assert.strictEqual(loaded.request.household.planningHorizonWeeks, 1);
+      assert.ok(loaded.result);
+      assert.strictEqual(loaded.result.fairnessIndex, 92);
+      assert.ok(loaded.savedAt);
+
+      clearDevicePlan();
+      assert.strictEqual(hasDevicePlan(), false);
+      assert.strictEqual(loadDevicePlan(), null);
+    });
+  });
+
   describe('HTML Interface & Print Actions', () => {
     const indexPath = path.join(process.cwd(), 'index.html');
     const indexContent = fs.readFileSync(indexPath, 'utf8');
     const appPath = path.join(process.cwd(), 'app.html');
     const appContent = fs.readFileSync(appPath, 'utf8');
 
-    it('index.html contains #btnPrintPlan button and draft status indicator', () => {
-      assert.ok(indexContent.includes('id="btnPrintPlan"'), 'index.html should have #btnPrintPlan');
-      assert.ok(indexContent.includes('id="draftStatusBadge"'), 'index.html should have #draftStatusBadge');
-      assert.ok(indexContent.includes('id="btnClearDraft"'), 'index.html should have #btnClearDraft');
-      assert.ok(indexContent.includes('loadLocalDraft'), 'index.html should import/call loadLocalDraft');
-      assert.ok(indexContent.includes('saveLocalDraft'), 'index.html should import/call saveLocalDraft');
+    it('index.html contains #btnDeviceSave and does NOT offer PDF export to anonymous visitors', () => {
+      assert.ok(indexContent.includes('id="btnDeviceSave"'), 'index.html should have #btnDeviceSave');
+      assert.ok(indexContent.includes('id="btnClearDevicePlan"'), 'index.html should have #btnClearDevicePlan');
+      assert.ok(!indexContent.includes('id="btnPrintPlan"'), 'index.html must NOT display #btnPrintPlan to anonymous visitors');
+      assert.ok(!indexContent.includes('id="btnExportPdf"'), 'index.html must NOT display #btnExportPdf to anonymous visitors');
+      assert.ok(indexContent.includes('saveDevicePlan'), 'index.html should use saveDevicePlan');
+      assert.ok(indexContent.includes('loadDevicePlan'), 'index.html should use loadDevicePlan');
     });
 
-    it('app.html contains #btnPrintPlan button and draft restoration for unauthenticated visitors', () => {
-      assert.ok(appContent.includes('id="btnPrintPlan"'), 'app.html should have #btnPrintPlan');
-      assert.ok(appContent.includes('loadLocalDraft'), 'app.html should import/call loadLocalDraft');
-      assert.ok(appContent.includes('saveLocalDraft'), 'app.html should import/call saveLocalDraft');
+    it('app.html contains #btnExportPdf (Download Saved Plan as PDF) and #btnSaveWeek for paid accounts', () => {
+      assert.ok(appContent.includes('id="btnExportPdf"'), 'app.html should have #btnExportPdf');
+      assert.ok(appContent.includes('Download Saved Plan as PDF'), 'app.html should have "Download Saved Plan as PDF" label');
+      assert.ok(appContent.includes('id="btnSaveWeek"'), 'app.html should have #btnSaveWeek');
+      assert.ok(appContent.includes('id="printablePlan"'), 'app.html should have dedicated printablePlan container');
     });
 
     it('preserves hero headline and differentiates local drafts from authenticated cloud households', () => {

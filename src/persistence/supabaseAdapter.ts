@@ -109,12 +109,19 @@ export class SupabaseAdapter {
 
   /**
    * Fetches the user's active household and reconstructs the domain OptimizationRequest.
+   * If presetType is provided (e.g. 'couple', 'family', 'roommates'), loads that specific household.
    */
-  async loadActiveHousehold(userId: string): Promise<{ request: OptimizationRequest; latestPlan: OptimizationResult | null } | null> {
-    const { data: households, error: hError } = await this.client
+  async loadActiveHousehold(userId: string, presetType?: string): Promise<{ request: OptimizationRequest; latestPlan: OptimizationResult | null } | null> {
+    let query = this.client
       .from('households')
       .select('*')
-      .eq('user_id', userId)
+      .eq('user_id', userId);
+
+    if (presetType) {
+      query = query.eq('type', presetType);
+    }
+
+    const { data: households, error: hError } = await query
       .order('updated_at', { ascending: false })
       .limit(1);
 
@@ -187,7 +194,7 @@ export class SupabaseAdapter {
       frequencyPerWeek: t.frequency_per_week,
       durationMinutes: t.duration_minutes,
       effortLevel: t.effort_level as 1 | 2 | 3 | 4 | 5,
-      fixedDays: (t.fixed_days || []) as DayOfWeek[],
+      fixedDays: (t.fixedDays || t.fixed_days || []) as DayOfWeek[],
       eligibleMemberIds: t.eligible_member_ids || []
     }));
 
@@ -222,6 +229,7 @@ export class SupabaseAdapter {
     let latestPlan: OptimizationResult | null = null;
     if (plansRes.data && plansRes.data.length > 0) {
       const p = plansRes.data[0] as PlanRow;
+      const diag = (p.diagnostics as any) || {};
       latestPlan = {
         runId: p.id,
         householdId: p.household_id,
@@ -230,12 +238,15 @@ export class SupabaseAdapter {
         weeks: household.planning_horizon_weeks,
         totalHouseholdWorkMinutes: p.total_work_minutes,
         totalHouseholdCapacityMinutes: p.total_capacity_minutes,
-        totalHouseholdWeightedWork: (p.diagnostics as any)?.totalHouseholdWeightedWork ?? p.total_work_minutes,
+        totalHouseholdWeightedWork: diag.totalHouseholdWeightedWork ?? p.total_work_minutes,
+        fairnessIndex: typeof diag.balanceScore === 'number' ? diag.balanceScore : Number(p.balance_score),
         diagnostics: {
-          ...(p.diagnostics || {}),
+          ...diag,
           totalHouseholdWorkMinutes: p.total_work_minutes,
           totalHouseholdCapacityMinutes: p.total_capacity_minutes,
-          balanceScore: Number(p.balance_score)
+          balanceScore: Number(p.balance_score),
+          savedWeeks: Array.isArray(diag.savedWeeks) ? diag.savedWeeks : [0],
+          weeklySnapshots: diag.weeklySnapshots || {}
         },
         memberSummaries: (p.member_summaries as any) || [],
         unassignedTasks: (p.unassigned_tasks as any) || [],
@@ -248,24 +259,41 @@ export class SupabaseAdapter {
   }
 
   /**
+   * Fetches all households owned by a user across presets (Family, Couple, Roommates).
+   */
+  async listUserHouseholds(userId: string): Promise<HouseholdRow[]> {
+    const { data, error } = await this.client
+      .from('households')
+      .select('*')
+      .eq('user_id', userId)
+      .order('updated_at', { ascending: false });
+    if (error) throw error;
+    return data || [];
+  }
+
+  /**
    * Persists household, members, tasks, preferences and optionally the calculated plan snapshot.
-   * Fully maintains UUID stability, array ordering, foreign key consistency, and user isolation.
+   * Fully maintains UUID stability, array ordering, foreign key consistency, user isolation,
+   * and prevents presets from overwriting one another.
    */
   async saveHousehold(
     userId: string,
     request: OptimizationRequest,
     planResult?: OptimizationResult | null
   ): Promise<string> {
-    // 1. Resolve or establish target household ID
+    const targetType = request.household.type || 'family';
+
+    // 1. Resolve or establish target household ID for this specific preset type
     let householdId: string | null = null;
     if (request.household.id && UUID_REGEX.test(request.household.id)) {
       householdId = request.household.id;
     } else {
-      // Check if user already has an active household in the database
+      // Check if user already has a saved household OF THIS PRESET TYPE in the database
       const { data: existing, error: findError } = await this.client
         .from('households')
         .select('id')
         .eq('user_id', userId)
+        .eq('type', targetType)
         .order('updated_at', { ascending: false })
         .limit(1);
       if (findError) throw findError;
@@ -300,7 +328,7 @@ export class SupabaseAdapter {
         id: targetHouseholdId,
         user_id: userId,
         name: request.household.name || 'My Household',
-        type: request.household.type || 'family',
+        type: targetType,
         mode: request.household.mode || 'capacity_aware',
         planning_horizon_weeks: safeHorizonWeeks,
         updated_at: nowIso
@@ -315,30 +343,45 @@ export class SupabaseAdapter {
 
     // 2. Normalize and map IDs to stable UUIDs
     const memberIdMap = new Map<string, string>();
-    request.members.forEach(m => {
+    request.members.forEach((m, idx) => {
       const oldId = m.id;
       const newId = UUID_REGEX.test(m.id) ? m.id : generateUuid();
       memberIdMap.set(oldId, newId);
+      // Map indexed shorthand like 'm1', 'm2' in case of partial preset state
+      memberIdMap.set(`m${idx + 1}`, newId);
       m.id = newId;
     });
 
     const taskIdMap = new Map<string, string>();
-    request.tasks.forEach(t => {
+    request.tasks.forEach((t, idx) => {
       const oldId = t.id;
       const newId = UUID_REGEX.test(t.id) ? t.id : generateUuid();
       taskIdMap.set(oldId, newId);
+      // Map indexed shorthand like 't1', 't2' in case of partial preset state
+      taskIdMap.set(`t${idx + 1}`, newId);
       t.id = newId;
     });
 
-    // Map member preferences to new task UUIDs
+    const allValidMemberUuids = new Set(request.members.map(m => m.id));
+    const allValidTaskUuids = new Set(request.tasks.map(t => t.id));
+
+    // Map member preferences to new task UUIDs and sanitize
     request.members.forEach(m => {
-      m.preferredTaskIds = (m.preferredTaskIds || []).map(tid => taskIdMap.get(tid) || tid);
-      m.avoidedTaskIds = (m.avoidedTaskIds || []).map(tid => taskIdMap.get(tid) || tid);
+      m.preferredTaskIds = (m.preferredTaskIds || [])
+        .map(tid => taskIdMap.get(tid) || tid)
+        .filter(tid => UUID_REGEX.test(tid) && allValidTaskUuids.has(tid));
+      m.avoidedTaskIds = (m.avoidedTaskIds || [])
+        .map(tid => taskIdMap.get(tid) || tid)
+        .filter(tid => UUID_REGEX.test(tid) && allValidTaskUuids.has(tid));
     });
 
-    // Map task eligibility to new member UUIDs
+    // Map task eligibility to new member UUIDs and sanitize strictly against Postgres uuid[] requirements
     request.tasks.forEach(t => {
-      t.eligibleMemberIds = (t.eligibleMemberIds || []).map(mid => memberIdMap.get(mid) || mid);
+      const mapped = (t.eligibleMemberIds || [])
+        .map(mid => memberIdMap.get(mid) || mid)
+        .filter(mid => UUID_REGEX.test(mid) && allValidMemberUuids.has(mid));
+      // Fallback: if all were filtered out or empty, allow all current household members
+      t.eligibleMemberIds = mapped.length > 0 ? mapped : Array.from(allValidMemberUuids);
     });
 
     // 3. Delete existing child records for this household in reverse foreign-key order
@@ -411,14 +454,11 @@ export class SupabaseAdapter {
       created_at: string;
     }> = [];
 
-    const validTaskIds = new Set(request.tasks.map(t => t.id));
-    const validMemberIds = new Set(request.members.map(m => m.id));
-
     for (const m of request.members) {
-      if (!validMemberIds.has(m.id)) continue;
+      if (!allValidMemberUuids.has(m.id)) continue;
       if (m.preferredTaskIds) {
         for (const tid of m.preferredTaskIds) {
-          if (validTaskIds.has(tid)) {
+          if (allValidTaskUuids.has(tid)) {
             prefRows.push({
               household_id: savedHouseholdId,
               user_id: userId,
@@ -432,7 +472,7 @@ export class SupabaseAdapter {
       }
       if (m.avoidedTaskIds) {
         for (const tid of m.avoidedTaskIds) {
-          if (validTaskIds.has(tid)) {
+          if (allValidTaskUuids.has(tid)) {
             prefRows.push({
               household_id: savedHouseholdId,
               user_id: userId,
@@ -467,6 +507,26 @@ export class SupabaseAdapter {
         taskId: taskIdMap.get(u.taskId) || u.taskId
       }));
 
+      // Construct per-week snapshots - only save weeks explicitly marked or baseline Week 0
+      const weeksCount = Math.max(1, planResult.weeks || 1);
+      const weeklySnapshots: Record<number, any> = {};
+      const existingSavedWeeks: number[] = Array.isArray(planResult.diagnostics?.savedWeeks)
+        ? planResult.diagnostics.savedWeeks.filter((w: number) => typeof w === 'number' && w >= 0 && w < weeksCount)
+        : [0];
+      const savedWeeks: number[] = Array.from(new Set(existingSavedWeeks));
+
+      for (const w of savedWeeks) {
+        const weekAssignments = mappedAssignments.filter(a => a.weekIndex === w);
+        weeklySnapshots[w] = planResult.diagnostics?.weeklySnapshots?.[w] || {
+          weekIndex: w,
+          savedAt: nowIso,
+          assignments: weekAssignments,
+          memberSummaries: mappedMemberSummaries,
+          unassignedTasks: mappedUnassigned.filter(u => u.weekIndex === w),
+          fairnessIndex: planResult.fairnessIndex || planResult.diagnostics?.balanceScore || 100
+        };
+      }
+
       const planToSave: OptimizationResult = {
         ...planResult,
         householdId: savedHouseholdId,
@@ -474,13 +534,68 @@ export class SupabaseAdapter {
         memberSummaries: mappedMemberSummaries,
         unassignedTasks: mappedUnassigned,
         diagnostics: {
-          ...planResult.diagnostics
+          ...planResult.diagnostics,
+          savedWeeks,
+          weeklySnapshots
         }
       };
       await this.savePlan(userId, savedHouseholdId, planToSave);
     }
 
     return savedHouseholdId;
+  }
+
+  /**
+   * Saves or updates a specific weekly plan snapshot without overwriting other weeks.
+   */
+  async saveWeeklySnapshot(
+    userId: string,
+    householdId: string,
+    weekIndex: number,
+    weekSnapshot: any
+  ): Promise<boolean> {
+    const { data: plans, error: pError } = await this.client
+      .from('plans')
+      .select('*')
+      .eq('household_id', householdId)
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (pError) throw pError;
+    if (!plans || plans.length === 0) {
+      throw new Error('No calculated plan exists to save for this week. Please calculate and save your plan first.');
+    }
+
+    const latestPlan = plans[0] as PlanRow;
+    const diagnostics = (latestPlan.diagnostics as any) || {};
+    const existingSavedWeeks: number[] = Array.isArray(diagnostics.savedWeeks) ? diagnostics.savedWeeks : [];
+    const updatedSavedWeeks = Array.from(new Set([...existingSavedWeeks, weekIndex])).sort((a, b) => a - b);
+    const existingSnapshots = (diagnostics.weeklySnapshots as Record<number, any>) || {};
+
+    const updatedSnapshots = {
+      ...existingSnapshots,
+      [weekIndex]: {
+        ...weekSnapshot,
+        weekIndex,
+        savedAt: new Date().toISOString()
+      }
+    };
+
+    const updatedDiagnostics = {
+      ...diagnostics,
+      savedWeeks: updatedSavedWeeks,
+      weeklySnapshots: updatedSnapshots
+    };
+
+    const { error: uError } = await this.client
+      .from('plans')
+      .update({ diagnostics: updatedDiagnostics })
+      .eq('id', latestPlan.id)
+      .eq('user_id', userId);
+
+    if (uError) throw uError;
+    return true;
   }
 
   /**

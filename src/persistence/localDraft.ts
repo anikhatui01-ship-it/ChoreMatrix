@@ -178,3 +178,157 @@ export function clearLocalDraft(): void {
 export function hasLocalDraft(): boolean {
   return loadLocalDraft() !== null;
 }
+
+export const DEVICE_SAVED_PLAN_STORAGE_KEY = 'chorematrix_device_saved_plan_v1';
+
+export interface DeviceSavedPlanPayload {
+  request: OptimizationRequest;
+  result: OptimizationResult | null;
+  savedAt: number;
+}
+
+/**
+ * Explicitly saves a validated one-week plan and household configuration to device-local storage.
+ * Does not require an account and is preserved across browser refreshes on the current device.
+ */
+export function saveDevicePlan(
+  request: OptimizationRequest,
+  result?: OptimizationResult | null
+): boolean {
+  if (typeof localStorage === 'undefined') {
+    return false;
+  }
+
+  if (!isValidOptimizationRequest(request)) {
+    return false;
+  }
+
+  // Must contain valid members and tasks
+  if (request.members.length === 0 || request.tasks.length === 0) {
+    return false;
+  }
+
+  try {
+    const payload: DeviceSavedPlanPayload = {
+      request: {
+        household: {
+          id: request.household.id || 'h_device',
+          name: request.household.name || 'My Household',
+          type: request.household.type || 'couple',
+          mode: request.household.mode || 'capacity_aware',
+          planningHorizonWeeks: 1 // Strict 1-week limit for device-level anonymous saves
+        },
+        members: request.members.map(m => ({
+          id: String(m.id),
+          name: String(m.name || 'Member'),
+          role: String(m.role || 'Adult'),
+          weeklyCapacityMinutes: Math.max(1, Number(m.weeklyCapacityMinutes) || 180),
+          unavailableDays: Array.isArray(m.unavailableDays) ? m.unavailableDays.filter(d => VALID_DAYS.has(d)) : [],
+          preferredTaskIds: Array.isArray(m.preferredTaskIds) ? m.preferredTaskIds.map(String) : [],
+          avoidedTaskIds: Array.isArray(m.avoidedTaskIds) ? m.avoidedTaskIds.map(String) : []
+        })),
+        tasks: request.tasks.map(t => ({
+          id: String(t.id),
+          name: String(t.name || 'Chore'),
+          category: String(t.category || 'General'),
+          frequencyPerWeek: Math.max(1, Math.min(28, Number(t.frequencyPerWeek) || 1)),
+          durationMinutes: Math.max(1, Number(t.durationMinutes) || 15),
+          effortLevel: Math.max(1, Math.min(5, Number(t.effortLevel) || 2)) as 1 | 2 | 3 | 4 | 5,
+          eligibleMemberIds: Array.isArray(t.eligibleMemberIds) ? t.eligibleMemberIds.map(String) : [],
+          fixedDays: Array.isArray(t.fixedDays) ? t.fixedDays.filter(d => VALID_DAYS.has(d)) : undefined
+        }))
+      },
+      result: isValidPlanSnapshot(result) ? result : null,
+      savedAt: Date.now()
+    };
+
+    localStorage.setItem(DEVICE_SAVED_PLAN_STORAGE_KEY, JSON.stringify(payload));
+    return true;
+  } catch (e) {
+    console.warn('[ChoreMatrix LocalDraft] Failed to save device plan:', e);
+    return false;
+  }
+}
+
+/**
+ * Loads the explicitly saved device plan from localStorage, validating schema and sanitizing inputs.
+ */
+export function loadDevicePlan(): DeviceSavedPlanPayload | null {
+  if (typeof localStorage === 'undefined') {
+    return null;
+  }
+
+  try {
+    const raw = localStorage.getItem(DEVICE_SAVED_PLAN_STORAGE_KEY);
+    if (!raw) return null;
+
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== 'object' || !isValidOptimizationRequest(parsed.request)) {
+      clearDevicePlan();
+      return null;
+    }
+
+    const req = parsed.request;
+    const cleanRequest: OptimizationRequest = {
+      household: {
+        id: String(req.household.id || 'h_device'),
+        name: String(req.household.name || 'My Household'),
+        type: req.household.type === 'couple' || req.household.type === 'roommates' ? req.household.type : 'family',
+        mode: req.household.mode === 'balanced' ? 'balanced' : 'capacity_aware',
+        planningHorizonWeeks: 1
+      },
+      members: Array.isArray(req.members)
+        ? req.members.map((m: any, idx: number) => ({
+            id: String(m.id || `m_${idx}`),
+            name: String(m.name || `Member ${idx + 1}`),
+            role: String(m.role || 'Adult'),
+            weeklyCapacityMinutes: Math.max(1, Number(m.weeklyCapacityMinutes) || 180),
+            unavailableDays: Array.isArray(m.unavailableDays) ? m.unavailableDays.filter((d: any) => VALID_DAYS.has(d)) : [],
+            preferredTaskIds: Array.isArray(m.preferredTaskIds) ? m.preferredTaskIds.map(String) : [],
+            avoidedTaskIds: Array.isArray(m.avoidedTaskIds) ? m.avoidedTaskIds.map(String) : []
+          }))
+        : [],
+      tasks: Array.isArray(req.tasks)
+        ? req.tasks.map((t: any, idx: number) => ({
+            id: String(t.id || `t_${idx}`),
+            name: String(t.name || `Task ${idx + 1}`),
+            category: String(t.category || 'General'),
+            frequencyPerWeek: Math.max(1, Math.min(28, Number(t.frequencyPerWeek) || 1)),
+            durationMinutes: Math.max(1, Number(t.durationMinutes) || 15),
+            effortLevel: Math.max(1, Math.min(5, Number(t.effortLevel) || 2)) as 1 | 2 | 3 | 4 | 5,
+            eligibleMemberIds: Array.isArray(t.eligibleMemberIds) ? t.eligibleMemberIds.map(String) : [],
+            fixedDays: Array.isArray(t.fixedDays) ? t.fixedDays.filter((d: any) => VALID_DAYS.has(d)) : undefined
+          }))
+        : []
+    };
+
+    return {
+      request: cleanRequest,
+      result: isValidPlanSnapshot(parsed.result) ? parsed.result : null,
+      savedAt: Number(parsed.savedAt) || Date.now()
+    };
+  } catch (e) {
+    console.warn('[ChoreMatrix LocalDraft] Corrupted device plan encountered; resetting:', e);
+    clearDevicePlan();
+    return null;
+  }
+}
+
+/**
+ * Clears the explicitly saved device plan from browser storage.
+ */
+export function clearDevicePlan(): void {
+  if (typeof localStorage === 'undefined') {
+    return;
+  }
+  try {
+    localStorage.removeItem(DEVICE_SAVED_PLAN_STORAGE_KEY);
+  } catch (e) {}
+}
+
+/**
+ * Checks if an explicitly saved device plan exists in browser storage.
+ */
+export function hasDevicePlan(): boolean {
+  return loadDevicePlan() !== null;
+}
