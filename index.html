@@ -342,7 +342,9 @@
   th { font-size: 10px; text-transform: uppercase; color: var(--muted); font-weight: 700; }
   td { color: var(--ink); }
   .btn.active-view { background: var(--btn-dark-bg); border-color: var(--btn-dark-bg); color: var(--btn-dark-text); }
+  .differentiator-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
   @media (max-width: 1024px) { .grid { grid-template-columns: 1fr; } .calendar-grid { grid-template-columns: repeat(4, 1fr); } }
+  @media (max-width: 900px) { .differentiator-grid { grid-template-columns: 1fr; } }
   @media (max-width: 640px) { .calendar-grid { grid-template-columns: 1fr 1fr; } .metrics-strip { grid-template-columns: 1fr; } .form-row { grid-template-columns: 1fr; } }
   @media (max-width: 380px) { .calendar-grid { grid-template-columns: 1fr; } }
 </style>
@@ -397,16 +399,20 @@
 <main class="main-content" style="padding-top:24px;">
   <div class="shell" style="max-width:1360px;">
     <!-- Public Hero -->
-    <div style="text-align:center; padding:16px 0 28px; max-width:820px; margin:0 auto;">
-      <span class="badge teal" style="margin-bottom:8px;">First-Use Planning Aid · No Account Required</span>
-      <h1 style="font-size:32px; font-weight:800; margin:0 0 8px; color:var(--ink);">Stop arguing over who does what.<br>Let our household workload optimizer calculate the plan.</h1>
-      <p style="font-size:15px; color:var(--muted); margin:0 0 16px;">
-        Specify your members, responsibilities, and time constraints. Our automated chore allocator and capacity based chore planner calculates a workable, fair chore calculator schedule instantly in your browser below. Learn how our <a href="/how-it-works.html" style="color:var(--accent); text-decoration:underline;">chore allocation algorithm</a> works or explore <a href="/pricing.html" style="color:var(--accent); text-decoration:underline;">ChoreMatrix pricing</a>.
+    <div style="text-align:center; padding:20px 0 32px; max-width:840px; margin:0 auto;">
+      <span class="badge teal" style="margin-bottom:10px;">First-Use Planning Aid · No Account Required</span>
+      <h1 style="font-size:34px; font-weight:800; margin:0 0 10px; color:var(--ink); line-height:1.2; letter-spacing:-0.02em;">A chore plan your household can actually agree on.</h1>
+      <p style="font-size:16px; color:var(--muted); margin:0 0 20px; line-height:1.55;">
+        Turn your chores, household members, available time, and task effort into a practical household workload plan. Powered by a capacity-aware optimizer, ChoreMatrix replaces guesswork and daily negotiations with transparent, fair schedules.
       </p>
+      <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
+        <a href="#calculatorArea" class="btn primary" id="btnHeroCta" style="font-weight:700; padding:10px 22px; font-size:14px;">Build your household plan</a>
+        <a href="#differentiators" class="btn" style="font-weight:600; padding:10px 18px; font-size:14px;">Why it works</a>
+      </div>
     </div>
 
     <!-- Interactive Optimizer Controls -->
-    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding-bottom:14px; border-bottom:1px solid var(--line); margin-bottom:20px; flex-wrap:wrap;">
+    <div id="calculatorArea" style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding-bottom:14px; border-bottom:1px solid var(--line); margin-bottom:20px; flex-wrap:wrap;">
       <div style="display:flex; align-items:center; gap:10px;">
         <span style="font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase;">Interactive Calculator:</span>
         <span id="calcIndicator" style="font-size:12px; color:var(--good); font-weight:700; opacity:0; transition:opacity 0.25s ease;">✓ Calculated</span>
@@ -444,6 +450,9 @@
                 <option value="capacity_aware" selected>Capacity-Aware (Proportional share)</option>
                 <option value="balanced">Equal Workload (Flatten minutes)</option>
               </select>
+              <div id="modeExplanation" style="font-size:11px; color:var(--muted); margin-top:4px; line-height:1.4;">
+                <strong>Capacity-Aware:</strong> Distributes chores proportionally to each member's available weekly hours.
+              </div>
             </div>
             <div class="field">
               <label for="selWeeks">Planning Horizon</label>
@@ -530,8 +539,13 @@
                 <h2>Optimizer Results & Diagnostics</h2>
                 <div class="sub">Evaluation metrics and fairness breakdown.</div>
               </div>
-              <div class="score-badge" id="balanceScoreVal">
-                --<small>fairness index</small>
+              <div style="text-align:right;">
+                <div class="score-badge" id="balanceScoreVal">
+                  --<small>fairness index</small>
+                </div>
+                <div style="font-size:10px; color:var(--muted); margin-top:2px;">
+                  100 = balanced workload distribution
+                </div>
               </div>
             </div>
 
@@ -616,6 +630,67 @@
         <div id="demoAdSlot" style="margin-top: 16px;"></div>
       </section>
     </div>
+
+    <!-- Product Differentiation Section -->
+    <section id="differentiators" style="margin:48px 0 28px; padding-top:24px; border-top:1px solid var(--line);">
+      <div style="text-align:center; max-width:720px; margin:0 auto 28px;">
+        <span class="badge teal" style="margin-bottom:8px;">Core Differentiation</span>
+        <h2 style="font-size:24px; font-weight:800; margin:0 0 8px; color:var(--ink);">Why ChoreMatrix is Different from a Basic Chore Chart</h2>
+        <p style="font-size:14px; color:var(--muted); margin:0; line-height:1.5;">
+          Generic checklist apps only record who checked off a box. ChoreMatrix actively solves the workload allocation puzzle using three deterministic capabilities:
+        </p>
+      </div>
+
+      <div class="differentiator-grid">
+        <!-- Differentiator 1: Quantified Fairness Index -->
+        <div class="panel" style="padding:22px; display:flex; flex-direction:column; justify-content:space-between;">
+          <div>
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+              <div style="width:32px; height:32px; border-radius:8px; background:var(--primary-soft); color:var(--primary); font-weight:800; font-size:14px; display:grid; place-items:center;">1</div>
+              <h3 style="font-size:16px; font-weight:700; margin:0; color:var(--ink);">Quantified Fairness Index</h3>
+            </div>
+            <p style="font-size:13px; color:var(--muted); line-height:1.55; margin-bottom:12px;">
+              <strong>What it measures:</strong> A 0–100 mathematical score representing how evenly workload utilization is spread across household members relative to their capacity.
+            </p>
+            <p style="font-size:12px; color:var(--muted); line-height:1.5; margin:0;">
+              <em>Scope:</em> It measures proportional time and effort balance — not subjective emotional satisfaction. A score near 100 indicates balanced distribution; lower scores highlight bottleneck constraints or capacity deficits.
+            </p>
+          </div>
+        </div>
+
+        <!-- Differentiator 2: Two Optimization Modes -->
+        <div class="panel" style="padding:22px; display:flex; flex-direction:column; justify-content:space-between;">
+          <div>
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+              <div style="width:32px; height:32px; border-radius:8px; background:var(--primary-soft); color:var(--primary); font-weight:800; font-size:14px; display:grid; place-items:center;">2</div>
+              <h3 style="font-size:16px; font-weight:700; margin:0; color:var(--ink);">Two Workload Modes</h3>
+            </div>
+            <p style="font-size:13px; color:var(--muted); line-height:1.55; margin-bottom:12px;">
+              <strong>Capacity-Aware (Proportional):</strong> Chores scale to each person's available weekly hours (e.g., 300 min vs 120 min) so busier members carry less work.
+            </p>
+            <p style="font-size:12px; color:var(--muted); line-height:1.5; margin:0;">
+              <strong>Equal Workload (Flatten Minutes):</strong> Divides task minutes evenly among all members regardless of schedule differences — ideal for flatmates sharing equal rent and duties.
+            </p>
+          </div>
+        </div>
+
+        <!-- Differentiator 3: Transparent Assignment Explanations -->
+        <div class="panel" style="padding:22px; display:flex; flex-direction:column; justify-content:space-between;">
+          <div>
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:12px;">
+              <div style="width:32px; height:32px; border-radius:8px; background:var(--primary-soft); color:var(--primary); font-weight:800; font-size:14px; display:grid; place-items:center;">3</div>
+              <h3 style="font-size:16px; font-weight:700; margin:0; color:var(--ink);">Explainable Assignments</h3>
+            </div>
+            <p style="font-size:13px; color:var(--muted); line-height:1.55; margin-bottom:12px;">
+              <strong>Transparent rationale:</strong> Every task in the schedule displays why it was slotted — such as <em>only eligible member</em>, <em>preferred task match</em>, <em>proportional capacity fit</em>, or <em>preferred day alignment</em>.
+            </p>
+            <p style="font-size:12px; color:var(--muted); line-height:1.5; margin:0;">
+              <em>No black boxes:</em> Understanding why someone received a task prevents household conflict and clarifies trade-offs immediately.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
 </main>
 
@@ -837,11 +912,24 @@ function renderPlanningHorizonOptions(entitlement, targetWeeks = 1) {
   currentRequest.household.planningHorizonWeeks = safeWeeks;
 }
 
+function updateModeExplanation() {
+  const mode = $('#selMode')?.value || 'capacity_aware';
+  const el = $('#modeExplanation');
+  if (el) {
+    if (mode === 'capacity_aware') {
+      el.innerHTML = '<strong>Capacity-Aware:</strong> Distributes chores proportionally to each member\'s available weekly hours.';
+    } else {
+      el.innerHTML = '<strong>Equal Workload:</strong> Divides total chore minutes equally across all members, regardless of capacity differences.';
+    }
+  }
+}
+
 function init() {
   initTheme();
   attachListeners();
   currentEntitlement = getPlanningEntitlement(null);
   renderPlanningHorizonOptions(currentEntitlement, 1);
+  updateModeExplanation();
   renderInputs();
   renderResults();
   updateControlsState();
@@ -870,6 +958,7 @@ function loadPreset(key) {
   currentRequest = JSON.parse(JSON.stringify(PRESETS[key]));
   currentRequest.household.planningHorizonWeeks = enforcePlanningHorizon(currentRequest.household.planningHorizonWeeks, currentEntitlement);
   $('#selMode').value = currentRequest.household.mode;
+  updateModeExplanation();
   renderPlanningHorizonOptions(currentEntitlement, currentRequest.household.planningHorizonWeeks);
   renderInputs();
   executeOptimization(true);
@@ -1270,7 +1359,10 @@ function attachListeners() {
     executeRebalance();
   });
 
-  $('#selMode')?.addEventListener('change', () => executeOptimization());
+  $('#selMode')?.addEventListener('change', () => {
+    updateModeExplanation();
+    executeOptimization();
+  });
   $('#selWeeks')?.addEventListener('change', () => executeOptimization());
 
   $('#btnAddMember')?.addEventListener('click', (e) => {

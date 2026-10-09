@@ -200,6 +200,9 @@
                 <option value="capacity_aware" selected>Capacity-Aware (Proportional share)</option>
                 <option value="balanced">Equal Workload (Flatten minutes)</option>
               </select>
+              <div id="modeExplanation" style="font-size:11px; color:var(--muted); margin-top:4px; line-height:1.4;">
+                <strong>Capacity-Aware:</strong> Distributes chores proportionally to each member's available weekly hours.
+              </div>
             </div>
             <div class="field">
               <label for="selWeeks">Planning Horizon</label>
@@ -284,8 +287,13 @@
                 <h2>Optimizer Results & Diagnostics</h2>
                 <div class="sub">Evaluation metrics and fairness breakdown.</div>
               </div>
-              <div class="score-badge" id="balanceScoreVal">
-                --<small>fairness index</small>
+              <div style="text-align:right;">
+                <div class="score-badge" id="balanceScoreVal">
+                  --<small>fairness index</small>
+                </div>
+                <div style="font-size:10px; color:var(--muted); margin-top:2px;">
+                  100 = balanced workload distribution
+                </div>
               </div>
             </div>
 
@@ -602,12 +610,25 @@ function updateDirtyState() {
   }
 }
 
+function updateModeExplanation() {
+  const mode = $('#selMode')?.value || 'capacity_aware';
+  const el = $('#modeExplanation');
+  if (el) {
+    if (mode === 'capacity_aware') {
+      el.innerHTML = '<strong>Capacity-Aware:</strong> Distributes chores proportionally to each member\'s available weekly hours.';
+    } else {
+      el.innerHTML = '<strong>Equal Workload:</strong> Divides total chore minutes equally across all members, regardless of capacity differences.';
+    }
+  }
+}
+
 async function init() {
   attachListeners();
 
   // 0. Default safe state: Unauthenticated / unresolved entitlement is strictly Free (1 week)
   currentEntitlement = getPlanningEntitlement(null);
   renderPlanningHorizonOptions(currentEntitlement, 1);
+  updateModeExplanation();
 
   if (isSupabaseConfigured) {
     try {
@@ -744,6 +765,7 @@ function loadStarterForNewUser(isError = false) {
   currentRequest = JSON.parse(JSON.stringify(PRESETS.family));
   currentRequest.household.planningHorizonWeeks = enforcePlanningHorizon(currentRequest.household.planningHorizonWeeks, currentEntitlement);
   $('#selMode').value = currentRequest.household.mode;
+  updateModeExplanation();
   renderPlanningHorizonOptions(currentEntitlement, currentRequest.household.planningHorizonWeeks);
   renderInputs();
   executeOptimization();
@@ -767,6 +789,7 @@ function loadPreset(key) {
   currentRequest = JSON.parse(JSON.stringify(PRESETS[key]));
   currentRequest.household.planningHorizonWeeks = enforcePlanningHorizon(currentRequest.household.planningHorizonWeeks, currentEntitlement);
   $('#selMode').value = currentRequest.household.mode;
+  updateModeExplanation();
   renderPlanningHorizonOptions(currentEntitlement, currentRequest.household.planningHorizonWeeks);
   renderInputs();
   executeOptimization(true);
@@ -1276,6 +1299,7 @@ function attachListeners() {
   });
 
   $('#selMode')?.addEventListener('change', () => {
+    updateModeExplanation();
     executeOptimization();
     updateDirtyState();
   });
