@@ -93,7 +93,7 @@
   <div class="shell">
     <div class="upgrade-wrap">
       <div style="text-align: center; margin-bottom: 24px;">
-        <span class="badge" style="background: var(--badge-amber-bg); color: var(--badge-amber-text); margin-bottom: 8px;">
+        <span id="dodoTestModeBadge" class="badge" style="background: var(--badge-amber-bg); color: var(--badge-amber-text); margin-bottom: 8px; display: none;">
           Dodo Payments (Test Mode)
         </span>
         <h1 style="font-size: 28px; font-weight: 800; margin: 0 0 6px; color: var(--ink);">
@@ -135,6 +135,11 @@ import {
 renderNavbar('pricing');
 renderFooter();
 initCookieBanner();
+
+const testModeBadgeEl = document.getElementById('dodoTestModeBadge');
+if (testModeBadgeEl && DODO_CONFIG.environment === 'test_mode') {
+  testModeBadgeEl.style.display = 'inline-block';
+}
 
 const params = new URLSearchParams(window.location.search);
 const requestedPlanId = params.get('plan');
@@ -250,10 +255,11 @@ async function renderUpgradeCard() {
       • Refund Policy: For full refund eligibility and statutory consumer rights, see our <a href="/refund.html" style="color:var(--primary); text-decoration:underline;">Cancellation & Refund Policy</a>.
     </div>
 
-    <div style="background: var(--badge-amber-bg); border: 1px solid var(--warn); border-radius: 8px; padding: 14px; margin-bottom: 20px; font-size: 12px; color: var(--ink); line-height: 1.45;">
-      <strong>Upgrade Checkout Coming Soon:</strong><br>
-      Payment processing is currently being finalized for production. Live credit card checkout and subscription activation will open soon. Dodo Payments test mode subscription checkout is active below for testing. Live card charges will not be incurred.
-    </div>
+    ${DODO_CONFIG.environment === 'test_mode' ? `
+      <div id="testModeNotice" style="background: var(--panel-subtle); border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin-bottom: 20px; font-size: 12px; color: var(--muted); line-height: 1.45;">
+        <strong style="color: var(--ink);">Dodo Payments Test Mode:</strong> Sandbox environment active for preview testing. Live card charges will not be incurred.
+      </div>
+    ` : ''}
 
     <div style="margin-bottom: 20px;">
       <button type="button" id="btnDodoUpgrade" class="btn primary" style="width: 100%; font-size: 15px; font-weight: 700; padding: 12px 18px; text-align: center;">

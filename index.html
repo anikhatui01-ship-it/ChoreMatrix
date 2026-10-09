@@ -709,6 +709,56 @@
         </div>
       </div>
     </section>
+
+    <!-- Share ChoreMatrix with your circle Promotional Section -->
+    <section id="shareSection" class="panel" style="margin:48px auto 32px; max-width:780px; padding:32px 24px; text-align:center; border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow);">
+      <span class="badge teal" style="margin-bottom:12px;">Pass It Along</span>
+      <h2 style="font-size:24px; font-weight:800; margin:0 0 10px; color:var(--ink); letter-spacing:-0.02em;">Share ChoreMatrix with your circle</h2>
+      <p style="font-size:14.5px; color:var(--muted); margin:0 auto 20px; line-height:1.55; max-width:620px;">
+        Know a couple, family, or group of roommates tired of figuring out who does what? Share ChoreMatrix and help them make household chores more balanced.
+      </p>
+
+      <!-- Prewritten Share Message Preview Box -->
+      <div style="background:var(--panel-subtle); border:1px solid var(--line); border-radius:12px; padding:16px 20px; margin:0 auto 22px; max-width:640px; text-align:left;">
+        <div style="font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:8px; display:flex; justify-content:space-between; align-items:center;">
+          <span>Prewritten Message Preview</span>
+          <span style="font-weight:600; font-size:11px; color:var(--text-secondary);">Ready to share</span>
+        </div>
+        <p style="font-size:13.5px; color:var(--ink); margin:0; line-height:1.55; font-style:italic;">
+          “Check out ChoreMatrix — a household workload optimizer that helps couples, families, and roommates organize chores more fairly: <a href="https://chorematrix.online" style="color:var(--primary); text-decoration:underline; font-style:normal; font-weight:600;" target="_blank" rel="noopener">https://chorematrix.online</a>”
+        </p>
+      </div>
+
+      <!-- Action Buttons Row -->
+      <div style="display:flex; justify-content:center; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
+        <!-- Primary Share ChoreMatrix Button -->
+        <button type="button" class="btn primary" id="btnShareNative" style="font-weight:700; padding:10px 22px; font-size:14px; display:inline-flex; align-items:center; gap:8px;" aria-label="Share ChoreMatrix with your circle">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+          <span>Share ChoreMatrix</span>
+        </button>
+
+        <!-- Copy Link Button -->
+        <button type="button" class="btn secondary" id="btnCopyShareLink" style="font-weight:600; padding:10px 18px; font-size:14px; display:inline-flex; align-items:center; gap:8px;" aria-label="Copy ChoreMatrix link to clipboard">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+          <span id="copyShareBtnLabel">Copy link</span>
+        </button>
+
+        <!-- WhatsApp Link -->
+        <a href="https://api.whatsapp.com/send?text=Check%20out%20ChoreMatrix%20%E2%80%94%20a%20household%20workload%20optimizer%20that%20helps%20couples%2C%20families%2C%20and%20roommates%20organize%20chores%20more%20fairly%3A%20https%3A%2F%2Fchorematrix.online" target="_blank" rel="noopener noreferrer" class="btn small" style="display:inline-flex; align-items:center; gap:6px; padding:9px 14px; font-weight:600;" aria-label="Share via WhatsApp (opens in new tab)">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
+          <span>WhatsApp</span>
+        </a>
+
+        <!-- Email Link -->
+        <a href="mailto:?subject=ChoreMatrix%20%E2%80%94%20Household%20Workload%20Optimizer&body=Check%20out%20ChoreMatrix%20%E2%80%94%20a%20household%20workload%20optimizer%20that%20helps%20couples%2C%20families%2C%20and%20roommates%20organize%20chores%20more%20fairly%3A%20https%3A%2F%2Fchorematrix.online" class="btn small" style="display:inline-flex; align-items:center; gap:6px; padding:9px 14px; font-weight:600;" aria-label="Share via Email">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+          <span>Email</span>
+        </a>
+      </div>
+
+      <!-- Live Region Feedback for Copy / Share Status -->
+      <div id="shareStatusFeedback" role="status" aria-live="polite" style="display:none; font-size:13px; font-weight:600; line-height:1.4; padding:8px 14px; border-radius:8px; max-width:540px; margin:0 auto;"></div>
+    </section>
   </div>
 </main>
 
@@ -1017,9 +1067,97 @@ function hideDraftBanner() {
   if (badge) badge.style.display = 'none';
 }
 
+function initShareSection() {
+  const CANONICAL_URL = 'https://chorematrix.online';
+  const SHARE_TITLE = 'ChoreMatrix — Household Workload Optimizer';
+  const SHARE_TEXT = 'Check out ChoreMatrix — a household workload optimizer that helps couples, families, and roommates organize chores more fairly: https://chorematrix.online';
+
+  const btnShareNative = $('#btnShareNative');
+  const btnCopyShareLink = $('#btnCopyShareLink');
+  const copyShareBtnLabel = $('#copyShareBtnLabel');
+  const feedbackEl = $('#shareStatusFeedback');
+
+  let feedbackTimer = null;
+
+  function showShareFeedback(msg, isSuccess) {
+    if (!feedbackEl) return;
+    if (feedbackTimer) clearTimeout(feedbackTimer);
+    feedbackEl.textContent = msg;
+    feedbackEl.style.display = 'block';
+    feedbackEl.style.background = isSuccess ? 'var(--badge-teal-bg)' : 'var(--alert-bg)';
+    feedbackEl.style.border = `1px solid ${isSuccess ? 'var(--good)' : 'var(--bad)'}`;
+    feedbackEl.style.color = isSuccess ? 'var(--good)' : 'var(--bad)';
+
+    feedbackTimer = setTimeout(() => {
+      feedbackEl.style.display = 'none';
+      feedbackEl.textContent = '';
+      if (copyShareBtnLabel) {
+        copyShareBtnLabel.textContent = 'Copy link';
+      }
+    }, 4000);
+  }
+
+  async function copyToClipboard(textToCopy, successMsg) {
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(textToCopy);
+      } else {
+        const textarea = document.createElement('textarea');
+        textarea.value = textToCopy;
+        textarea.style.position = 'fixed';
+        textarea.style.left = '-9999px';
+        textarea.style.top = '-9999px';
+        document.body.appendChild(textarea);
+        textarea.focus();
+        textarea.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(textarea);
+        if (!ok) throw new Error('execCommand copy failed');
+      }
+      if (copyShareBtnLabel) {
+        copyShareBtnLabel.textContent = 'Copied! ✓';
+      }
+      showShareFeedback(successMsg, true);
+    } catch (err) {
+      console.warn('[Share] Clipboard copy error:', err);
+      showShareFeedback('Could not copy automatically. You can copy this link: ' + CANONICAL_URL, false);
+    }
+  }
+
+  if (btnShareNative) {
+    btnShareNative.addEventListener('click', async (e) => {
+      e.preventDefault();
+      if (typeof navigator.share === 'function') {
+        try {
+          await navigator.share({
+            title: SHARE_TITLE,
+            text: SHARE_TEXT,
+            url: CANONICAL_URL
+          });
+        } catch (err) {
+          if (err && err.name !== 'AbortError') {
+            console.warn('[Share] Web Share API failed, falling back to clipboard:', err);
+            await copyToClipboard(SHARE_TEXT, '✓ Share message copied to clipboard! Paste it anywhere to share.');
+          }
+        }
+      } else {
+        await copyToClipboard(SHARE_TEXT, '✓ Share message copied to clipboard! Paste it anywhere to share.');
+      }
+    });
+  }
+
+  if (btnCopyShareLink) {
+    btnCopyShareLink.addEventListener('click', async (e) => {
+      e.preventDefault();
+      await copyToClipboard(CANONICAL_URL, '✓ Link copied to clipboard (' + CANONICAL_URL + ')');
+    });
+  }
+}
+
 function init() {
   initTheme();
   attachListeners();
+  initShareSection();
   currentEntitlement = getPlanningEntitlement(null);
   renderPlanningHorizonOptions(currentEntitlement, 1);
   updateModeExplanation();

@@ -103,14 +103,14 @@ describe('Pricing CTAs & Upgrade Route Architecture', () => {
     );
   });
 
-  it('verifies upgrade page displays honest coming-soon state with no fake payment success', () => {
+  it('verifies upgrade page does not display outdated coming-soon banner with no fake payment success', () => {
     const content = fs.readFileSync(upgradeHtmlPath, 'utf8');
 
-    // Honest status messaging
+    // Outdated status messaging removed
     assert.ok(
-      content.includes('Upgrade Checkout Coming Soon') ||
-      content.includes('Payment processing is currently being finalized'),
-      'Must display honest state that payments are coming soon'
+      !content.includes('Upgrade Checkout Coming Soon') &&
+      !content.includes('Payment processing is currently being finalized'),
+      'Must not display outdated coming soon announcement'
     );
 
     // No fake payment or credit card fields

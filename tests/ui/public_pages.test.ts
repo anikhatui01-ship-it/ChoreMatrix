@@ -168,4 +168,61 @@ describe('Public Pages & Legal Suite Verification', () => {
     assert.ok(cookiesHtml.includes('Disabled'), 'Cookies page must disclose analytics are disabled');
     assert.ok(cookiesHtml.includes('chorematrix_auth_token'), 'Cookies page must list necessary auth token');
   });
+
+  it('verifies Share ChoreMatrix promotional section on homepage', () => {
+    const indexHtml = fs.readFileSync(path.join(rootDir, 'index.html'), 'utf8');
+
+    // Section container and heading
+    assert.ok(indexHtml.includes('id="shareSection"'), 'index.html must have #shareSection container');
+    assert.ok(indexHtml.includes('Share ChoreMatrix with your circle'), 'Must contain exact heading');
+    assert.ok(
+      indexHtml.includes('tired of figuring out who does what? Share ChoreMatrix'),
+      'Must contain supporting copy'
+    );
+
+    // Primary share and copy buttons
+    assert.ok(indexHtml.includes('id="btnShareNative"'), 'Must have #btnShareNative button');
+    assert.ok(indexHtml.includes('id="btnCopyShareLink"'), 'Must have #btnCopyShareLink button');
+
+    // Prewritten message preview and canonical URL
+    assert.ok(
+      indexHtml.includes('Check out ChoreMatrix — a household workload optimizer that helps couples, families, and roommates organize chores more fairly: https://chorematrix.online') ||
+      indexHtml.includes('Check out ChoreMatrix — a household workload optimizer that helps couples, families, and roommates organize chores more fairly:'),
+      'Must contain prewritten share message'
+    );
+    assert.ok(indexHtml.includes('https://chorematrix.online'), 'Must use canonical production URL');
+    assert.ok(!indexHtml.includes('vercel.app/'), 'Must never contain preview URLs');
+
+    // WhatsApp and Email links
+    assert.ok(indexHtml.includes('https://api.whatsapp.com/send?text='), 'Must include WhatsApp sharing link');
+    assert.ok(indexHtml.includes('mailto:?subject='), 'Must include email sharing link');
+
+    // Accessible live feedback region
+    assert.ok(indexHtml.includes('id="shareStatusFeedback"'), 'Must include #shareStatusFeedback element');
+    assert.ok(indexHtml.includes('aria-live="polite"'), 'Feedback must use aria-live="polite"');
+
+    // Promotional sharing only: no referral program, codes, or rewards
+    assert.ok(!indexHtml.includes('referral_code'), 'Must not include referral code');
+    assert.ok(!indexHtml.includes('earn rewards'), 'Must not promise rewards');
+    assert.ok(!indexHtml.includes('discount code'), 'Must not promise discount codes');
+  });
+
+  it('verifies outdated checkout announcement is removed from all pricing surfaces', () => {
+    const htmlFiles = fs.readdirSync(rootDir).filter(f => f.endsWith('.html'));
+    for (const file of htmlFiles) {
+      const content = fs.readFileSync(path.join(rootDir, file), 'utf8');
+      assert.ok(
+        !content.includes('Upgrade Checkout Coming Soon'),
+        `File ${file} must not contain outdated "Upgrade Checkout Coming Soon"`
+      );
+      assert.ok(
+        !content.includes('Payment processing is currently being finalized'),
+        `File ${file} must not contain outdated "Payment processing is currently being finalized"`
+      );
+      assert.ok(
+        !content.includes('Live credit card checkout and subscription activation will open soon'),
+        `File ${file} must not contain outdated "Live credit card checkout and subscription activation will open soon"`
+      );
+    }
+  });
 });

@@ -257,14 +257,14 @@ describe('ChoreMatrix Plan Entitlements & Truthful Pricing Suite', () => {
         'Paid tiers must NOT link directly to /app.html'
       );
 
-      // Upgrade page displays honest checkout coming soon banner
+      // Upgrade page does not display outdated checkout coming soon banner
       assert.ok(
-        upgradeContent.includes('Upgrade Checkout Coming Soon'),
-        'upgrade.html must display honest coming soon status'
+        !upgradeContent.includes('Upgrade Checkout Coming Soon'),
+        'upgrade.html must not contain outdated coming soon status'
       );
       assert.ok(
-        upgradeContent.includes('Payment processing is currently being finalized'),
-        'upgrade.html must explain payment processing is in progress'
+        !upgradeContent.includes('Payment processing is currently being finalized'),
+        'upgrade.html must not contain outdated payment processing notice'
       );
 
       // No fake payment or credit card simulation
