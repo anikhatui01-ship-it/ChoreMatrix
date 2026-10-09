@@ -196,11 +196,11 @@ export async function build(options = {}) {
     fs.copyFileSync(distClientBundle, path.join(rootDir, 'src', 'client.bundle.js'));
   }
 
-  // 4. Copy styles to dist
-  fs.copyFileSync(
-    path.join(rootDir, 'src', 'styles', 'common.css'),
-    path.join(distDir, 'src', 'styles', 'common.css')
-  );
+  // 4. Minify styles to dist
+  const rawCss = fs.readFileSync(path.join(rootDir, 'src', 'styles', 'common.css'), 'utf8');
+  const minifiedCss = (await esbuild.transform(rawCss, { loader: 'css', minify: true })).code;
+  fs.writeFileSync(path.join(distDir, 'src', 'styles', 'common.css'), minifiedCss, 'utf8');
+
 
   // 5. Copy all production HTML pages
   const htmlFiles = [
