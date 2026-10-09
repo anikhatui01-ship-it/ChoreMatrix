@@ -11,6 +11,7 @@
 
 import { supabase, isSupabaseConfigured, getEnvVar } from '../config/supabase.ts';
 import { DODO_CONFIG, normalizePlanTier, normalizeBillingInterval, getDodoProductId } from '../config/dodo.ts';
+import { trackEvent } from '../analytics/ga4.ts';
 
 export interface InitiateDodoUpgradeOptions {
   email?: string;
@@ -72,6 +73,12 @@ export async function initiateDodoSubscription(
     console.error('[Dodo Checkout]', err);
     return { success: false, error: err };
   }
+
+  // Track checkout intent (zero PII)
+  trackEvent('checkout_started', {
+    plan: cleanPlan,
+    interval: cleanInterval
+  });
 
   // 3. Call backend Edge Function to generate secure checkout session
   try {

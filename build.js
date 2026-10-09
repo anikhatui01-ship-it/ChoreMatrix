@@ -206,6 +206,9 @@ export async function build(options = {}) {
   const htmlFiles = [
     'index.html',
     'how-it-works.html',
+    'chore-chart-for-couples.html',
+    'roommate-chore-schedule.html',
+    'family-chore-planner.html',
     'pricing.html',
     'why-chorematrix.html',
     'faq.html',

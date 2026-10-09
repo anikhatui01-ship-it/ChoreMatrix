@@ -138,7 +138,7 @@
 <div id="globalFooter"></div>
 
 <script type="module">
-import { authService, isSupabaseConfigured, renderNavbar, renderFooter, initCookieBanner } from './src/client.bundle.js';
+import { authService, isSupabaseConfigured, renderNavbar, renderFooter, initCookieBanner, trackEvent } from './src/client.bundle.js';
 
 renderNavbar('signup');
 renderFooter();
@@ -193,8 +193,15 @@ form?.addEventListener('submit', async (e) => {
 
   setLoading(true);
 
+  if (typeof trackEvent === 'function') {
+    trackEvent('registration_started');
+  }
+
   try {
     const data = await authService.signUp(email, password, { isAtLeast13: is13OrOlder });
+    if (typeof trackEvent === 'function') {
+      trackEvent('registration_completed', { status: 'success' });
+    }
     // If confirmation is required, redirect to verify-email
     if (data.user && !data.session) {
       window.location.href = `/verify-email.html?email=${encodeURIComponent(email)}`;

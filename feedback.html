@@ -201,12 +201,17 @@ import {
   initCookieBanner,
   authService,
   submitUserFeedback,
-  validateFeedbackInput
+  validateFeedbackInput,
+  trackEvent
 } from './src/client.bundle.js';
 
 renderNavbar('feedback');
 renderFooter();
 initCookieBanner();
+
+if (typeof trackEvent === 'function') {
+  trackEvent('feedback_page_viewed');
+}
 
 let currentUserId = null;
 
@@ -282,6 +287,14 @@ form?.addEventListener('submit', async (e) => {
   try {
     const result = await submitUserFeedback(submission, currentUserId);
     if (result.success) {
+      if (typeof trackEvent === 'function') {
+        trackEvent('feedback_submitted', {
+          household_type: submission.householdType,
+          has_rating: Boolean(submission.experienceRating),
+          has_email: Boolean(submission.email && submission.email.trim().length > 0),
+          allow_quote: Boolean(submission.allowQuote)
+        });
+      }
       form.style.display = 'none';
       if (successPanel) successPanel.style.display = 'block';
     } else {

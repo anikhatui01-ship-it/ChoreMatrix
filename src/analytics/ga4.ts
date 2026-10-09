@@ -51,6 +51,15 @@ export function sanitizeUrl(urlStr: string): string {
  */
 export function isSensitiveKey(key: string): boolean {
   const lower = key.toLowerCase();
+  const safeExceptions = [
+    'member_count', 'task_count', 'household_type', 'preset_name',
+    'fairness_score', 'horizon_weeks', 'has_rating', 'has_email', 'allow_quote',
+    'page_title', 'plan_tier', 'optimizer_step', 'theme_mode', 'click_target', 'step', 'category'
+  ];
+  if (safeExceptions.includes(lower)) {
+    return false;
+  }
+
   const sensitivePatterns = [
     'password', 'passwd', 'pwd', 'secret', 'token', 'auth', 'jwt',
     'credential', 'apikey', 'api_key', 'private', 'email', 'mail',
@@ -231,4 +240,12 @@ export function trackPageView(pagePath?: string, pageTitle?: string): void {
   }
 
   win.gtag('event', 'page_view', params);
+}
+
+// Global browser window helper bindings
+if (typeof window !== 'undefined') {
+  const win = window as any;
+  if (!win.trackEvent) win.trackEvent = trackEvent;
+  if (!win.trackPageView) win.trackPageView = trackPageView;
+  if (!win.initGoogleAnalytics) win.initGoogleAnalytics = initGoogleAnalytics;
 }

@@ -400,7 +400,8 @@ import {
   initCookieBanner,
   AdSlot,
   getPlanningEntitlement,
-  enforcePlanningHorizon
+  enforcePlanningHorizon,
+  trackEvent
 } from './src/client.bundle.js';
 
 renderNavbar('app');
@@ -754,8 +755,13 @@ async function init() {
   renderResults();
   updateDirtyState();
 
-  // Check URL query parameters (e.g. ?weeks=4) and safely clamp against currentEntitlement
+  // Check URL query parameters (e.g. ?preset=couple or ?weeks=4) and safely clamp against currentEntitlement
   const urlParams = new URLSearchParams(window.location.search);
+  const requestedPreset = urlParams.get('preset');
+  if (requestedPreset && PRESETS[requestedPreset] && !currentUser) {
+    loadPreset(requestedPreset);
+  }
+
   const requestedUrlWeeks = urlParams.get('weeks') || urlParams.get('horizon');
   if (requestedUrlWeeks) {
     const safeUrlWeeks = enforcePlanningHorizon(requestedUrlWeeks, currentEntitlement);
@@ -763,6 +769,16 @@ async function init() {
     renderPlanningHorizonOptions(currentEntitlement, safeUrlWeeks);
     if (currentRequest.members.length > 0 && currentRequest.tasks.length > 0) {
       executeOptimization(true);
+    }
+  }
+}
+
+let calculatorStarted = false;
+function notifyCalculatorStarted() {
+  if (!calculatorStarted) {
+    calculatorStarted = true;
+    if (typeof trackEvent === 'function') {
+      trackEvent('calculator_started');
     }
   }
 }
@@ -792,6 +808,10 @@ function safeLoadPreset(key) {
 }
 
 function loadPreset(key) {
+  notifyCalculatorStarted();
+  if (typeof trackEvent === 'function') {
+    trackEvent('preset_selected', { preset_name: key });
+  }
   currentRequest = JSON.parse(JSON.stringify(PRESETS[key]));
   currentRequest.household.planningHorizonWeeks = enforcePlanningHorizon(currentRequest.household.planningHorizonWeeks, currentEntitlement);
   $('#selMode').value = currentRequest.household.mode;
@@ -1043,6 +1063,15 @@ function executeOptimization(force = false) {
   lastCalculatedHash = stateHash;
   if (currentResult) {
     activeWeek = Math.max(0, Math.min(activeWeek, currentResult.weeks - 1));
+    if (typeof trackEvent === 'function') {
+      trackEvent('plan_calculated', {
+        member_count: currentRequest.members.length,
+        task_count: currentRequest.tasks.length,
+        mode: currentRequest.household.mode,
+        fairness_score: Math.round(currentResult.fairnessIndex || 0),
+        horizon_weeks: currentRequest.household.planningHorizonWeeks
+      });
+    }
   }
   renderResults();
   flashCalculateStatus();
@@ -1071,6 +1100,15 @@ function executeRebalance() {
   lastCalculatedHash = JSON.stringify(currentRequest);
   if (currentResult) {
     activeWeek = Math.max(0, Math.min(activeWeek, currentResult.weeks - 1));
+    if (typeof trackEvent === 'function') {
+      trackEvent('plan_rebalanced', {
+        member_count: currentRequest.members.length,
+        task_count: currentRequest.tasks.length,
+        mode: currentRequest.household.mode,
+        fairness_score: Math.round(currentResult.fairnessIndex || 0),
+        horizon_weeks: currentRequest.household.planningHorizonWeeks
+      });
+    }
   }
   renderResults();
   flashCalculateStatus();
@@ -1106,6 +1144,13 @@ async function handleSave() {
     lastSavedSnapshot = getConfigurationSnapshot(currentRequest);
     hasUnsavedChanges = false;
     updateDirtyState();
+
+    if (typeof trackEvent === 'function') {
+      trackEvent('plan_saved', {
+        member_count: currentRequest.members.length,
+        task_count: currentRequest.tasks.length
+      });
+    }
 
     btnSave.textContent = 'Saved';
     btnSave.classList.remove('primary');
@@ -1322,6 +1367,7 @@ function attachListeners() {
 
   $('#btnAddMember')?.addEventListener('click', (e) => {
     e.preventDefault();
+    notifyCalculatorStarted();
     syncDOMToState();
     const newId = `m_${Date.now()}`;
     currentRequest.members.push({
@@ -1344,6 +1390,7 @@ function attachListeners() {
 
   $('#btnAddTask')?.addEventListener('click', (e) => {
     e.preventDefault();
+    notifyCalculatorStarted();
     syncDOMToState();
     const newId = `t_${Date.now()}`;
     currentRequest.tasks.push({

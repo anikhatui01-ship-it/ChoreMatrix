@@ -23,9 +23,12 @@ export function renderFooter() {
           </div>
 
           <div class="footer-col">
-            <h4>Product</h4>
+            <h4>Product & Use Cases</h4>
             <ul>
               <li><a href="/how-it-works.html">How It Works</a></li>
+              <li><a href="/chore-chart-for-couples.html">For Couples</a></li>
+              <li><a href="/roommate-chore-schedule.html">For Roommates</a></li>
+              <li><a href="/family-chore-planner.html">For Families</a></li>
               <li><a href="/pricing.html">Pricing & Trials</a></li>
               <li><a href="/why-chorematrix.html">Why ChoreMatrix</a></li>
               <li><a href="/faq.html">FAQ</a></li>
