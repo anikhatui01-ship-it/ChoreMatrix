@@ -1,0 +1,33 @@
+# ChoreMatrix
+
+> Deterministic Household Workload Optimizer
+
+ChoreMatrix (https://chorematrix.online) is a web application that calculates fair, balanced household chore schedules. Rather than acting as a static checklist or random assignment generator, ChoreMatrix uses a deterministic optimization engine to allocate chores based on individual member capacity, schedule availability, task duration, effort weighting, and hard constraints.
+
+## Core Features & Capabilities
+- **Capacity-Aware Balancing:** Distributes chore minutes proportionally according to each household member's available weekly capacity.
+- **Equal Workload Balancing:** Flattens chore minutes equally across all members.
+- **Availability & Blackout Schedules:** Respects member-specific unavailable days to prevent impossible scheduling.
+- **Effort-Weighted Tasks:** Scales task impact using duration and physical/mental effort levels (1–5).
+- **Quantified Fairness Score:** Provides a transparent 0–100 balance metric derived from utilization spread across members.
+- **Multi-Week Rotations:** Rotates recurring tasks across up to 4 weeks (Pro and Plus plans) to ensure long-term balance.
+- **Privacy-First In-Browser Planning:** Allows anonymous visitors to customize households and calculate full 1-week plans locally without creating an account.
+
+## Public Resources & Documentation
+- [Homepage & Interactive Calculator](https://chorematrix.online/): In-browser planner and preset explorer.
+- [How ChoreMatrix Works](https://chorematrix.online/how-it-works.html): Detailed explanation of the optimization algorithm, constraint checks, and capacity modeling.
+- [Why ChoreMatrix](https://chorematrix.online/why-chorematrix.html): Key differentiators between deterministic workload optimization and basic checklist apps.
+- [Frequently Asked Questions (FAQ)](https://chorematrix.online/faq.html): Comprehensive knowledge base covering 25 common questions across algorithm design, diagnostics, privacy, and account features.
+- [Pricing & Subscription Plans](https://chorematrix.online/pricing.html): Comparison of Free ($0), Pro ($4.99/month), and Plus ($8.99/month) tiers with free trials and transparent auto-renewal terms.
+- [Couples Chore Planner](https://chorematrix.online/chore-chart-for-couples.html): Use case guide for couples balancing domestic responsibilities.
+- [Roommate Chore Schedule](https://chorematrix.online/roommate-chore-schedule.html): Shared house chore distribution without housemate friction.
+- [Family Chore Planner](https://chorematrix.online/family-chore-planner.html): Age-appropriate task allocation balancing parents, teens, and children.
+
+## Policies & Support
+- [Contact & Support](https://chorematrix.online/contact.html): Official customer support (chorematrixsupport@gmail.com).
+- [Product Feedback](https://chorematrix.online/feedback.html): Early user feedback and feature requests.
+- [Cancellation & Refund Policy](https://chorematrix.online/refund.html): 7-day trial terms, Merchant of Record (Dodo Payments) disclosures, and statutory consumer rights.
+- [Privacy Policy](https://chorematrix.online/privacy.html): Data minimization practices, zero third-party marketing tracking, and subprocessor disclosures.
+- [Terms of Service](https://chorematrix.online/terms.html): Terms and conditions for using ChoreMatrix.
+- [Cookie Policy](https://chorematrix.online/cookies.html): Technical details on local storage usage and session management.
+- [Data Rights](https://chorematrix.online/data-rights.html): Data export and account deletion mechanisms.

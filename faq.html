@@ -18,6 +18,245 @@
 <meta name="twitter:title" content="ChoreMatrix FAQ — Household Workload & Chore Planning" />
 <meta name="twitter:description" content="Find answers about ChoreMatrix, household workload optimization, chore planning, fairness calculations, privacy, accounts, and subscriptions." />
 <meta name="twitter:image" content="https://chorematrix.online/og-image.jpg" />
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@graph": [
+    {
+      "@type": "BreadcrumbList",
+      "@id": "https://chorematrix.online/faq.html#breadcrumb",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://chorematrix.online/"
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "FAQ",
+          "item": "https://chorematrix.online/faq.html"
+        }
+      ]
+    },
+    {
+      "@type": "FAQPage",
+      "@id": "https://chorematrix.online/faq.html#faq",
+      "url": "https://chorematrix.online/faq.html",
+      "name": "ChoreMatrix FAQ — Household Workload & Chore Planning",
+      "isPartOf": {
+        "@type": "WebSite",
+        "@id": "https://chorematrix.online/#website",
+        "url": "https://chorematrix.online/",
+        "name": "ChoreMatrix"
+      },
+      "mainEntity": [
+        {
+          "@type": "Question",
+          "name": "What is ChoreMatrix?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "ChoreMatrix is a deterministic household workload optimizer. Instead of acting as a passive checklist or a random assignment wheel, ChoreMatrix models your household members, their individual capacities, schedule availability, and task constraints to calculate balanced, workable chore allocations."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Do I need an account to use ChoreMatrix?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No account is required for first-use planning. You can explore the optimizer, test sample household presets, customize members and chores, and calculate full weekly plans directly inside your browser without entering personal information or signing in. Visitors can also save their one-week plan locally on their current device. Creating a free account enables cloud synchronization."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does ChoreMatrix work on phones?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. ChoreMatrix is built as a fully responsive web application that runs directly in modern mobile browsers on iOS and Android without requiring an app store download."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "How does ChoreMatrix calculate a plan?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "ChoreMatrix calculates plans using a deterministic constraint-satisfaction and scoring engine. It normalizes task occurrences across the planning horizon, filters candidate assignments against strict hard constraints (availability, eligibility, fixed days), evaluates eligible assignments using weighted criteria, and refines the schedule through systematic local search improvements (2-opt candidate swaps)."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is Equal Workload?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Equal Workload (balanced mode) is an optimization objective where the optimizer minimizes the difference in total weighted chore minutes assigned to each person, striving to distribute total chore volume equally across all participants."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is Capacity-Aware optimization?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Capacity-Aware optimization distributes work proportionally according to each member's declared weekly capacity minutes. It targets an equal percentage of capacity utilization rather than an identical number of raw minutes."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What does \"effort\" mean?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Effort reflects the physical and mental intensity required to complete a task. ChoreMatrix uses an explicit 5-point effort multiplier scale (Level 1: 1.00x, Level 2: 1.25x, Level 3: 1.50x, Level 4: 1.85x, Level 5: 2.25x) multiplied by raw task duration to determine weighted minutes."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What are hard constraints?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Hard constraints are mandatory scheduling boundaries that the optimizer will never violate, including member unavailable days, task age/role eligibility restrictions, and fixed-day chore assignments. If a hard constraint cannot be met, the chore is flagged as unassigned rather than assigned improperly."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What are soft preferences?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Soft preferences represent non-binding inclinations, such as preferred or avoided chores and preferred execution days. The optimizer applies scoring bonuses or penalties to steer assignments toward agreeable arrangements without violating hard constraints."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What is \"Calculate Plan\"?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Calculate Plan generates an optimized schedule from scratch based on current household members, capacities, and chore lists, establishing the most balanced baseline schedule across the planning horizon."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What does \"Rebalance\" do?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Rebalance performs minimal-disruption rescheduling when circumstances change mid-cycle. It applies a penalty to moving already-scheduled tasks, keeping unaffected chores in place and calculating the smallest necessary adjustments with an itemized diff summary."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "When should I use Rebalance instead of Calculate Plan?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Use Rebalance whenever unexpected schedule adjustments occur in an active plan (such as illness or travel on a specific day) so existing settled routines for other days and members remain undisturbed."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What does the fairness index mean?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "The fairness index (balance score) is a 0–100 mathematical metric reflecting the spread in capacity utilization across household members. A score of 100 indicates identical relative workload utilization across members."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why can someone show more than 100% capacity?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "When utilization exceeds 100%, it means assigned weighted chore minutes exceed declared weekly availability. ChoreMatrix surfaces this as an overload diagnostic so bottlenecks can be remediated."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What happens if a task cannot be assigned?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "If a task cannot be assigned without breaking a hard constraint, ChoreMatrix lists it in an explicit Unassigned Tasks table with diagnostic codes (like ERR_NO_ELIGIBLE_MEMBERS) and actionable remediation suggestions."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Why does ChoreMatrix sometimes say something is infeasible?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Infeasibility indicates that requested constraints leave zero mathematically valid allocation options (e.g. a chore locked to Friday when all eligible members are unavailable on Fridays)."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What happens when I create an account?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Creating an account establishes an authenticated profile, persisting household configurations, member availability, and saved plans to the cloud database for multi-device synchronization."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Where is my household data stored?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Anonymous visitor plans reside exclusively in the browser's local storage. Authenticated user data is stored in the ChoreMatrix PostgreSQL cloud database backend (via Supabase), encrypted in transit with TLS."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can another user see my household?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. Strict PostgreSQL Row Level Security (RLS) policies enforce that queries only access rows matching the authenticated user's ID (auth.uid() = user_id)."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What happens if I log out?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Logging out terminates your authenticated session and clears tokens from browser storage. The account dashboard supports three session termination scopes: This Device, All Other Devices, or Sign Out Everywhere."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I delete my account?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. You can permanently delete your account and all associated household records, members, tasks, and saved plans at any time via the Account Management dashboard."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "What information does ChoreMatrix collect?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Following data minimization, ChoreMatrix collects only your account credentials, household labels, member capacities/availability, and chore configurations. We do not collect physical street addresses, GPS locations, phone numbers, or credit card numbers."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does ChoreMatrix use AI?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. ChoreMatrix does not use large language models or generative AI in its core optimization engine. It is built entirely on deterministic combinatorial algorithms and discrete mathematical scoring rules."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Does ChoreMatrix use analytics or advertising tracking?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "No. ChoreMatrix contains zero advertising trackers, zero social media pixels, and zero cross-site behavioral cookies."
+          }
+        },
+        {
+          "@type": "Question",
+          "name": "Can I manage cookie preferences?",
+          "acceptedAnswer": {
+            "@type": "Answer",
+            "text": "Yes. You can manage storage preferences via the Cookie Preferences link in the footer of any page or on the Cookie Policy page."
+          }
+        }
+      ]
+    }
+  ]
+}
+</script>
 <!-- Open Graph Metadata -->
 <script>
   (function() {

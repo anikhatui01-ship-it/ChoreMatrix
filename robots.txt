@@ -1,9 +1,14 @@
 User-agent: *
 Allow: /
+Disallow: /app
 Disallow: /app.html
+Disallow: /account
 Disallow: /account.html
+Disallow: /upgrade
 Disallow: /upgrade.html
+Disallow: /reset-password
 Disallow: /reset-password.html
+Disallow: /verify-email
 Disallow: /verify-email.html
 
 Sitemap: https://chorematrix.online/sitemap.xml

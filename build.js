@@ -248,6 +248,7 @@ export async function build(options = {}) {
     'og-image.jpg',
     'robots.txt',
     'sitemap.xml',
+    'llms.txt',
     'ads.txt'
   ];
   for (const asset of staticAssets) {
