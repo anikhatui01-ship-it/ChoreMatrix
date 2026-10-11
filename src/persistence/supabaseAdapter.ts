@@ -230,12 +230,18 @@ export class SupabaseAdapter {
     if (plansRes.data && plansRes.data.length > 0) {
       const p = plansRes.data[0] as PlanRow;
       const diag = (p.diagnostics as any) || {};
+      const isSingleDay = diag.planningMode === 'single_day' || (diag.targetDate !== undefined && p.weeks === 1);
+      const planMode = isSingleDay ? 'single_day' : 'multi_week';
+
       latestPlan = {
         runId: p.id,
         householdId: p.household_id,
         mode: household.mode,
         optimizerVersion: p.optimizer_version,
-        weeks: household.planning_horizon_weeks,
+        weeks: isSingleDay ? 1 : household.planning_horizon_weeks,
+        planningMode: planMode,
+        targetDate: diag.targetDate,
+        targetDayOfWeek: diag.targetDayOfWeek,
         totalHouseholdWorkMinutes: p.total_work_minutes,
         totalHouseholdCapacityMinutes: p.total_capacity_minutes,
         totalHouseholdWeightedWork: diag.totalHouseholdWeightedWork ?? p.total_work_minutes,
@@ -253,6 +259,15 @@ export class SupabaseAdapter {
         assignments: (p.assignments as any) || [],
         diffSummary: p.diff_summary || []
       };
+
+      if (isSingleDay) {
+        request.household.planningMode = 'single_day';
+        request.household.targetDate = diag.targetDate;
+        request.household.targetDayOfWeek = diag.targetDayOfWeek;
+        request.planningMode = 'single_day';
+        request.targetDate = diag.targetDate;
+        request.targetDayOfWeek = diag.targetDayOfWeek;
+      }
     }
 
     return { request, latestPlan };
@@ -527,16 +542,23 @@ export class SupabaseAdapter {
         };
       }
 
+      const isSingleDay = planResult.planningMode === 'single_day';
       const planToSave: OptimizationResult = {
         ...planResult,
         householdId: savedHouseholdId,
+        planningMode: isSingleDay ? 'single_day' : 'multi_week',
+        targetDate: planResult.targetDate,
+        targetDayOfWeek: planResult.targetDayOfWeek,
         assignments: mappedAssignments,
         memberSummaries: mappedMemberSummaries,
         unassignedTasks: mappedUnassigned,
         diagnostics: {
           ...planResult.diagnostics,
-          savedWeeks,
-          weeklySnapshots
+          planningMode: isSingleDay ? 'single_day' : 'multi_week',
+          targetDate: planResult.targetDate,
+          targetDayOfWeek: planResult.targetDayOfWeek,
+          savedWeeks: isSingleDay ? (planResult.diagnostics?.savedWeeks || [0]) : savedWeeks,
+          weeklySnapshots: isSingleDay ? (planResult.diagnostics?.weeklySnapshots || {}) : weeklySnapshots
         }
       };
       await this.savePlan(userId, savedHouseholdId, planToSave);

@@ -62,8 +62,14 @@ export function saveLocalDraft(
           name: request.household.name || 'My Household',
           type: request.household.type || 'family',
           mode: request.household.mode || 'capacity_aware',
-          planningHorizonWeeks: request.household.planningHorizonWeeks || 1
+          planningHorizonWeeks: request.household.planningHorizonWeeks || 1,
+          planningMode: request.household.planningMode,
+          targetDate: request.household.targetDate,
+          targetDayOfWeek: request.household.targetDayOfWeek
         },
+        planningMode: request.planningMode || request.household.planningMode,
+        targetDate: request.targetDate || request.household.targetDate,
+        targetDayOfWeek: request.targetDayOfWeek || request.household.targetDayOfWeek,
         members: request.members.map(m => ({
           id: String(m.id),
           name: String(m.name || 'Member'),
@@ -121,8 +127,14 @@ export function loadLocalDraft(): LocalDraftPayload | null {
         name: String(req.household.name || 'My Household'),
         type: req.household.type === 'couple' || req.household.type === 'roommates' ? req.household.type : 'family',
         mode: req.household.mode === 'balanced' ? 'balanced' : 'capacity_aware',
-        planningHorizonWeeks: Number(req.household.planningHorizonWeeks) || 1
+        planningHorizonWeeks: Number(req.household.planningHorizonWeeks) || 1,
+        planningMode: req.household.planningMode === 'single_day' || req.planningMode === 'single_day' ? 'single_day' : 'multi_week',
+        targetDate: typeof (req.household.targetDate || req.targetDate) === 'string' ? (req.household.targetDate || req.targetDate) : undefined,
+        targetDayOfWeek: typeof (req.household.targetDayOfWeek || req.targetDayOfWeek) === 'string' ? (req.household.targetDayOfWeek || req.targetDayOfWeek) : undefined
       },
+      planningMode: req.household.planningMode === 'single_day' || req.planningMode === 'single_day' ? 'single_day' : 'multi_week',
+      targetDate: typeof (req.household.targetDate || req.targetDate) === 'string' ? (req.household.targetDate || req.targetDate) : undefined,
+      targetDayOfWeek: typeof (req.household.targetDayOfWeek || req.targetDayOfWeek) === 'string' ? (req.household.targetDayOfWeek || req.targetDayOfWeek) : undefined,
       members: Array.isArray(req.members)
         ? req.members.map((m: any, idx: number) => ({
             id: String(m.id || `m_${idx}`),

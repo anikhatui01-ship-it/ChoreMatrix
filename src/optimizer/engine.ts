@@ -12,7 +12,14 @@ import { DAYS_OF_WEEK } from './types.ts';
 import { normalizeRequest } from './normalizer.ts';
 import type { NormalizedHousehold } from './normalizer.ts';
 import { checkHardConstraints, evaluateCandidateScore } from './evaluator.ts';
-import { getCandidateDays, checkSpacingViolation } from './scheduler.ts';
+import {
+  getCandidateDays,
+  checkSpacingViolation,
+  getLocalISODate,
+  getDayOfWeekFromDateString,
+  addDaysToDate,
+  getDayDiff
+} from './scheduler.ts';
 import { RotationLedger } from './rotation.ts';
 import { OPTIMIZER_WEIGHTS } from './weights.ts';
 
@@ -28,6 +35,21 @@ interface MutableMemberState {
 }
 
 export function runOptimization(
+  request: OptimizationRequest,
+  entitlement?: { maxPlanningWeeks?: number; isPaid?: boolean }
+): OptimizationResult {
+  const isSingleDay =
+    request.planningMode === 'single_day' ||
+    request.household?.planningMode === 'single_day';
+
+  if (isSingleDay) {
+    return runSingleDayOptimization(request, entitlement);
+  }
+
+  return runMultiWeekOptimization(request, entitlement);
+}
+
+function runMultiWeekOptimization(
   request: OptimizationRequest,
   entitlement?: { maxPlanningWeeks?: number; isPaid?: boolean }
 ): OptimizationResult {
@@ -94,9 +116,13 @@ export function runOptimization(
 
   // Pre-index previous assignments for churn penalties / rebalancing
   const previousAssignmentMap = new Map<string, string>(); // occurrenceId -> memberId
+  const previousTaskMemberMap = new Map<string, string>(); // taskId -> memberId
   if (safeRequest.previousRunAssignments) {
     for (const pa of safeRequest.previousRunAssignments) {
       previousAssignmentMap.set(pa.occurrenceId, pa.memberId);
+      if (!previousTaskMemberMap.has(pa.taskId)) {
+        previousTaskMemberMap.set(pa.taskId, pa.memberId);
+      }
     }
   }
 
@@ -242,7 +268,7 @@ export function runOptimization(
             hasPriorWeekAssignment: hasPriorWeek,
             isOffPreferredDay: isOffPreferred,
             violatesSpacing,
-            previousAssignedMemberId: previousAssignmentMap.get(occ.occurrenceId),
+            previousAssignedMemberId: previousAssignmentMap.get(occ.occurrenceId) || previousTaskMemberMap.get(occ.taskId),
           });
 
           if (!bestCandidate || score < bestCandidate.score) {
@@ -438,8 +464,210 @@ function buildResult(params: {
     householdId: request.household.id,
     mode: request.household.mode,
     weeks: horizonWeeks,
+    planningMode: 'multi_week',
     assignments,
     unassignedTasks,
+    memberSummaries,
+    diagnostics,
+  };
+}
+
+function runSingleDayOptimization(
+  request: OptimizationRequest,
+  entitlement?: { maxPlanningWeeks?: number; isPaid?: boolean }
+): OptimizationResult {
+  const todayStr = getLocalISODate();
+  let targetDate = request.targetDate || request.household?.targetDate || todayStr;
+
+  // Enforce planning horizon limits on targetDate
+  const maxWeeks = entitlement?.isPaid && entitlement?.maxPlanningWeeks ? entitlement.maxPlanningWeeks : 1;
+  const maxDays = maxWeeks * 7 - 1;
+  const dayDiff = getDayDiff(targetDate, todayStr);
+
+  if (dayDiff > maxDays) {
+    targetDate = addDaysToDate(todayStr, maxDays);
+  }
+
+  const targetDayOfWeek = request.targetDayOfWeek || request.household?.targetDayOfWeek || getDayOfWeekFromDateString(targetDate);
+  const targetWeekIndex = Math.max(0, Math.min(maxWeeks - 1, Math.floor(Math.max(0, dayDiff) / 7)));
+
+  // If household has 0 members, diagnose immediately
+  if (!request.members || request.members.length === 0) {
+    const runId = `run_single_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const unassignedTasks: UnassignedTask[] = [];
+    for (const t of request.tasks || []) {
+      const isFixedOtherDay = t.fixedDays && t.fixedDays.length > 0 && !t.fixedDays.includes(targetDayOfWeek);
+      if (!isFixedOtherDay) {
+        unassignedTasks.push({
+          occurrenceId: `${t.id}_single_0`,
+          taskId: t.id,
+          taskName: t.name,
+          weekIndex: 0,
+          occurrenceIndex: 0,
+          durationMinutes: t.durationMinutes,
+          weightedMinutes: t.durationMinutes * (t.effortLevel || 1),
+          diagnosticCode: 'ERR_NO_ELIGIBLE_MEMBERS',
+          remediation: 'Add at least one household member.',
+        });
+      }
+    }
+    return {
+      runId,
+      householdId: request.household?.id || 'h1',
+      mode: request.household?.mode || 'capacity_aware',
+      weeks: 1,
+      planningMode: 'single_day',
+      targetDate,
+      targetDayOfWeek,
+      assignments: [],
+      unassignedTasks,
+      memberSummaries: [],
+      diagnostics: {
+        totalHouseholdCapacityMinutes: 0,
+        totalHouseholdWorkMinutes: 0,
+        totalHouseholdWeightedWork: 0,
+        targetHouseholdUtilization: 1.0,
+        capacityDeficitMinutes: 0,
+        utilizationSpread: 0,
+        balanceScore: 100,
+        hardConstraintViolations: 0,
+        totalAssignments: 0,
+        totalUnassigned: unassignedTasks.length,
+      }
+    };
+  }
+
+  // Run the multi-week solver for the horizon containing this day
+  const requiredWeeks = targetWeekIndex + 1;
+  const multiWeekRequest: OptimizationRequest = {
+    ...request,
+    planningMode: 'multi_week',
+    previousRunAssignments: request.previousRunAssignments,
+    household: {
+      ...request.household,
+      planningMode: 'multi_week',
+      planningHorizonWeeks: requiredWeeks,
+    }
+  };
+
+  const multiWeekResult = runMultiWeekOptimization(multiWeekRequest, entitlement);
+
+  // Extract assignments strictly for targetWeekIndex and targetDayOfWeek
+  const dayAssignments: AssignmentOutput[] = multiWeekResult.assignments
+    .filter(a => a.weekIndex === targetWeekIndex && a.dayOfWeek === targetDayOfWeek)
+    .map(a => ({
+      ...a,
+      weekIndex: 0
+    }));
+
+  // Identify unassigned tasks relevant to this day
+  const dayUnassigned: UnassignedTask[] = [];
+  const assignedTaskIds = new Set(dayAssignments.map(a => a.taskId));
+
+  for (const u of multiWeekResult.unassignedTasks) {
+    if (u.weekIndex !== targetWeekIndex) continue;
+    const taskDef = request.tasks.find(t => t.id === u.taskId);
+    if (!taskDef) continue;
+
+    // 1. Task fixed to this day
+    if (taskDef.fixedDays && taskDef.fixedDays.includes(targetDayOfWeek)) {
+      dayUnassigned.push({ ...u, weekIndex: 0 });
+    }
+    // 2. Task with 0 eligible members
+    else if (!taskDef.eligibleMemberIds || taskDef.eligibleMemberIds.length === 0) {
+      if (!dayUnassigned.some(existing => existing.taskId === u.taskId)) {
+        dayUnassigned.push({ ...u, weekIndex: 0 });
+      }
+    }
+    // 3. Daily task (frequencyPerWeek >= 7) not assigned
+    else if (taskDef.frequencyPerWeek >= 7 && !assignedTaskIds.has(taskDef.id)) {
+      if (!dayUnassigned.some(existing => existing.taskId === u.taskId)) {
+        dayUnassigned.push({ ...u, weekIndex: 0 });
+      }
+    }
+  }
+
+  // Compute member summaries specifically for targetDayOfWeek
+  const memberSummaries: MemberWorkloadSummary[] = [];
+  const utilRatios: number[] = [];
+
+  for (const m of request.members) {
+    const memberAssignments = dayAssignments.filter(a => a.memberId === m.id);
+    const assignedMinutes = memberAssignments.reduce((sum, a) => sum + a.durationMinutes, 0);
+    const assignedWeightedLoad = memberAssignments.reduce((sum, a) => sum + a.weightedMinutes, 0);
+
+    const safeWeeklyCapacity = Math.max(1, Number(m.weeklyCapacityMinutes) || 1);
+    const isUnavailable = Boolean(m.unavailableDays && m.unavailableDays.includes(targetDayOfWeek));
+    const customDaily = m.dailyCapacityMinutes?.[targetDayOfWeek];
+    const defaultDaily = Math.round((safeWeeklyCapacity / 7) * 10) / 10;
+    const dailyCap = isUnavailable ? 0 : (customDaily !== undefined ? customDaily : defaultDaily);
+
+    const utilRatio = dailyCap > 0 ? assignedWeightedLoad / dailyCap : (assignedMinutes > 0 ? 1.0 : 0.0);
+    utilRatios.push(utilRatio);
+
+    const dailyMinutes: Record<DayOfWeek, number> = {
+      mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0
+    };
+    const dailyWeightedLoad: Record<DayOfWeek, number> = {
+      mon: 0, tue: 0, wed: 0, thu: 0, fri: 0, sat: 0, sun: 0
+    };
+    dailyMinutes[targetDayOfWeek] = assignedMinutes;
+    dailyWeightedLoad[targetDayOfWeek] = assignedWeightedLoad;
+
+    const avoidedCount = memberAssignments.filter(a => m.avoidedTaskIds?.includes(a.taskId)).length;
+    const preferredCount = memberAssignments.filter(a => m.preferredTaskIds?.includes(a.taskId)).length;
+
+    memberSummaries.push({
+      memberId: m.id,
+      memberName: m.name,
+      role: m.role,
+      weeklyCapacityMinutes: dailyCap,
+      assignedMinutes: Math.round(assignedMinutes * 10) / 10,
+      assignedWeightedLoad: Math.round(assignedWeightedLoad * 10) / 10,
+      utilizationRatio: Math.round(utilRatio * 1000) / 1000,
+      taskCount: memberAssignments.length,
+      avoidedTasksAssigned: avoidedCount,
+      preferredTasksAssigned: preferredCount,
+      dailyMinutes,
+      dailyWeightedLoad,
+    });
+  }
+
+  // Single-day diagnostics
+  const totalCap = memberSummaries.reduce((sum, ms) => sum + ms.weeklyCapacityMinutes, 0);
+  const totalWork = dayAssignments.reduce((sum, a) => sum + a.durationMinutes, 0);
+  const totalWeighted = dayAssignments.reduce((sum, a) => sum + a.weightedMinutes, 0);
+
+  const minUtil = utilRatios.length ? Math.min(...utilRatios) : 0;
+  const maxUtil = utilRatios.length ? Math.max(...utilRatios) : 0;
+  const spread = Math.round((maxUtil - minUtil) * 1000) / 1000;
+  const balanceScore = Math.max(0, Math.min(100, Math.round((1 - spread) * 100)));
+
+  const diagnostics: OptimizationDiagnostics = {
+    totalHouseholdCapacityMinutes: totalCap,
+    totalHouseholdWorkMinutes: totalWork,
+    totalHouseholdWeightedWork: totalWeighted,
+    targetHouseholdUtilization: totalCap > 0 ? Math.round((totalWeighted / totalCap) * 1000) / 1000 : 1.0,
+    capacityDeficitMinutes: Math.max(0, totalWork - totalCap),
+    utilizationSpread: spread,
+    balanceScore: isNaN(balanceScore) ? 100 : balanceScore,
+    hardConstraintViolations: 0,
+    totalAssignments: dayAssignments.length,
+    totalUnassigned: dayUnassigned.length,
+  };
+
+  const runId = `run_single_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+
+  return {
+    runId,
+    householdId: request.household?.id || 'h1',
+    mode: request.household?.mode || 'capacity_aware',
+    weeks: 1,
+    planningMode: 'single_day',
+    targetDate,
+    targetDayOfWeek,
+    assignments: dayAssignments,
+    unassignedTasks: dayUnassigned,
     memberSummaries,
     diagnostics,
   };

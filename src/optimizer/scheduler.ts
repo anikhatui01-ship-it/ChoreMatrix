@@ -43,3 +43,42 @@ export function getCandidateDays(
   }
   return [...DAYS_OF_WEEK];
 }
+
+export function getLocalISODate(d: Date = new Date()): string {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export function getDayOfWeekFromDateString(dateStr: string): DayOfWeek {
+  if (!dateStr || typeof dateStr !== 'string') return 'mon';
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return 'mon';
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1;
+  const day = parseInt(parts[2], 10);
+  const date = new Date(year, month, day);
+  const dayIndex = date.getDay(); // 0: sun, 1: mon, ... 6: sat
+  const days: DayOfWeek[] = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  return days[dayIndex] || 'mon';
+}
+
+export function addDaysToDate(dateStr: string, daysToAdd: number): string {
+  const parts = dateStr.split('-');
+  const year = parseInt(parts[0], 10);
+  const month = parseInt(parts[1], 10) - 1;
+  const day = parseInt(parts[2], 10);
+  const date = new Date(year, month, day);
+  date.setDate(date.getDate() + daysToAdd);
+  return getLocalISODate(date);
+}
+
+export function getDayDiff(dateStr1: string, dateStr2: string): number {
+  const parts1 = dateStr1.split('-');
+  const parts2 = dateStr2.split('-');
+  const d1 = new Date(parseInt(parts1[0], 10), parseInt(parts1[1], 10) - 1, parseInt(parts1[2], 10));
+  const d2 = new Date(parseInt(parts2[0], 10), parseInt(parts2[1], 10) - 1, parseInt(parts2[2], 10));
+  return Math.round((d1.getTime() - d2.getTime()) / (1000 * 60 * 60 * 24));
+}
+

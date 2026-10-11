@@ -527,8 +527,16 @@
             <div class="field">
               <label for="selWeeks">Planning Horizon</label>
               <select id="selWeeks">
+                <option value="single_day">Single Day</option>
                 <option value="1" selected>1 Week</option>
               </select>
+            </div>
+            <div class="field" id="singleDayPickerField" style="display:none;">
+              <label for="inputPlanDate">Target Date</label>
+              <input type="date" id="inputPlanDate" style="width:100%; box-sizing:border-box;" />
+              <div id="singleDayDateNotice" style="font-size:11px; color:var(--muted); margin-top:4px; line-height:1.4;">
+                Generate a single-day plan for the selected date.
+              </div>
             </div>
           </div>
         </div>
@@ -1023,20 +1031,114 @@ function updateControlsState() {
   }
 }
 
+function formatDateLong(dateStr) {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+  return d.toLocaleDateString(undefined, { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+}
+
+function formatDateShort(dateStr) {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+  const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+  return d.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+function getLocalISODate(d = new Date()) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getDayOfWeekFromDateString(dateStr) {
+  if (!dateStr || typeof dateStr !== 'string') return 'mon';
+  const parts = dateStr.split('-');
+  if (parts.length !== 3) return 'mon';
+  const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+  const dayIndex = d.getDay();
+  const days = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'];
+  return days[dayIndex] || 'mon';
+}
+
+function addDaysToDate(dateStr, daysToAdd) {
+  const parts = dateStr.split('-');
+  const d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+  d.setDate(d.getDate() + daysToAdd);
+  return getLocalISODate(d);
+}
+
+function getDayDiff(dateStr1, dateStr2) {
+  const parts1 = dateStr1.split('-');
+  const parts2 = dateStr2.split('-');
+  const d1 = new Date(Number(parts1[0]), Number(parts1[1]) - 1, Number(parts1[2]));
+  const d2 = new Date(Number(parts2[0]), Number(parts2[1]) - 1, Number(parts2[2]));
+  return Math.round((d1.getTime() - d2.getTime()) / (1000 * 60 * 60 * 24));
+}
+
+function updateSingleDayPickerVisibility(entitlement) {
+  const sel = $('#selWeeks');
+  const pickerField = $('#singleDayPickerField');
+  const dateInput = $('#inputPlanDate');
+  const notice = $('#singleDayDateNotice');
+  if (!pickerField || !dateInput) return;
+
+  const isSingleDay = sel && sel.value === 'single_day';
+  pickerField.style.display = isSingleDay ? 'block' : 'none';
+
+  if (isSingleDay) {
+    const safeEntitlement = entitlement || currentEntitlement || getPlanningEntitlement(null);
+    const todayStr = getLocalISODate();
+    dateInput.min = todayStr;
+
+    const maxWeeks = safeEntitlement.isPaid && safeEntitlement.maxPlanningWeeks >= 4 ? 4 : 1;
+    const maxDays = maxWeeks * 7 - 1;
+    const maxDateStr = addDaysToDate(todayStr, maxDays);
+    dateInput.max = maxDateStr;
+
+    if (!currentRequest.household.targetDate) {
+      currentRequest.household.targetDate = todayStr;
+      currentRequest.household.targetDayOfWeek = getDayOfWeekFromDateString(todayStr);
+    }
+
+    if (currentRequest.household.targetDate < todayStr) {
+      currentRequest.household.targetDate = todayStr;
+      currentRequest.household.targetDayOfWeek = getDayOfWeekFromDateString(todayStr);
+    } else if (currentRequest.household.targetDate > maxDateStr) {
+      currentRequest.household.targetDate = maxDateStr;
+      currentRequest.household.targetDayOfWeek = getDayOfWeekFromDateString(maxDateStr);
+    }
+
+    dateInput.value = currentRequest.household.targetDate;
+
+    if (notice) {
+      const formatted = formatDateLong(currentRequest.household.targetDate);
+      const horizonLabel = maxWeeks === 1 ? '1-week horizon (Free / Demo)' : '4-week horizon (Pro / Plus)';
+      notice.textContent = `Planning for ${formatted}. Allowed within ${horizonLabel}.`;
+    }
+  }
+}
+
 /**
  * Dynamically renders planning horizon select options based on authoritative entitlement.
- * For unauthenticated or Free users, strictly only renders 1 Week.
- * Stale or unauthorized multi-week values are safely clamped to 1.
+ * Single Day and 1 Week are always available across all tiers.
+ * 2, 3, 4 Weeks are restricted to paid tiers.
  */
 function renderPlanningHorizonOptions(entitlement, targetWeeks = 1) {
   const sel = $('#selWeeks');
   if (!sel) return;
   const safeEntitlement = entitlement || getPlanningEntitlement(null);
   const isPaid = Boolean(safeEntitlement.isPaid && safeEntitlement.maxPlanningWeeks >= 4);
-  const safeWeeks = enforcePlanningHorizon(targetWeeks, safeEntitlement);
+  const isSingleDay =
+    targetWeeks === 'single_day' ||
+    currentRequest.household.planningMode === 'single_day';
 
   if (isPaid) {
     sel.innerHTML = `
+      <option value="single_day">Single Day</option>
       <option value="1">1 Week</option>
       <option value="2">2 Weeks</option>
       <option value="3">3 Weeks</option>
@@ -1044,11 +1146,21 @@ function renderPlanningHorizonOptions(entitlement, targetWeeks = 1) {
     `;
   } else {
     sel.innerHTML = `
+      <option value="single_day">Single Day</option>
       <option value="1">1 Week</option>
     `;
   }
-  sel.value = String(safeWeeks);
-  currentRequest.household.planningHorizonWeeks = safeWeeks;
+
+  if (isSingleDay) {
+    sel.value = 'single_day';
+    currentRequest.household.planningMode = 'single_day';
+  } else {
+    const safeWeeks = enforcePlanningHorizon(Number(targetWeeks) || 1, safeEntitlement);
+    sel.value = String(safeWeeks);
+    currentRequest.household.planningHorizonWeeks = safeWeeks;
+    currentRequest.household.planningMode = 'multi_week';
+  }
+  updateSingleDayPickerVisibility(safeEntitlement);
 }
 
 function updateModeExplanation() {
@@ -1447,8 +1559,22 @@ function syncDOMToState() {
   if (modeEl) currentRequest.household.mode = modeEl.value;
   const weeksEl = $('#selWeeks');
   if (weeksEl) {
-    const rawWeeks = Number(weeksEl.value) || 1;
-    currentRequest.household.planningHorizonWeeks = enforcePlanningHorizon(rawWeeks, currentEntitlement);
+    if (weeksEl.value === 'single_day') {
+      currentRequest.household.planningMode = 'single_day';
+      const dateEl = $('#inputPlanDate');
+      if (dateEl && dateEl.value) {
+        currentRequest.household.targetDate = dateEl.value;
+        currentRequest.household.targetDayOfWeek = getDayOfWeekFromDateString(dateEl.value);
+      } else {
+        const todayStr = getLocalISODate();
+        currentRequest.household.targetDate = todayStr;
+        currentRequest.household.targetDayOfWeek = getDayOfWeekFromDateString(todayStr);
+      }
+    } else {
+      currentRequest.household.planningMode = 'multi_week';
+      const rawWeeks = Number(weeksEl.value) || 1;
+      currentRequest.household.planningHorizonWeeks = enforcePlanningHorizon(rawWeeks, currentEntitlement);
+    }
   }
 
   const memberCards = document.querySelectorAll('#memberListContainer .item-card');
@@ -1508,10 +1634,17 @@ function executeOptimization(force = false) {
   }
 
   isCalculating = true;
-  currentRequest.household.planningHorizonWeeks = enforcePlanningHorizon(
-    currentRequest.household.planningHorizonWeeks,
-    currentEntitlement
-  );
+  const isSingleDay = currentRequest.household.planningMode === 'single_day';
+  if (!isSingleDay) {
+    currentRequest.household.planningHorizonWeeks = enforcePlanningHorizon(
+      currentRequest.household.planningHorizonWeeks,
+      currentEntitlement
+    );
+  }
+  currentRequest.planningMode = currentRequest.household.planningMode;
+  currentRequest.targetDate = currentRequest.household.targetDate;
+  currentRequest.targetDayOfWeek = currentRequest.household.targetDayOfWeek;
+
   const stateHash = JSON.stringify(currentRequest);
   if (!force && stateHash === lastCalculatedHash && currentResult) {
     flashCalculateStatus();
@@ -1528,7 +1661,8 @@ function executeOptimization(force = false) {
         task_count: currentRequest.tasks.length,
         mode: currentRequest.household.mode,
         fairness_score: Math.round(currentResult.fairnessIndex || 0),
-        horizon_weeks: currentRequest.household.planningHorizonWeeks
+        horizon_weeks: currentRequest.household.planningHorizonWeeks,
+        planning_mode: currentRequest.household.planningMode || 'multi_week'
       });
     }
   }
@@ -1547,10 +1681,17 @@ function executeRebalance() {
   }
 
   isCalculating = true;
-  currentRequest.household.planningHorizonWeeks = enforcePlanningHorizon(
-    currentRequest.household.planningHorizonWeeks,
-    currentEntitlement
-  );
+  const isSingleDay = currentRequest.household.planningMode === 'single_day';
+  if (!isSingleDay) {
+    currentRequest.household.planningHorizonWeeks = enforcePlanningHorizon(
+      currentRequest.household.planningHorizonWeeks,
+      currentEntitlement
+    );
+  }
+  currentRequest.planningMode = currentRequest.household.planningMode;
+  currentRequest.targetDate = currentRequest.household.targetDate;
+  currentRequest.targetDayOfWeek = currentRequest.household.targetDayOfWeek;
+
   if (!currentResult || !currentResult.assignments.length) {
     currentResult = runOptimization(currentRequest, currentEntitlement);
   } else {
@@ -1565,7 +1706,8 @@ function executeRebalance() {
         task_count: currentRequest.tasks.length,
         mode: currentRequest.household.mode,
         fairness_score: Math.round(currentResult.fairnessIndex || 0),
-        horizon_weeks: currentRequest.household.planningHorizonWeeks
+        horizon_weeks: currentRequest.household.planningHorizonWeeks,
+        planning_mode: currentRequest.household.planningMode || 'multi_week'
       });
     }
   }
@@ -1588,8 +1730,8 @@ function renderResults() {
   if (emptyStateEl) emptyStateEl.style.display = 'none';
   if (resultsContentEl) resultsContentEl.style.display = 'grid';
 
-  // Authoritative entitlement safety: ensure result never exceeds maximum authorized weeks
-  if (currentResult.weeks > currentEntitlement.maxPlanningWeeks) {
+  const isSingleDay = currentResult.planningMode === 'single_day';
+  if (!isSingleDay && currentResult.weeks > currentEntitlement.maxPlanningWeeks) {
     currentRequest.household.planningHorizonWeeks = enforcePlanningHorizon(currentResult.weeks, currentEntitlement);
     currentResult = runOptimization(currentRequest, currentEntitlement);
   }
@@ -1602,8 +1744,10 @@ function renderResults() {
   }
 
   $('#balanceScoreVal').innerHTML = `${diag.balanceScore}%<small>fairness index</small>`;
-  $('#metricTotalCap').textContent = `${diag.totalHouseholdCapacityMinutes} min`;
-  $('#metricTotalWork').textContent = `${diag.totalHouseholdWorkMinutes} min`;
+  const capLabel = isSingleDay ? `${diag.totalHouseholdCapacityMinutes} min (daily)` : `${diag.totalHouseholdCapacityMinutes} min`;
+  const workLabel = isSingleDay ? `${diag.totalHouseholdWorkMinutes} min (daily)` : `${diag.totalHouseholdWorkMinutes} min`;
+  $('#metricTotalCap').textContent = capLabel;
+  $('#metricTotalWork').textContent = workLabel;
   $('#metricWeightedWork').textContent = `${Math.round(diag.totalHouseholdWeightedWork)} pts`;
 
   const diffBox = $('#diffBannerContainer');
@@ -1634,11 +1778,14 @@ function renderResults() {
   barsContainer.innerHTML = currentResult.memberSummaries.map(m => {
     const pct = Math.round(m.utilizationRatio * 100);
     const barWidth = Math.min(100, Math.max(2, pct));
+    const capLabel = isSingleDay
+      ? `${m.assignedMinutes} min · ${pct}% daily cap`
+      : `${m.assignedMinutes} min · ${pct}% capacity`;
     return `
       <div class="member-bar-row">
         <div class="member-bar-meta">
           <span>${escapeHtml(m.memberName)} (${m.role})</span>
-          <span>${m.assignedMinutes} min · ${pct}% capacity</span>
+          <span>${capLabel}</span>
         </div>
         <div class="bar-track">
           <div class="bar-fill" style="width: ${barWidth}%;"></div>
@@ -1648,11 +1795,32 @@ function renderResults() {
   }).join('');
 
   const tabStrip = $('#weekTabsContainer');
-  const horizon = Math.min(currentEntitlement.maxPlanningWeeks, currentResult.weeks);
-  activeWeek = Math.max(0, Math.min(activeWeek, horizon - 1));
-  tabStrip.innerHTML = Array.from({ length: horizon }).map((_, w) => `
-    <button type="button" class="tab-btn ${w === activeWeek ? 'active' : ''}" data-week="${w}">Week ${w + 1}</button>
-  `).join('');
+  const postPlanBannerStatusText = $('#postPlanBannerStatusText');
+
+  if (isSingleDay) {
+    const targetDateStr = currentResult.targetDate || getLocalISODate();
+    const shortLabel = formatDateShort(targetDateStr);
+    const longLabel = formatDateLong(targetDateStr);
+    const dayLabel = (currentResult.targetDayOfWeek || getDayOfWeekFromDateString(targetDateStr)).toUpperCase();
+
+    tabStrip.innerHTML = `
+      <button type="button" class="tab-btn active" data-single-day="true">Single Day (${shortLabel})</button>
+    `;
+
+    if (postPlanBannerStatusText) {
+      postPlanBannerStatusText.textContent = `Household workload optimized for ${longLabel} (${dayLabel}).`;
+    }
+  } else {
+    const horizon = Math.min(currentEntitlement.maxPlanningWeeks, currentResult.weeks);
+    activeWeek = Math.max(0, Math.min(activeWeek, horizon - 1));
+    tabStrip.innerHTML = Array.from({ length: horizon }).map((_, w) => `
+      <button type="button" class="tab-btn ${w === activeWeek ? 'active' : ''}" data-week="${w}">Week ${w + 1}</button>
+    `).join('');
+
+    if (postPlanBannerStatusText) {
+      postPlanBannerStatusText.textContent = 'Save this optimized schedule to sync with your household and access it anytime.';
+    }
+  }
 
   renderSchedule();
   updateControlsState();
@@ -1660,21 +1828,38 @@ function renderResults() {
 
 function renderSchedule() {
   if (!currentResult) return;
-  const weekAssignments = currentResult.assignments.filter(a => a.weekIndex === activeWeek);
+  const isSingleDay = currentResult.planningMode === 'single_day';
+  const weekAssignments = isSingleDay
+    ? currentResult.assignments
+    : currentResult.assignments.filter(a => a.weekIndex === activeWeek);
 
   if (activeView === 'calendar') {
     $('#calendarView').style.display = 'block';
     $('#tableView').style.display = 'none';
 
     const calGrid = $('#calendarGridContainer');
-    calGrid.innerHTML = DAYS_OF_WEEK.map(d => {
-      const dayTasks = weekAssignments.filter(a => a.dayOfWeek === d);
-      return `
-        <div class="cal-col">
-          <div class="cal-col-head">${d.toUpperCase()}</div>
-          ${dayTasks.length === 0 ? `<div style="text-align:center; padding:18px 4px; color:var(--muted); font-size:11px; font-style:italic;">No tasks</div>` : ''}
+    if (isSingleDay) {
+      calGrid.style.display = 'block';
+      const targetDateStr = currentResult.targetDate || getLocalISODate();
+      const longLabel = formatDateLong(targetDateStr);
+      const dayTasks = currentResult.assignments;
+
+      calGrid.innerHTML = `
+        <div class="cal-col" style="max-width: 100%; width: 100%;">
+          <div class="cal-col-head" style="display:flex; justify-content:space-between; align-items:center; padding:10px 14px;">
+            <span>${longLabel.toUpperCase()}</span>
+            <span class="badge teal" style="font-size:10px;">Single Day Plan</span>
+          </div>
+          ${dayTasks.length === 0 ? `
+            <div style="text-align:center; padding:36px 16px; color:var(--muted); font-size:13px; font-style:italic;">
+              No chores scheduled for this date.
+              <div style="font-size:11px; margin-top:6px; font-style:normal;">
+                All household chores are either fixed to other days or spaced across different days of the week.
+              </div>
+            </div>
+          ` : ''}
           ${dayTasks.map(a => `
-            <div class="cal-task-card">
+            <div class="cal-task-card" style="margin: 8px 12px;">
               <div class="cal-task-name">${escapeHtml(a.taskName)}</div>
               <div class="cal-task-owner">👤 ${escapeHtml(a.memberName)}</div>
               <div class="cal-task-time">⏱️ ${a.durationMinutes}m (E${a.effortLevel})</div>
@@ -1683,7 +1868,26 @@ function renderSchedule() {
           `).join('')}
         </div>
       `;
-    }).join('');
+    } else {
+      calGrid.style.display = 'grid';
+      calGrid.innerHTML = DAYS_OF_WEEK.map(d => {
+        const dayTasks = weekAssignments.filter(a => a.dayOfWeek === d);
+        return `
+          <div class="cal-col">
+            <div class="cal-col-head">${d.toUpperCase()}</div>
+            ${dayTasks.length === 0 ? `<div style="text-align:center; padding:18px 4px; color:var(--muted); font-size:11px; font-style:italic;">No tasks</div>` : ''}
+            ${dayTasks.map(a => `
+              <div class="cal-task-card">
+                <div class="cal-task-name">${escapeHtml(a.taskName)}</div>
+                <div class="cal-task-owner">👤 ${escapeHtml(a.memberName)}</div>
+                <div class="cal-task-time">⏱️ ${a.durationMinutes}m (E${a.effortLevel})</div>
+                ${a.reasonCodes && a.reasonCodes.length ? `<span class="badge" style="font-size:9px; padding:1px 4px; margin-top:3px;">${a.reasonCodes[0].replace(/_/g, ' ')}</span>` : ''}
+              </div>
+            `).join('')}
+          </div>
+        `;
+      }).join('');
+    }
   } else {
     $('#calendarView').style.display = 'none';
     $('#tableView').style.display = 'block';
@@ -1700,7 +1904,7 @@ function renderSchedule() {
       </tr>
     `).join('') : `
       <tr>
-        <td colspan="6" style="text-align:center; padding:24px; color:var(--muted); font-style:italic;">No chore assignments for this week.</td>
+        <td colspan="6" style="text-align:center; padding:24px; color:var(--muted); font-style:italic;">No chore assignments for this ${isSingleDay ? 'day' : 'week'}.</td>
       </tr>
     `;
   }
@@ -1805,8 +2009,22 @@ function attachListeners() {
     autoSaveDraft();
   });
   $('#selWeeks')?.addEventListener('change', () => {
+    syncDOMToState();
+    updateSingleDayPickerVisibility();
     executeOptimization();
     autoSaveDraft();
+  });
+
+  $('#inputPlanDate')?.addEventListener('change', (e) => {
+    const val = e.target.value;
+    if (val) {
+      currentRequest.household.planningMode = 'single_day';
+      currentRequest.household.targetDate = val;
+      currentRequest.household.targetDayOfWeek = getDayOfWeekFromDateString(val);
+      updateSingleDayPickerVisibility();
+      executeOptimization();
+      autoSaveDraft();
+    }
   });
 
   $('#btnAddMember')?.addEventListener('click', (e) => {

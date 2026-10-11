@@ -33,8 +33,12 @@ export function computeAssignmentDiff(
   current: AssignmentOutput[]
 ): RebalanceDiff {
   const prevMap = new Map<string, AssignmentOutput>();
+  const prevTaskIdMap = new Map<string, AssignmentOutput>();
   for (const a of previous) {
     prevMap.set(a.occurrenceId, a);
+    if (!prevTaskIdMap.has(a.taskId)) {
+      prevTaskIdMap.set(a.taskId, a);
+    }
   }
 
   const explanations: string[] = [];
@@ -42,7 +46,7 @@ export function computeAssignmentDiff(
   let preserved = 0;
 
   for (const curr of current) {
-    const prev = prevMap.get(curr.occurrenceId);
+    const prev = prevMap.get(curr.occurrenceId) || prevTaskIdMap.get(curr.taskId);
     if (!prev) {
       explanations.push(`New task occurrence "${curr.taskName}" assigned to ${curr.memberName} on ${curr.dayOfWeek.toUpperCase()}.`);
       continue;

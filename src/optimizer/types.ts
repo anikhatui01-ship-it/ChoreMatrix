@@ -6,12 +6,17 @@ export type HouseholdType = 'couple' | 'family' | 'roommates' | 'multigeneration
 
 export type OptimizationMode = 'balanced' | 'capacity_aware';
 
+export type PlanningMode = 'multi_week' | 'single_day';
+
 export interface HouseholdInput {
   id: string;
   name: string;
   type: HouseholdType;
   mode: OptimizationMode;
   planningHorizonWeeks: number; // 1 to 4
+  planningMode?: PlanningMode;
+  targetDate?: string;
+  targetDayOfWeek?: DayOfWeek;
 }
 
 export interface MemberInput {
@@ -126,6 +131,9 @@ export interface OptimizationRequest {
   tasks: TaskInput[];
   previousRunAssignments?: AssignmentOutput[];
   pinnedAssignmentIds?: string[];
+  planningMode?: PlanningMode;
+  targetDate?: string;
+  targetDayOfWeek?: DayOfWeek;
 }
 
 export interface OptimizationResult {
@@ -133,6 +141,9 @@ export interface OptimizationResult {
   householdId: string;
   mode: OptimizationMode;
   weeks: number;
+  planningMode?: PlanningMode;
+  targetDate?: string;
+  targetDayOfWeek?: DayOfWeek;
   assignments: AssignmentOutput[];
   unassignedTasks: UnassignedTask[];
   memberSummaries: MemberWorkloadSummary[];
