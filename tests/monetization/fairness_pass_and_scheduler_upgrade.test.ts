@@ -206,7 +206,7 @@ describe('Fairness Pass & Interactive Scheduler Upgrade Suite', () => {
     it('homepage hero headline is updated with the direct-response hook', () => {
       const indexHtml = fs.readFileSync(indexHtmlPath, 'utf8');
       assert.ok(
-        indexHtml.includes('Stop Arguing Over Who Does More. Prove It Mathematically in 60 Seconds.'),
+        indexHtml.includes('Stop Guessing Who Does More. Build a Fairer Chore Plan.'),
         'Hero headline must use the direct-response hook'
       );
     });

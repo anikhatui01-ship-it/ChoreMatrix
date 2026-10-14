@@ -274,7 +274,7 @@ describe('Phase 5 — Retention and Practical Plan Use', () => {
 
     it('preserves hero headline and differentiates local drafts from authenticated cloud households', () => {
       assert.ok(
-        indexContent.includes('Stop Arguing Over Who Does More. Prove It Mathematically in 60 Seconds.')
+        indexContent.includes('Stop Guessing Who Does More. Build a Fairer Chore Plan.')
       );
       assert.ok(appContent.includes('Mode: Local Browser Storage'));
       assert.ok(appContent.includes('Cloud Sync:'));

@@ -14,11 +14,11 @@ describe('Phase 2: Outcome-Led Positioning and Product Differentiation Tests', (
 
   it('1. Hero headline leads with outcome rather than technical jargon', () => {
     assert.ok(
-      indexHtml.includes('Stop Arguing Over Who Does More. Prove It Mathematically in 60 Seconds.'),
+      indexHtml.includes('Stop Guessing Who Does More. Build a Fairer Chore Plan.'),
       'Homepage hero must contain the preferred outcome headline'
     );
     assert.ok(
-      indexHtml.includes('ChoreMatrix balances household chores using real daily time capacity and effort weights'),
+      indexHtml.includes('Balance household chores around time, effort, and availability'),
       'Homepage hero supporting copy must clearly state the outcome'
     );
   });

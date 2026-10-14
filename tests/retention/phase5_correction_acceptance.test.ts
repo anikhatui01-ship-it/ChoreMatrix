@@ -661,7 +661,7 @@ describe('Phase 5 Correction: Acceptance & Regression Suite', () => {
       const indexContent = fs.readFileSync(indexPath, 'utf8');
 
       assert.ok(
-        indexContent.includes('Stop Arguing Over Who Does More. Prove It Mathematically in 60 Seconds.'),
+        indexContent.includes('Stop Guessing Who Does More. Build a Fairer Chore Plan.'),
         'Homepage hero headline must be preserved exactly'
       );
     });
