@@ -24,14 +24,14 @@ const CANONICAL_PRODUCT_MAP: Record<string, { tier: 'pro' | 'plus' | 'fairness_p
   'pdt_0NozL7OvhpMonCSMw99Ng': { tier: 'pro', interval: 'annual' },
   'pdt_0NozLK4XCjDSCbkADEtQL': { tier: 'plus', interval: 'monthly' },
   'pdt_0NozLba96vBrtNtGdFONX': { tier: 'plus', interval: 'annual' },
-  'pdt_0NozPassTestFallback': { tier: 'fairness_pass', interval: 'one_time' },
-  // Live Mode Product IDs
+  // Fairness Pass Product IDs (both live and source reference)
+  'pdt_0NphhaL0NCaWmH3nA3FdK': { tier: 'fairness_pass', interval: 'one_time' },
+  'pdt_0NphhVTxhO0pNjHindcHi': { tier: 'fairness_pass', interval: 'one_time' },
+  // Live Mode Subscription Product IDs
   'pdt_0Np1eZsemtECph1HLoDb0': { tier: 'pro', interval: 'monthly' },
   'pdt_0Np1ec3oUFACgeOKl4ktP': { tier: 'pro', interval: 'annual' },
   'pdt_0Np1ean3rbxLUQs6d1QAb': { tier: 'plus', interval: 'monthly' },
-  'pdt_0Np1ebMsCqGBWntrkX3fK': { tier: 'plus', interval: 'annual' },
-  'pdt_0NphhaL0NCaWmH3nA3FdK': { tier: 'fairness_pass', interval: 'one_time' },
-  'pdt_0Np1PassLiveFallback': { tier: 'fairness_pass', interval: 'one_time' }
+  'pdt_0Np1ebMsCqGBWntrkX3fK': { tier: 'plus', interval: 'annual' }
 };
 
 const TIER_RANK: Record<string, number> = { 'free': 0, 'fairness_pass': 1, 'pro': 2, 'plus': 3 };

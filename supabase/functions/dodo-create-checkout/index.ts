@@ -24,7 +24,8 @@ const TEST_PRODUCT_MAP: Record<string, string> = {
   'pro_annual': 'pdt_0NozL7OvhpMonCSMw99Ng',
   'plus_monthly': 'pdt_0NozLK4XCjDSCbkADEtQL',
   'plus_annual': 'pdt_0NozLba96vBrtNtGdFONX',
-  'fairness_pass_one_time': 'pdt_0NozPassTestFallback'
+  'fairness_pass': 'pdt_0NphhaL0NCaWmH3nA3FdK',
+  'fairness_pass_one_time': 'pdt_0NphhaL0NCaWmH3nA3FdK'
 };
 
 const LIVE_PRODUCT_MAP: Record<string, string> = {
@@ -32,6 +33,7 @@ const LIVE_PRODUCT_MAP: Record<string, string> = {
   'pro_annual': 'pdt_0Np1ec3oUFACgeOKl4ktP',
   'plus_monthly': 'pdt_0Np1ean3rbxLUQs6d1QAb',
   'plus_annual': 'pdt_0Np1ebMsCqGBWntrkX3fK',
+  'fairness_pass': 'pdt_0NphhaL0NCaWmH3nA3FdK',
   'fairness_pass_one_time': 'pdt_0NphhaL0NCaWmH3nA3FdK'
 };
 
@@ -60,7 +62,7 @@ function isLiveEnvironment(baseUrl: string, envName?: string): boolean {
 }
 
 function resolveServerProductId(planKey: string, isLive: boolean): string | null {
-  if (planKey.startsWith('fairness_pass')) {
+  if (planKey.startsWith('fairness_pass') || planKey === 'pass' || planKey === 'onetime_pass') {
     const onetimeOverride =
       Deno.env.get('NEXT_PUBLIC_DODO_FAIRNESS_PASS_PRODUCT_ID') ||
       Deno.env.get('DODO_FAIRNESS_PASS_PRODUCT_ID') ||
@@ -69,6 +71,7 @@ function resolveServerProductId(planKey: string, isLive: boolean): string | null
     if (onetimeOverride && onetimeOverride.trim().startsWith('pdt_')) {
       return onetimeOverride.trim();
     }
+    return 'pdt_0NphhaL0NCaWmH3nA3FdK';
   }
 
   if (planKey.startsWith('pro_monthly')) {
@@ -79,6 +82,7 @@ function resolveServerProductId(planKey: string, isLive: boolean): string | null
     if (proOverride && proOverride.trim().startsWith('pdt_')) {
       return proOverride.trim();
     }
+    return isLive ? 'pdt_0Np1eZsemtECph1HLoDb0' : 'pdt_0NozKZ3sZ6h0vplb451YK';
   }
 
   const overrideKey = `DODO_${planKey.toUpperCase()}_PRODUCT_ID`;
@@ -100,20 +104,29 @@ function resolveServerProductId(planKey: string, isLive: boolean): string | null
 
 function normalizePlan(plan: string | null | undefined): string {
   if (!plan) throw new Error('Missing plan parameter');
-  const clean = plan.trim().toLowerCase();
-  if (clean === 'pro' || clean === 'household_pro') return 'pro';
-  if (clean === 'fairness_pass' || clean === 'onetime_pass' || clean === 'pass') return 'fairness_pass';
+  const clean = plan.trim().toLowerCase().replace(/-/g, '_');
+  if (clean === 'pro' || clean === 'household_pro' || clean === 'autopilot_pro') return 'pro';
+  if (
+    clean === 'fairness_pass' ||
+    clean === 'fairness_pass_one_time' ||
+    clean === 'onetime_pass' ||
+    clean === 'pass' ||
+    clean === 'one_time_pass'
+  ) {
+    return 'fairness_pass';
+  }
   if (clean === 'plus' || clean === 'household_plus' || clean === 'family_plus') return 'plus';
   throw new Error(`Invalid plan "${plan}"`);
 }
 
 function normalizeInterval(interval: string | null | undefined, plan?: string): string {
-  if (!interval && plan === 'fairness_pass') return 'one_time';
+  if ((!interval || interval.trim() === '') && plan === 'fairness_pass') return 'one_time';
   if (!interval) throw new Error('Missing interval parameter');
-  const clean = interval.trim().toLowerCase();
+  const clean = interval.trim().toLowerCase().replace(/-/g, '_');
   if (clean === 'monthly' || clean === 'month') return 'monthly';
   if (clean === 'annual' || clean === 'annually' || clean === 'yearly' || clean === 'year') return 'annual';
   if (clean === 'one_time' || clean === 'onetime' || clean === 'once' || clean === 'single') return 'one_time';
+  if (plan === 'fairness_pass') return 'one_time';
   throw new Error(`Invalid interval "${interval}"`);
 }
 
@@ -198,7 +211,12 @@ serve(async (req: Request) => {
       .eq('id', user.id)
       .maybeSingle();
 
-    if (profile && (profile.subscription_status === 'active' || profile.subscription_status === 'trialing')) {
+    const hasActiveRecurring =
+      profile &&
+      (profile.subscription_status === 'active' || profile.subscription_status === 'trialing') &&
+      profile.plan_tier !== 'fairness_pass';
+
+    if (hasActiveRecurring && plan === 'pro') {
       return new Response(JSON.stringify({
         error: 'Your account already has an active subscription. Manage your subscription in Account Settings.'
       }), {
@@ -206,6 +224,9 @@ serve(async (req: Request) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
+
+    const isTrialConsumed = Boolean(profile?.trial_consumed);
+    const isTrialEligible = !isTrialConsumed && plan === 'pro' && interval !== 'one_time';
 
     if (!dodoApiKey) {
       console.error('[dodo-create-checkout] DODO_API_KEY not configured.');
@@ -228,10 +249,19 @@ serve(async (req: Request) => {
         email: user.email || undefined
       },
       metadata: {
-        user_id: user.id
+        user_id: user.id,
+        plan,
+        interval,
+        source_product_id: plan === 'fairness_pass' ? 'pdt_0NphhVTxhO0pNjHindcHi' : undefined
       },
       return_url: reqBody.return_url || `${req.headers.get('origin') || 'https://chorematrix.online'}/account.html?payment_status=submitted`
     };
+
+    if (isTrialEligible) {
+      requestPayload.subscription_data = {
+        trial_period_days: 7
+      };
+    }
 
     const response = await fetch(checkoutEndpoint, {
       method: 'POST',

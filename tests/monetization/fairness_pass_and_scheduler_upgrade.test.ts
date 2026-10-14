@@ -3,7 +3,16 @@ import assert from 'node:assert';
 import fs from 'node:fs';
 import path from 'node:path';
 import { PRICING_CONFIG, getTierById } from '../../src/config/pricing.ts';
-import { DODO_CONFIG, DODO_LIVE_PRODUCTS, getDodoProductId, mapDodoProductToTier } from '../../src/config/dodo.ts';
+import {
+  DODO_CONFIG,
+  DODO_LIVE_PRODUCTS,
+  FAIRNESS_PASS_METADATA,
+  getDodoProductId,
+  mapDodoProductToTier,
+  normalizePlanTier,
+  normalizeBillingInterval
+} from '../../src/config/dodo.ts';
+import { createDodoCheckoutSession } from '../../src/monetization/dodoService.ts';
 import { getPlanningEntitlement, enforcePlanningHorizon } from '../../src/monetization/entitlements.ts';
 import { runOptimization } from '../../src/optimizer/engine.ts';
 import { rebalanceHousehold } from '../../src/optimizer/rebalancer.ts';
@@ -200,6 +209,94 @@ describe('Fairness Pass & Interactive Scheduler Upgrade Suite', () => {
         indexHtml.includes('Stop Arguing Over Who Does More. Prove It Mathematically in 60 Seconds.'),
         'Hero headline must use the direct-response hook'
       );
+    });
+  });
+
+  // ========================================================
+  // 5. APPLICATION-LEVEL DODO PRODUCT MAPPING & VALIDATION
+  // ========================================================
+  describe('5. Application-Level Dodo Product Mapping & Plan Validation', () => {
+    it('maps public application plan slug "fairness_pass" to exact product ID pdt_0NphhaL0NCaWmH3nA3FdK', () => {
+      assert.strictEqual(getDodoProductId('fairness_pass'), 'pdt_0NphhaL0NCaWmH3nA3FdK');
+      assert.strictEqual(getDodoProductId('fairness_pass', 'one_time'), 'pdt_0NphhaL0NCaWmH3nA3FdK');
+      assert.strictEqual(getDodoProductId('fairness-pass'), 'pdt_0NphhaL0NCaWmH3nA3FdK');
+      assert.strictEqual(getDodoProductId('fairness_pass_one_time'), 'pdt_0NphhaL0NCaWmH3nA3FdK');
+      assert.strictEqual(getDodoProductId('onetime_pass'), 'pdt_0NphhaL0NCaWmH3nA3FdK');
+      assert.strictEqual(getDodoProductId('pass'), 'pdt_0NphhaL0NCaWmH3nA3FdK');
+    });
+
+    it('maps Pro plan to verified Pro Monthly product ID pdt_0Np1eZsemtECph1HLoDb0 in live mode', () => {
+      assert.strictEqual(getDodoProductId('pro', 'monthly', 'live_mode'), 'pdt_0Np1eZsemtECph1HLoDb0');
+      assert.strictEqual(getDodoProductId('household_pro', 'monthly', 'live_mode'), 'pdt_0Np1eZsemtECph1HLoDb0');
+    });
+
+    it('normalizes plan and interval without throwing Invalid plan "fairness_pass"', () => {
+      assert.strictEqual(normalizePlanTier('fairness_pass'), 'fairness_pass');
+      assert.strictEqual(normalizePlanTier('fairness-pass'), 'fairness_pass');
+      assert.strictEqual(normalizePlanTier('fairness_pass_one_time'), 'fairness_pass');
+      assert.strictEqual(normalizeBillingInterval(undefined, 'fairness_pass'), 'one_time');
+      assert.strictEqual(normalizeBillingInterval('one_time'), 'one_time');
+    });
+
+    it('retains source_product_id metadata reference without overriding checkout product ID', () => {
+      assert.strictEqual(FAIRNESS_PASS_METADATA.source_product_id, 'pdt_0NphhVTxhO0pNjHindcHi');
+      const productDef = mapDodoProductToTier('pdt_0NphhaL0NCaWmH3nA3FdK');
+      assert.strictEqual(productDef?.tier, 'fairness_pass');
+      assert.strictEqual(productDef?.amount, 14.99);
+
+      // Verify source reference is recognized for product lookup compatibility
+      const sourceDef = mapDodoProductToTier('pdt_0NphhVTxhO0pNjHindcHi');
+      assert.strictEqual(sourceDef?.tier, 'fairness_pass');
+    });
+
+    it('creates Dodo checkout session for Fairness Pass with correct product and metadata, without subscription_data', async () => {
+      let capturedPayload: any = null;
+      let capturedUrl = '';
+      const customFetch = (async (url: string, init: any) => {
+        capturedUrl = url;
+        capturedPayload = JSON.parse(init.body);
+        return new Response(JSON.stringify({
+          checkout_url: 'https://test.dodopayments.com/checkout/chk_test_123',
+          session_id: 'chk_test_123'
+        }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }) as typeof fetch;
+
+      const result = await createDodoCheckoutSession({
+        plan: 'fairness_pass',
+        user: { id: 'usr_fp_test', email: 'test@example.com' },
+        credentials: { apiKey: 'dodo_api_key_test', baseUrl: 'https://test.dodopayments.com' },
+        isTrialEligible: true, // Should be ignored for one-time
+        customFetch
+      });
+
+      assert.strictEqual(result.success, true);
+      assert.strictEqual(result.product_id, 'pdt_0NphhaL0NCaWmH3nA3FdK');
+      assert.strictEqual(capturedPayload.product_cart[0].product_id, 'pdt_0NphhaL0NCaWmH3nA3FdK');
+      assert.strictEqual(capturedPayload.metadata.source_product_id, 'pdt_0NphhVTxhO0pNjHindcHi');
+      assert.strictEqual(capturedPayload.subscription_data, undefined, 'One-time Fairness Pass must not send subscription_data');
+    });
+
+    it('preserves Pro checkout with 7-day trial for eligible accounts', async () => {
+      let capturedPayload: any = null;
+      const customFetch = (async (_url: string, init: any) => {
+        capturedPayload = JSON.parse(init.body);
+        return new Response(JSON.stringify({
+          checkout_url: 'https://test.dodopayments.com/checkout/chk_pro_123',
+          session_id: 'chk_pro_123'
+        }), { status: 200, headers: { 'content-type': 'application/json' } });
+      }) as typeof fetch;
+
+      const result = await createDodoCheckoutSession({
+        plan: 'pro',
+        interval: 'monthly',
+        user: { id: 'usr_pro_test', email: 'pro@example.com' },
+        credentials: { apiKey: 'dodo_api_key_test', baseUrl: 'https://test.dodopayments.com' },
+        isTrialEligible: true,
+        customFetch
+      });
+
+      assert.strictEqual(result.success, true);
+      assert.strictEqual(capturedPayload.subscription_data?.trial_period_days, 7, 'Pro must include 7-day trial when eligible');
     });
   });
 });

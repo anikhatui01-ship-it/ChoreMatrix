@@ -67,7 +67,9 @@ export async function initiateDodoSubscription(
   let cleanInterval: string;
   try {
     cleanPlan = normalizePlanTier(options.plan || 'pro');
-    cleanInterval = normalizeBillingInterval(options.interval || 'monthly');
+    cleanInterval = cleanPlan === 'fairness_pass' && (!options.interval || options.interval === 'one_time')
+      ? 'one_time'
+      : normalizeBillingInterval(options.interval || (cleanPlan === 'fairness_pass' ? 'one_time' : 'monthly'), cleanPlan);
   } catch (paramErr: any) {
     const err = `Invalid plan or billing interval: ${paramErr.message}`;
     console.error('[Dodo Checkout]', err);

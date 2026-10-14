@@ -35,6 +35,7 @@ export interface DodoProductDefinition {
   amount: number;        // In USD dollars (e.g. 5.99)
   amountInCents: number; // In cents (e.g. 599)
   trialDays: number;
+  metadata?: Record<string, string>;
 }
 
 export const DODO_SUBSCRIPTION_STATUSES = [
@@ -48,12 +49,13 @@ export const DODO_SUBSCRIPTION_STATUSES = [
 
 export type DodoSubscriptionStatus = typeof DODO_SUBSCRIPTION_STATUSES[number];
 
+// Existing live Dodo product IDs
 export const DODO_TEST_PRODUCTS = {
   pro_monthly: 'pdt_0NozKZ3sZ6h0vplb451YK',
   pro_annual: 'pdt_0NozL7OvhpMonCSMw99Ng',
   plus_monthly: 'pdt_0NozLK4XCjDSCbkADEtQL',
   plus_annual: 'pdt_0NozLba96vBrtNtGdFONX',
-  fairness_pass: 'pdt_0NozPassTestFallback'
+  fairness_pass: 'pdt_0NphhaL0NCaWmH3nA3FdK'
 } as const;
 
 export const DODO_LIVE_PRODUCTS = {
@@ -62,6 +64,11 @@ export const DODO_LIVE_PRODUCTS = {
   plus_monthly: 'pdt_0Np1ean3rbxLUQs6d1QAb',
   plus_annual: 'pdt_0Np1ebMsCqGBWntrkX3fK',
   fairness_pass: 'pdt_0NphhaL0NCaWmH3nA3FdK'
+} as const;
+
+// Fairness Pass metadata reference (retained as metadata, not checkout ID)
+export const FAIRNESS_PASS_METADATA = {
+  source_product_id: 'pdt_0NphhVTxhO0pNjHindcHi'
 } as const;
 
 /**
@@ -97,11 +104,18 @@ export const CANONICAL_DODO_PLAN_MATRIX: Record<string, CanonicalDodoPlanDefinit
     productId: getEnvVar('VITE_DODO_PLUS_ANNUAL_PRODUCT_ID') || DODO_TEST_PRODUCTS.plus_annual,
     trialDurationDays: 7
   },
+  fairness_pass: {
+    tier: 'fairness_pass',
+    interval: 'one_time',
+    displayAmount: 14.99,
+    productId: getEnvVar('NEXT_PUBLIC_DODO_FAIRNESS_PASS_PRODUCT_ID') || getEnvVar('VITE_DODO_ONETIME_PASS_PRODUCT_ID') || getEnvVar('DODO_ONETIME_PASS_PRODUCT_ID') || DODO_LIVE_PRODUCTS.fairness_pass,
+    trialDurationDays: 0
+  },
   fairness_pass_one_time: {
     tier: 'fairness_pass',
     interval: 'one_time',
     displayAmount: 14.99,
-    productId: getEnvVar('VITE_DODO_ONETIME_PASS_PRODUCT_ID') || getEnvVar('DODO_ONETIME_PASS_PRODUCT_ID') || DODO_TEST_PRODUCTS.fairness_pass,
+    productId: getEnvVar('NEXT_PUBLIC_DODO_FAIRNESS_PASS_PRODUCT_ID') || getEnvVar('VITE_DODO_ONETIME_PASS_PRODUCT_ID') || getEnvVar('DODO_ONETIME_PASS_PRODUCT_ID') || DODO_LIVE_PRODUCTS.fairness_pass,
     trialDurationDays: 0
   }
 } as const;
@@ -201,19 +215,21 @@ export const DODO_PRODUCTS: Record<string, DodoProductDefinition> = {
     amountInCents: 9999,
     trialDays: 7
   },
-  [DODO_TEST_PRODUCTS.fairness_pass]: {
-    productId: DODO_TEST_PRODUCTS.fairness_pass,
-    planName: 'ChoreMatrix One-Time Fairness Pass (Test)',
+  [DODO_LIVE_PRODUCTS.fairness_pass]: {
+    productId: DODO_LIVE_PRODUCTS.fairness_pass,
+    planName: 'ChoreMatrix Fairness Pass',
     tier: 'fairness_pass',
     interval: 'one_time',
     currency: 'USD',
     amount: 14.99,
     amountInCents: 1499,
-    trialDays: 0
+    trialDays: 0,
+    metadata: FAIRNESS_PASS_METADATA
   },
-  [DODO_LIVE_PRODUCTS.fairness_pass]: {
-    productId: DODO_LIVE_PRODUCTS.fairness_pass,
-    planName: 'ChoreMatrix One-Time Fairness Pass',
+  // Custom metadata source reference recognized for product lookup compatibility
+  'pdt_0NphhVTxhO0pNjHindcHi': {
+    productId: 'pdt_0NphhVTxhO0pNjHindcHi',
+    planName: 'ChoreMatrix Fairness Pass (Source Reference)',
     tier: 'fairness_pass',
     interval: 'one_time',
     currency: 'USD',
@@ -234,7 +250,8 @@ if (customOnetimeId && customOnetimeId.startsWith('pdt_')) {
     currency: 'USD',
     amount: 14.99,
     amountInCents: 1499,
-    trialDays: 0
+    trialDays: 0,
+    metadata: FAIRNESS_PASS_METADATA
   };
 }
 
@@ -246,11 +263,17 @@ export function normalizePlanTier(plan: string | null | undefined): PlanTier {
   if (!plan || typeof plan !== 'string') {
     throw new Error('Missing plan parameter: plan must be "pro", "plus", or "fairness_pass".');
   }
-  const clean = plan.trim().toLowerCase();
+  const clean = plan.trim().toLowerCase().replace(/-/g, '_');
   if (clean === 'pro' || clean === 'household_pro' || clean === 'autopilot_pro') {
     return 'pro';
   }
-  if (clean === 'fairness_pass' || clean === 'onetime_pass' || clean === 'pass' || clean === 'one_time_pass') {
+  if (
+    clean === 'fairness_pass' ||
+    clean === 'fairness_pass_one_time' ||
+    clean === 'onetime_pass' ||
+    clean === 'pass' ||
+    clean === 'one_time_pass'
+  ) {
     return 'fairness_pass';
   }
   if (clean === 'plus' || clean === 'household_plus' || clean === 'family_plus') {
@@ -263,11 +286,14 @@ export function normalizePlanTier(plan: string | null | undefined): PlanTier {
  * Normalizes input interval string to canonical BillingInterval ('monthly' | 'annual' | 'one_time').
  * Throws explicit Error on missing or invalid input.
  */
-export function normalizeBillingInterval(interval: string | null | undefined): BillingInterval {
+export function normalizeBillingInterval(interval: string | null | undefined, plan?: string): BillingInterval {
+  if (!interval && (plan === 'fairness_pass' || plan === 'onetime_pass' || plan === 'pass')) {
+    return 'one_time';
+  }
   if (!interval || typeof interval !== 'string') {
     throw new Error('Missing interval parameter: interval must be "monthly", "annual", or "one_time".');
   }
-  const clean = interval.trim().toLowerCase();
+  const clean = interval.trim().toLowerCase().replace(/-/g, '_');
   if (clean === 'monthly' || clean === 'month') {
     return 'monthly';
   }
@@ -292,29 +318,34 @@ export function getDodoProductId(
   environment?: DodoEnvironment
 ): string {
   const normPlan = normalizePlanTier(plan);
-  const normInterval = normPlan === 'fairness_pass' && !interval
+  const normInterval = normPlan === 'fairness_pass' && (!interval || interval === 'one_time')
     ? 'one_time'
-    : normalizeBillingInterval(interval);
+    : normalizeBillingInterval(interval, normPlan);
   const key = `${normPlan}_${normInterval}` as const;
 
   const env = environment || DODO_CONFIG.environment;
   if (normPlan === 'fairness_pass') {
-    const override = getEnvVar('NEXT_PUBLIC_DODO_FAIRNESS_PASS_PRODUCT_ID') || getEnvVar('DODO_FAIRNESS_PASS_PRODUCT_ID') || getEnvVar('VITE_DODO_ONETIME_PASS_PRODUCT_ID') || getEnvVar('DODO_ONETIME_PASS_PRODUCT_ID');
+    const override =
+      getEnvVar('NEXT_PUBLIC_DODO_FAIRNESS_PASS_PRODUCT_ID') ||
+      getEnvVar('DODO_FAIRNESS_PASS_PRODUCT_ID') ||
+      getEnvVar('VITE_DODO_ONETIME_PASS_PRODUCT_ID') ||
+      getEnvVar('DODO_ONETIME_PASS_PRODUCT_ID');
     if (override && override.startsWith('pdt_')) {
       return override;
     }
-    return env === 'live_mode'
-      ? DODO_LIVE_PRODUCTS.fairness_pass
-      : DODO_TEST_PRODUCTS.fairness_pass;
+    return DODO_LIVE_PRODUCTS.fairness_pass; // 'pdt_0NphhaL0NCaWmH3nA3FdK'
   }
 
   if (env === 'live_mode') {
     if (key === 'pro_monthly') {
-      const proOverride = getEnvVar('NEXT_PUBLIC_DODO_PRO_MONTHLY_PRODUCT_ID') || getEnvVar('DODO_PRO_MONTHLY_PRODUCT_ID') || getEnvVar('VITE_DODO_PRO_MONTHLY_PRODUCT_ID');
+      const proOverride =
+        getEnvVar('NEXT_PUBLIC_DODO_PRO_MONTHLY_PRODUCT_ID') ||
+        getEnvVar('DODO_PRO_MONTHLY_PRODUCT_ID') ||
+        getEnvVar('VITE_DODO_PRO_MONTHLY_PRODUCT_ID');
       if (proOverride && proOverride.startsWith('pdt_')) {
         return proOverride;
       }
-      return DODO_LIVE_PRODUCTS.pro_monthly;
+      return DODO_LIVE_PRODUCTS.pro_monthly; // 'pdt_0Np1eZsemtECph1HLoDb0'
     }
     const override = getEnvVar(`VITE_DODO_${key.toUpperCase()}_PRODUCT_ID`);
     if (override && override.startsWith('pdt_')) {

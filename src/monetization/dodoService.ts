@@ -583,7 +583,7 @@ export interface CreateDodoCheckoutSessionOptions {
  */
 export async function createDodoCheckoutSession(
   options: CreateDodoCheckoutSessionOptions
-): Promise<{ success: boolean; checkout_url?: string; session_id?: string; error?: string }> {
+): Promise<{ success: boolean; checkout_url?: string; session_id?: string; product_id?: string; error?: string }> {
   const { plan, interval, user, returnUrl, credentials, isTrialEligible = false, customFetch = fetch } = options;
   const { apiKey, baseUrl = 'https://test.dodopayments.com', environment } = credentials;
 
@@ -600,9 +600,20 @@ export async function createDodoCheckoutSession(
   const targetEnv = isLive ? 'live_mode' : 'test_mode';
 
   // Server-side mapping to allowlisted product ID
+  let cleanPlan: string;
+  let cleanInterval: string;
+  try {
+    cleanPlan = normalizePlanTier(plan);
+    cleanInterval = cleanPlan === 'fairness_pass' && (!interval || interval === 'one_time')
+      ? 'one_time'
+      : normalizeBillingInterval(interval, cleanPlan);
+  } catch (err: any) {
+    return { success: false, error: err.message || `Invalid plan "${plan}" or interval selection.` };
+  }
+
   let productId: string;
   try {
-    productId = getDodoProductId(plan, interval, targetEnv);
+    productId = getDodoProductId(cleanPlan, cleanInterval, targetEnv);
   } catch (err: any) {
     return { success: false, error: err.message || 'Invalid plan or interval selection.' };
   }
@@ -621,12 +632,15 @@ export async function createDodoCheckoutSession(
       name: user.name || undefined
     },
     metadata: {
-      user_id: user.id
+      user_id: user.id,
+      plan: cleanPlan,
+      interval: cleanInterval,
+      source_product_id: cleanPlan === 'fairness_pass' ? 'pdt_0NphhVTxhO0pNjHindcHi' : undefined
     },
     return_url: returnUrl || `${DODO_CONFIG.productionReturnDomain}/account.html?payment_status=submitted`
   };
 
-  if (isTrialEligible) {
+  if (isTrialEligible && cleanPlan !== 'fairness_pass' && cleanInterval !== 'one_time') {
     requestBody.subscription_data = {
       trial_period_days: 7
     };
@@ -671,7 +685,8 @@ export async function createDodoCheckoutSession(
     return {
       success: true,
       checkout_url: checkoutUrl,
-      session_id: sessionId
+      session_id: sessionId,
+      product_id: productId
     };
   } catch (parseErr: any) {
     return {
