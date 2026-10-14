@@ -57,7 +57,7 @@ export const PRICING_CONFIG: PricingConfig = {
   isBusinessFinalized: true,
   provisionalNotice: '',
   defaultTrialDays: 0,
-  autoRenewalPolicyNotice: 'Automatic Renewal & Merchant of Record Disclosure: Paid subscriptions for ChoreMatrix Pro Monthly automatically renew at $5.99/month at the end of each monthly billing cycle until cancelled. The One-Time Fairness Pass ($14.99) is a single payment for a 1-year household pass with zero automated recurring charges. Cancellations can be executed online anytime via Account Settings without phone or manual cancellation barriers. Orders are processed by Dodo Payments as Merchant of Record. Please review our Cancellation & Refund Policy for full terms on cancellation, statutory consumer rights, and refund requests.',
+  autoRenewalPolicyNotice: 'Automatic Renewal & Merchant of Record Disclosure: Paid subscriptions for ChoreMatrix Pro Monthly automatically renew at $5.99/month at the end of each monthly billing cycle until cancelled. The One-Time Fairness Pass ($14.99) is a single payment with zero automated recurring renewal charges, granting continued access to the one complete four-week household plan you purchase. Cancellations can be executed online anytime via Account Settings without phone or manual cancellation barriers. Orders are processed by Dodo Payments as Merchant of Record. Please review our Cancellation & Refund Policy for full terms on cancellation, statutory consumer rights, and refund requests.',
   tiers: [
     {
       id: 'free',
@@ -122,7 +122,7 @@ export const PRICING_CONFIG: PricingConfig = {
         'Unlimited Drag-and-Drop Edits, Rebalance & 2-Opt Fairness Swaps',
         'Clean Printable PDF & Fridge-Ready Schedule Exports',
         'Full Explainability Tags (capacity_relief, preference_bonus)',
-        '1-Year Full Household Pass (Single Payment, Zero Recurring Fees)'
+        'One-Time Payment of $14.99 (Zero Recurring Renewals, Continued Access to Purchased Plan)'
       ],
       limitations: [
         'Single household and single plan purchase',
@@ -139,7 +139,7 @@ export const PRICING_CONFIG: PricingConfig = {
         chargedAfterTrialMonthly: 0,
         chargedAfterTrialAnnual: 0,
         recurringFrequency: 'monthly',
-        renewalBehavior: 'One-time payment of $14.99 for a 1-year household pass. Does not automatically renew.',
+        renewalBehavior: 'One-time payment of $14.99. No recurring renewal. Continued access to the one complete four-week household plan you purchase.',
         cancellationMethod: 'One-time charge; review our Cancellation & Refund Policy.',
         materialLimitations: [
           'Single household & single plan purchase',

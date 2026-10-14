@@ -56,7 +56,7 @@ describe('ChoreMatrix Plan Entitlements & Truthful Pricing Suite', () => {
         'Rebalance & 2-Opt Fairness Swaps',
         'Printable PDF',
         'Explainability Tags',
-        '1-Year Full Household Pass'
+        'One-Time Payment of $14.99'
       ];
 
       for (const feat of expectedPassFeatures) {

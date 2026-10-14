@@ -42,7 +42,7 @@ describe('Fairness Pass & Interactive Scheduler Upgrade Suite', () => {
       );
 
       // Verify unlock CTA copy
-      assert.ok(indexHtml.includes('Unlock Full Year for $14.99 (One-Time) →'), 'Must offer $14.99 Fairness Pass');
+      assert.ok(indexHtml.includes('Unlock Complete Plan for $14.99 (One-Time) →'), 'Must offer $14.99 Fairness Pass');
       assert.ok(indexHtml.includes('Or subscribe monthly for $5.99/mo'), 'Must offer $5.99/mo Pro option');
     });
 
@@ -51,7 +51,7 @@ describe('Fairness Pass & Interactive Scheduler Upgrade Suite', () => {
 
       assert.ok(appHtml.includes('cal-task-card-placeholder'), 'app.html must render placeholder cards for free tier');
       assert.ok(appHtml.includes('cal-locked-row'), 'app.html must render locked rows in table view');
-      assert.ok(appHtml.includes('Unlock Full Year for $14.99 (One-Time) →'), 'app.html must have Fairness Pass CTA');
+      assert.ok(appHtml.includes('Unlock Complete Plan for $14.99 (One-Time) →'), 'app.html must have Fairness Pass CTA');
     });
 
     it('free tier is strictly restricted to 1 planning week', () => {

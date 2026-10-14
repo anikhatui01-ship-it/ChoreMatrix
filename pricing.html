@@ -308,8 +308,8 @@ function renderTiers() {
     } else if (isOneTime) {
       displayPrice = `$${tier.monthlyPrice.toFixed(2)}`;
       intervalLabel = 'one-time payment';
-      subPriceNotice = `<span class="badge green" style="font-weight:700;">Zero Recurring Fees · 1-Year Pass</span>`;
-      renewalTermText = 'Single payment of $14.99 for a 1-year pass. No automated recurring renewal charges.';
+      subPriceNotice = `<span class="badge green" style="font-weight:700;">Zero Recurring Fees · One-Time Payment</span>`;
+      renewalTermText = 'One-time payment of $14.99. No recurring renewal. Continued access to the one complete four-week household plan you purchase.';
       btnText = tier.ctaText || 'Get My Complete Plan — $14.99';
     } else {
       displayPrice = isAnnual ? `$${(tier.annualPrice / 12).toFixed(2)}` : `$${tier.monthlyPrice.toFixed(2)}`;

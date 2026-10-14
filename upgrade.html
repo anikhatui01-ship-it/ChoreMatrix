@@ -192,7 +192,7 @@ async function renderUpgradeCard() {
     ? ''
     : (isAnnual ? '/ yr' : '/ mo');
   const subIntervalText = isOneTime
-    ? 'Single payment · Zero recurring fees (1-Year Pass)'
+    ? 'One-time payment of $14.99. No recurring renewal. Continued access to the one complete four-week household plan you purchase.'
     : (isAnnual
         ? `Billed annually (${escapeHtml(selectedTier.annualSavingText)})`
         : `or $${selectedTier.annualPrice.toFixed(2)}/yr billed annually (${escapeHtml(selectedTier.annualSavingText)})`);
@@ -236,7 +236,7 @@ async function renderUpgradeCard() {
     ${isOneTime ? `
       <div style="margin-bottom: 16px;">
         <span class="badge" style="background: var(--badge-teal-bg); color: var(--badge-teal-text); font-weight: 700; font-size: 13px; padding: 4px 10px;">
-          ⚡ Instant Full Unlock · No Recurring Subscription
+          ⚡ One-Time Purchase · Unlocks One Complete Four-Week Plan · No Recurring Fees
         </span>
       </div>
     ` : (isTrialEligible ? `
@@ -263,7 +263,7 @@ async function renderUpgradeCard() {
       <strong style="color: var(--ink);">Order & Billing Terms:</strong><br>
       • Charged today: $${isTrialEligible ? selectedTier.checkoutDisclosures.chargedToday.toFixed(2) : displayPrice.toFixed(2)}<br>
       ${isOneTime ? `
-        • One-Time Charge: USD $14.99 charged today for 1-year access. Zero recurring renewals.<br>
+        • One-Time Charge: One-time payment of $14.99. No recurring renewal. Continued access to the one complete four-week household plan you purchase.<br>
       ` : (isTrialEligible ? `
         • 7-Day Free Trial: Payment method collected during checkout to authorize subscription. USD $0.00 charged today.<br>
         • Recurring Renewal: USD ${renewalRateText} billed automatically starting after the 7-day trial (${isAnnual ? `$${selectedTier.checkoutDisclosures.chargedAfterTrialAnnual.toFixed(2)}/yr` : `$${selectedTier.checkoutDisclosures.chargedAfterTrialMonthly.toFixed(2)}/mo`}) unless cancelled.<br>
