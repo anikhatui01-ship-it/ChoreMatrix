@@ -18,11 +18,13 @@ export * from './monetization/adSlot.ts';
 export * from './monetization/entitlements.ts';
 export * from './monetization/dodoCheckout.ts';
 export * from './analytics/ga4.ts';
+export * from './analytics/umami.ts';
 export * from './feedback/feedbackService.ts';
 
 import { initGoogleAnalytics } from './analytics/ga4.ts';
+import { initUmamiAnalytics, hasAnalyticsConsent } from './analytics/umami.ts';
 
-// Automatically initialize Google Analytics 4 non-blockingly during browser idle time
+// Automatically initialize analytics non-blockingly during browser idle time
 if (typeof window !== 'undefined' && typeof document !== 'undefined') {
   const scheduleInit = () => {
     if ('requestIdleCallback' in window) {
@@ -32,9 +34,30 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') {
     }
   };
 
+  const scheduleUmamiInit = () => {
+    if (hasAnalyticsConsent()) {
+      if ('requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(() => initUmamiAnalytics(), { timeout: 2500 });
+      } else {
+        setTimeout(() => initUmamiAnalytics(), 1000);
+      }
+    }
+  };
+
   if (document.readyState === 'complete') {
     scheduleInit();
+    scheduleUmamiInit();
   } else {
-    window.addEventListener('load', scheduleInit, { once: true });
+    window.addEventListener('load', () => {
+      scheduleInit();
+      scheduleUmamiInit();
+    }, { once: true });
   }
+
+  // Dynamically initialize Umami if user updates consent in cookie banner / modal
+  window.addEventListener('chorematrix:consent-updated', (e: any) => {
+    if (e?.detail?.analytics === true) {
+      initUmamiAnalytics();
+    }
+  });
 }

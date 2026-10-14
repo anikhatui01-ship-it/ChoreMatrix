@@ -15,7 +15,8 @@ const STORAGE_KEY = 'chorematrix_cookie_consent';
 
 export function getCookieConsent(): CookieConsent | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const storage = typeof window !== 'undefined' && window.localStorage ? window.localStorage : (typeof localStorage !== 'undefined' ? localStorage : null);
+    const raw = storage ? storage.getItem(STORAGE_KEY) : null;
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -26,15 +27,22 @@ export function saveCookieConsent(consent: Partial<CookieConsent>) {
   const fullConsent: CookieConsent = {
     strictlyNecessary: true,
     preferences: consent.preferences ?? true,
-    analytics: false, // Honesty: Analytics not implemented
+    analytics: consent.analytics === true,
     marketing: false, // Honesty: Marketing tracking not collected
     decidedAt: new Date().toISOString()
   };
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(fullConsent));
+    const storage = typeof window !== 'undefined' && window.localStorage ? window.localStorage : (typeof localStorage !== 'undefined' ? localStorage : null);
+    if (storage) {
+      storage.setItem(STORAGE_KEY, JSON.stringify(fullConsent));
+    }
   } catch (e) {}
   hideBanner();
   hideModal();
+
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('chorematrix:consent-updated', { detail: fullConsent }));
+  }
 }
 
 function hideBanner() {
@@ -88,7 +96,7 @@ function showBanner() {
         <h3>Cookie & Privacy Choices</h3>
         <p>
           ChoreMatrix uses strictly necessary browser storage to preserve your authenticated session and Light/Dark theme preference.
-          Optional analytics and third-party advertising tracking are <strong>not</strong> currently active.
+          Optional analytics and third-party advertising tracking are <strong>not</strong> active unless explicitly permitted in preferences.
         </p>
       </div>
       <div class="cookie-actions">
@@ -107,11 +115,11 @@ function showBanner() {
   });
 
   document.getElementById('btnAcceptAllCookies')?.addEventListener('click', () => {
-    saveCookieConsent({ preferences: true });
+    saveCookieConsent({ preferences: true, analytics: false });
   });
 
   document.getElementById('btnRejectOptionalCookies')?.addEventListener('click', () => {
-    saveCookieConsent({ preferences: false });
+    saveCookieConsent({ preferences: false, analytics: false });
   });
 
   document.getElementById('btnOpenCookieModal')?.addEventListener('click', () => {
@@ -160,13 +168,16 @@ function openCookieModal() {
             </p>
           </div>
 
-          <div style="padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--panel-subtle); opacity:0.75;">
+          <div style="padding:12px; border:1px solid var(--line); border-radius:10px; background:var(--panel-subtle);">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
               <strong>3. Analytics</strong>
-              <span class="badge">Disabled (Not Implemented)</span>
+              <label style="display:inline-flex; align-items:center; gap:6px; cursor:pointer;">
+                <input type="checkbox" id="chkAnalyticsConsent" ${current.analytics ? 'checked' : ''} style="accent-color:var(--accent);">
+                <span style="font-size:12px; font-weight:600;">Enable</span>
+              </label>
             </div>
             <p style="margin:0; font-size:12px; color:var(--muted);">
-              Product usage telemetry. Currently disabled; ChoreMatrix installs zero third-party analytics trackers.
+              Cookieless, privacy-respecting product usage telemetry via Umami Cloud. Zero personal data, chore text, or member names are collected.
             </p>
           </div>
 
@@ -193,7 +204,11 @@ function openCookieModal() {
   document.getElementById('btnCancelModal')?.addEventListener('click', hideModal);
 
   document.getElementById('btnSaveCustomCookies')?.addEventListener('click', () => {
-    const chk = document.getElementById('chkPrefConsent') as HTMLInputElement | null;
-    saveCookieConsent({ preferences: chk ? chk.checked : true });
+    const chkPref = document.getElementById('chkPrefConsent') as HTMLInputElement | null;
+    const chkAnalytics = document.getElementById('chkAnalyticsConsent') as HTMLInputElement | null;
+    saveCookieConsent({
+      preferences: chkPref ? chkPref.checked : true,
+      analytics: chkAnalytics ? chkAnalytics.checked : false
+    });
   });
 }
