@@ -12,7 +12,7 @@
  */
 
 export interface PlanningEntitlement {
-  tier: 'free' | 'pro' | 'plus';
+  tier: 'free' | 'pro' | 'plus' | 'fairness_pass';
   maxPlanningWeeks: 1 | 4;
   isPaid: boolean;
   allowedWeeks: number[];
@@ -53,6 +53,15 @@ export function getPlanningEntitlement(userOrProfile?: any | null): PlanningEnti
   if (tier === 'pro') {
     return {
       tier: 'pro',
+      maxPlanningWeeks: 4,
+      isPaid: true,
+      allowedWeeks: [1, 2, 3, 4]
+    };
+  }
+
+  if (tier === 'fairness_pass' || tier === 'onetime_pass' || tier === 'pass' || tier === 'one_time_pass') {
+    return {
+      tier: 'fairness_pass',
       maxPlanningWeeks: 4,
       isPaid: true,
       allowedWeeks: [1, 2, 3, 4]

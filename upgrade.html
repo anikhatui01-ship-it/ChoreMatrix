@@ -180,17 +180,26 @@ async function renderUpgradeCard() {
     console.warn('[Upgrade Page] Profile status check error:', err);
   }
 
+  const isOneTime = Boolean(selectedTier.isOneTime);
   const isTrialConsumed = Boolean(userProfile?.trial_consumed);
-  const isTrialEligible = !isTrialConsumed && selectedTier.trialDays > 0;
+  const isTrialEligible = !isOneTime && !isTrialConsumed && selectedTier.trialDays > 0;
 
-  const planInterval = isAnnual ? 'annual' : 'monthly';
-  const displayPrice = isAnnual ? selectedTier.annualPrice : selectedTier.monthlyPrice;
-  const intervalUnit = isAnnual ? '/ yr' : '/ mo';
-  const subIntervalText = isAnnual
-    ? `Billed annually (${escapeHtml(selectedTier.annualSavingText)})`
-    : `or $${selectedTier.annualPrice.toFixed(2)}/yr billed annually (${escapeHtml(selectedTier.annualSavingText)})`;
+  const planInterval = isOneTime ? 'one_time' : (isAnnual ? 'annual' : 'monthly');
+  const displayPrice = isOneTime
+    ? selectedTier.monthlyPrice
+    : (isAnnual ? selectedTier.annualPrice : selectedTier.monthlyPrice);
+  const intervalUnit = isOneTime
+    ? ''
+    : (isAnnual ? '/ yr' : '/ mo');
+  const subIntervalText = isOneTime
+    ? 'Single payment · Zero recurring fees (1-Year Pass)'
+    : (isAnnual
+        ? `Billed annually (${escapeHtml(selectedTier.annualSavingText)})`
+        : `or $${selectedTier.annualPrice.toFixed(2)}/yr billed annually (${escapeHtml(selectedTier.annualSavingText)})`);
   const renewalAmount = isAnnual ? selectedTier.annualRenewalAmount : selectedTier.monthlyRenewalAmount;
-  const renewalRateText = `$${renewalAmount.toFixed(2)}${intervalUnit}`;
+  const renewalRateText = isOneTime
+    ? 'Zero recurring renewals (single charge)'
+    : `$${renewalAmount.toFixed(2)}${intervalUnit}`;
 
   // Validate Dodo product configuration
   try {
@@ -201,9 +210,11 @@ async function renderUpgradeCard() {
     return;
   }
 
-  const checkoutButtonLabel = isTrialEligible
-    ? `Start 7-Day Free Trial — ChoreMatrix ${escapeHtml(selectedTier.name)}`
-    : `Subscribe to ChoreMatrix ${escapeHtml(selectedTier.name)} — $${displayPrice.toFixed(2)}${intervalUnit}`;
+  const checkoutButtonLabel = isOneTime
+    ? (selectedTier.ctaText || `Get Instant Access — $${displayPrice.toFixed(2)}`)
+    : (isTrialEligible
+        ? `Start 7-Day Free Trial — ChoreMatrix ${escapeHtml(selectedTier.name)}`
+        : `Subscribe to ChoreMatrix ${escapeHtml(selectedTier.name)} — $${displayPrice.toFixed(2)}${intervalUnit}`);
 
   cardEl.innerHTML = `
     <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px; flex-wrap: wrap;">
@@ -222,7 +233,13 @@ async function renderUpgradeCard() {
       </div>
     </div>
 
-    ${isTrialEligible ? `
+    ${isOneTime ? `
+      <div style="margin-bottom: 16px;">
+        <span class="badge" style="background: var(--badge-teal-bg); color: var(--badge-teal-text); font-weight: 700; font-size: 13px; padding: 4px 10px;">
+          ⚡ Instant Full Unlock · No Recurring Subscription
+        </span>
+      </div>
+    ` : (isTrialEligible ? `
       <div style="margin-bottom: 16px;">
         <span class="badge" style="background: var(--badge-teal-bg); color: var(--badge-teal-text); font-weight: 700; font-size: 13px; padding: 4px 10px;">
           ⭐ 7-day free trial for eligible new users
@@ -234,7 +251,7 @@ async function renderUpgradeCard() {
           No trial available (Introductory trial already used for this account)
         </span>
       </div>
-    `}
+    `)}
 
     <div style="font-size: 13px; font-weight: 700; color: var(--ink); margin-top: 16px;">What's Included:</div>
     <ul class="feature-list">
@@ -243,16 +260,18 @@ async function renderUpgradeCard() {
 
     <!-- Transparent Continuous Service & Mandate Authorization Terms -->
     <div style="background: var(--panel-subtle); border: 1px solid var(--line); border-radius: 8px; padding: 14px; margin: 20px 0; font-size: 12px; color: var(--muted); line-height: 1.45;">
-      <strong style="color: var(--ink);">Continuous Service, Merchant of Record & Renewal Terms:</strong><br>
+      <strong style="color: var(--ink);">Order & Billing Terms:</strong><br>
       • Charged today: $${isTrialEligible ? selectedTier.checkoutDisclosures.chargedToday.toFixed(2) : displayPrice.toFixed(2)}<br>
-      ${isTrialEligible ? `
+      ${isOneTime ? `
+        • One-Time Charge: USD $14.99 charged today for 1-year access. Zero recurring renewals.<br>
+      ` : (isTrialEligible ? `
         • 7-Day Free Trial: Payment method collected during checkout to authorize subscription. USD $0.00 charged today.<br>
         • Recurring Renewal: USD ${renewalRateText} billed automatically starting after the 7-day trial (${isAnnual ? `$${selectedTier.checkoutDisclosures.chargedAfterTrialAnnual.toFixed(2)}/yr` : `$${selectedTier.checkoutDisclosures.chargedAfterTrialMonthly.toFixed(2)}/mo`}) unless cancelled.<br>
       ` : `
         • Immediate Billing: USD ${renewalRateText} billed automatically today and every ${isAnnual ? 'year' : 'month'} until cancelled.<br>
-      `}
-      • Online Cancellation: Cancel online anytime via Account Settings prior to scheduled billing or trial expiration.<br>
-      • Refund Policy: For full refund eligibility and statutory consumer rights, see our <a href="/refund.html" style="color:var(--primary); text-decoration:underline;">Cancellation & Refund Policy</a>.
+      `)}
+      • Cancellation / Refunds: For full details and statutory consumer rights, see our <a href="/refund.html" style="color:var(--primary); text-decoration:underline;">Cancellation & Refund Policy</a>.<br>
+      • Merchant of Record: Orders processed by Dodo Payments.
     </div>
 
     ${DODO_CONFIG.environment === 'test_mode' ? `
@@ -306,7 +325,7 @@ async function renderUpgradeCard() {
       // 1. Verify user is authenticated with a valid session
       const currentUser = await authService.getUser();
       const currentPlan = selectedTier?.id || 'pro';
-      const currentInterval = isAnnual ? 'annual' : 'monthly';
+      const currentInterval = planInterval;
       const returnUrl = `/upgrade.html?plan=${encodeURIComponent(currentPlan)}&interval=${encodeURIComponent(currentInterval)}`;
 
       if (!currentUser) {

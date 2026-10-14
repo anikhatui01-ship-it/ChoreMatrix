@@ -97,8 +97,14 @@ export function getClientSafeEnv(options = {}) {
   ).trim();
 
   const candidateDodoProMonthly = (
+    options.env?.NEXT_PUBLIC_DODO_PRO_MONTHLY_PRODUCT_ID ??
+    options.env?.DODO_PRO_MONTHLY_PRODUCT_ID ??
     options.env?.VITE_DODO_PRO_MONTHLY_PRODUCT_ID ??
+    fileEnv.NEXT_PUBLIC_DODO_PRO_MONTHLY_PRODUCT_ID ??
+    fileEnv.DODO_PRO_MONTHLY_PRODUCT_ID ??
     fileEnv.VITE_DODO_PRO_MONTHLY_PRODUCT_ID ??
+    process.env.NEXT_PUBLIC_DODO_PRO_MONTHLY_PRODUCT_ID ??
+    process.env.DODO_PRO_MONTHLY_PRODUCT_ID ??
     process.env.VITE_DODO_PRO_MONTHLY_PRODUCT_ID ??
     ''
   ).trim();
@@ -124,11 +130,28 @@ export function getClientSafeEnv(options = {}) {
     ''
   ).trim();
 
+  const candidateDodoOnetime = (
+    options.env?.NEXT_PUBLIC_DODO_FAIRNESS_PASS_PRODUCT_ID ??
+    options.env?.DODO_FAIRNESS_PASS_PRODUCT_ID ??
+    options.env?.VITE_DODO_ONETIME_PASS_PRODUCT_ID ??
+    options.env?.DODO_ONETIME_PASS_PRODUCT_ID ??
+    fileEnv.NEXT_PUBLIC_DODO_FAIRNESS_PASS_PRODUCT_ID ??
+    fileEnv.DODO_FAIRNESS_PASS_PRODUCT_ID ??
+    fileEnv.VITE_DODO_ONETIME_PASS_PRODUCT_ID ??
+    fileEnv.DODO_ONETIME_PASS_PRODUCT_ID ??
+    process.env.NEXT_PUBLIC_DODO_FAIRNESS_PASS_PRODUCT_ID ??
+    process.env.DODO_FAIRNESS_PASS_PRODUCT_ID ??
+    process.env.VITE_DODO_ONETIME_PASS_PRODUCT_ID ??
+    process.env.DODO_ONETIME_PASS_PRODUCT_ID ??
+    ''
+  ).trim();
+
   if (candidateDodoEnv && !candidateDodoEnv.includes('placeholder')) {
     safeEnv.VITE_DODO_ENVIRONMENT = candidateDodoEnv;
   }
   if (candidateDodoProMonthly && !candidateDodoProMonthly.includes('placeholder')) {
     safeEnv.VITE_DODO_PRO_MONTHLY_PRODUCT_ID = candidateDodoProMonthly;
+    safeEnv.NEXT_PUBLIC_DODO_PRO_MONTHLY_PRODUCT_ID = candidateDodoProMonthly;
   }
   if (candidateDodoProAnnual && !candidateDodoProAnnual.includes('placeholder')) {
     safeEnv.VITE_DODO_PRO_ANNUAL_PRODUCT_ID = candidateDodoProAnnual;
@@ -138,6 +161,10 @@ export function getClientSafeEnv(options = {}) {
   }
   if (candidateDodoPlusAnnual && !candidateDodoPlusAnnual.includes('placeholder')) {
     safeEnv.VITE_DODO_PLUS_ANNUAL_PRODUCT_ID = candidateDodoPlusAnnual;
+  }
+  if (candidateDodoOnetime && !candidateDodoOnetime.includes('placeholder')) {
+    safeEnv.VITE_DODO_ONETIME_PASS_PRODUCT_ID = candidateDodoOnetime;
+    safeEnv.NEXT_PUBLIC_DODO_FAIRNESS_PASS_PRODUCT_ID = candidateDodoOnetime;
   }
 
   return safeEnv;

@@ -117,11 +117,19 @@ function runMultiWeekOptimization(
   // Pre-index previous assignments for churn penalties / rebalancing
   const previousAssignmentMap = new Map<string, string>(); // occurrenceId -> memberId
   const previousTaskMemberMap = new Map<string, string>(); // taskId -> memberId
+  const pinnedAssignmentsMap = new Map<string, { memberId: string; dayOfWeek: DayOfWeek }>(); // occurrenceId -> pinned placement
   if (safeRequest.previousRunAssignments) {
     for (const pa of safeRequest.previousRunAssignments) {
       previousAssignmentMap.set(pa.occurrenceId, pa.memberId);
       if (!previousTaskMemberMap.has(pa.taskId)) {
         previousTaskMemberMap.set(pa.taskId, pa.memberId);
+      }
+      const isPinned = Boolean(
+        pa.isPinned ||
+        (safeRequest.pinnedAssignmentIds && (safeRequest.pinnedAssignmentIds.includes(pa.assignmentId) || safeRequest.pinnedAssignmentIds.includes(pa.occurrenceId)))
+      );
+      if (isPinned) {
+        pinnedAssignmentsMap.set(pa.occurrenceId, { memberId: pa.memberId, dayOfWeek: pa.dayOfWeek });
       }
     }
   }
@@ -186,6 +194,48 @@ function runMultiWeekOptimization(
 
     // Assign each occurrence
     for (const occ of sortedOccurrences) {
+      // Check if pinned manual override exists for this occurrence
+      const pinnedOverride = pinnedAssignmentsMap.get(occ.occurrenceId);
+      if (pinnedOverride) {
+        const member = memberMap.get(pinnedOverride.memberId);
+        if (member) {
+          const mState = globalMemberStates.get(member.id)!;
+          mState.assignedMinutes += occ.durationMinutes;
+          mState.assignedWeightedLoad += occ.weightedMinutes;
+          mState.dailyMinutes[pinnedOverride.dayOfWeek] += occ.durationMinutes;
+          mState.dailyWeightedLoad[pinnedOverride.dayOfWeek] += occ.weightedMinutes;
+          mState.taskCount++;
+          if (member.avoidedTaskIds?.includes(occ.taskId)) mState.avoidedTasksCount++;
+          if (member.preferredTaskIds?.includes(occ.taskId)) mState.preferredTasksCount++;
+
+          const existingDays = weekTaskDays.get(occ.taskId) || [];
+          existingDays.push(pinnedOverride.dayOfWeek);
+          weekTaskDays.set(occ.taskId, existingDays);
+
+          rotationLedger.recordAssignment(occ.weekIndex, occ.taskId, member.id);
+
+          const pinnedAssignment: AssignmentOutput = {
+            assignmentId: `asgn_${occ.occurrenceId}_${member.id}_${pinnedOverride.dayOfWeek}`,
+            occurrenceId: occ.occurrenceId,
+            taskId: occ.taskId,
+            taskName: occ.taskName,
+            category: occ.category,
+            weekIndex: occ.weekIndex,
+            dayOfWeek: pinnedOverride.dayOfWeek,
+            memberId: member.id,
+            memberName: member.name,
+            durationMinutes: occ.durationMinutes,
+            effortLevel: occ.effortLevel,
+            weightedMinutes: occ.weightedMinutes,
+            reasonCodes: ['manual_override', 'pinned_assignment'],
+            isPinned: true
+          };
+          weekAssignments.push(pinnedAssignment);
+          assignments.push(pinnedAssignment);
+          continue;
+        }
+      }
+
       // Check if 0 eligible members
       if (occ.eligibleMemberIds.length === 0) {
         unassignedTasks.push({

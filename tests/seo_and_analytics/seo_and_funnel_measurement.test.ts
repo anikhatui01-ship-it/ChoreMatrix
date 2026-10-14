@@ -153,8 +153,7 @@ describe('Phase 4: SEO and Conversion Measurement Suite', () => {
     it('verifies homepage hero headline is strictly preserved', () => {
       const indexHtml = fs.readFileSync(path.join(rootDir, 'index.html'), 'utf8');
       assert.ok(
-        indexHtml.includes('Stop arguing over who does what.') &&
-        indexHtml.includes('Let our household workload optimizer calculate the plan.'),
+        indexHtml.includes('Stop Arguing Over Who Does More. Prove It Mathematically in 60 Seconds.'),
         'Homepage hero headline must remain exactly as approved'
       );
     });

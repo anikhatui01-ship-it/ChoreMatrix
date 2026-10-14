@@ -18,22 +18,25 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import crypto from 'node:crypto';
 import { Buffer } from 'node:buffer';
 
-const CANONICAL_PRODUCT_MAP: Record<string, { tier: 'pro' | 'plus'; interval: 'monthly' | 'annual' }> = {
+const CANONICAL_PRODUCT_MAP: Record<string, { tier: 'pro' | 'plus' | 'fairness_pass'; interval: 'monthly' | 'annual' | 'one_time' }> = {
   // Test Mode Product IDs
   'pdt_0NozKZ3sZ6h0vplb451YK': { tier: 'pro', interval: 'monthly' },
   'pdt_0NozL7OvhpMonCSMw99Ng': { tier: 'pro', interval: 'annual' },
   'pdt_0NozLK4XCjDSCbkADEtQL': { tier: 'plus', interval: 'monthly' },
   'pdt_0NozLba96vBrtNtGdFONX': { tier: 'plus', interval: 'annual' },
+  'pdt_0NozPassTestFallback': { tier: 'fairness_pass', interval: 'one_time' },
   // Live Mode Product IDs
   'pdt_0Np1eZsemtECph1HLoDb0': { tier: 'pro', interval: 'monthly' },
   'pdt_0Np1ec3oUFACgeOKl4ktP': { tier: 'pro', interval: 'annual' },
   'pdt_0Np1ean3rbxLUQs6d1QAb': { tier: 'plus', interval: 'monthly' },
-  'pdt_0Np1ebMsCqGBWntrkX3fK': { tier: 'plus', interval: 'annual' }
+  'pdt_0Np1ebMsCqGBWntrkX3fK': { tier: 'plus', interval: 'annual' },
+  'pdt_0NphhaL0NCaWmH3nA3FdK': { tier: 'fairness_pass', interval: 'one_time' },
+  'pdt_0Np1PassLiveFallback': { tier: 'fairness_pass', interval: 'one_time' }
 };
 
-const TIER_RANK: Record<string, number> = { 'free': 0, 'pro': 1, 'plus': 2 };
+const TIER_RANK: Record<string, number> = { 'free': 0, 'fairness_pass': 1, 'pro': 2, 'plus': 3 };
 
-function resolveProductEntitlement(productId: string | null | undefined): { tier: 'pro' | 'plus'; interval: 'monthly' | 'annual' } | null {
+function resolveProductEntitlement(productId: string | null | undefined): { tier: 'pro' | 'plus' | 'fairness_pass'; interval: 'monthly' | 'annual' | 'one_time' } | null {
   if (!productId) return null;
   const clean = productId.trim();
   return CANONICAL_PRODUCT_MAP[clean] || null;
@@ -289,11 +292,12 @@ serve(async (req: Request) => {
     const isTrialing = rawStatus === 'trialing' || trialDays > 0 || eventType === 'subscription.trialing';
 
     // 7. Authoritative State Transitions
-    // A. Active / Trialing / Created
+    // A. Active / Trialing / Created / Payment Succeeded (One-Time Pass or Subscription)
     if (
       eventType === 'subscription.active' ||
       eventType === 'subscription.created' ||
       eventType === 'subscription.trialing' ||
+      eventType === 'payment.succeeded' ||
       (eventType === 'payment.succeeded' && subscriptionId)
     ) {
       if (!entitlement) {
@@ -304,17 +308,24 @@ serve(async (req: Request) => {
         });
       }
 
-      // If user already consumed trial, grant subscription as standard 'active' (paid) without repeat trial
-      const shouldGrantTrial = isTrialing && !userProfile?.trial_consumed;
+      const isOneTime = entitlement.interval === 'one_time';
+      const effectiveSubId = subscriptionId || `onetime_${data.payment_id || payload.payment_id || eventId}`;
+      const oneYearFromNow = new Date(Date.now() + 365 * 86400 * 1000).toISOString();
+
+      // If user already consumed trial or plan is one-time, grant as standard 'active' (paid)
+      const shouldGrantTrial = !isOneTime && isTrialing && !userProfile?.trial_consumed;
       const effectiveStatus = shouldGrantTrial ? 'trialing' : 'active';
       const trialEndsAt = shouldGrantTrial
         ? (data.trial_end || data.trial_ends_at || new Date(Date.now() + 7 * 86400 * 1000).toISOString())
         : null;
+      const periodEnd = isOneTime
+        ? oneYearFromNow
+        : (data.current_period_end || trialEndsAt || null);
 
       // Always record/upsert subscription in dodo_subscriptions
       await dbClient.from('dodo_subscriptions').upsert({
         user_id: targetUserId,
-        subscription_id: subscriptionId,
+        subscription_id: effectiveSubId,
         customer_id: customerId || '',
         product_id: productId,
         plan_tier: entitlement.tier,
@@ -323,12 +334,12 @@ serve(async (req: Request) => {
         has_trial: shouldGrantTrial,
         trial_ends_at: trialEndsAt,
         current_period_start: data.current_period_start || nowIso,
-        current_period_end: data.current_period_end || trialEndsAt || null,
+        current_period_end: periodEnd,
         scheduled_change: null,
         updated_at: nowIso
       });
 
-      // Multi-subscription hierarchy resolution: plus (2) > pro (1) > free (0)
+      // Multi-subscription hierarchy resolution: plus (3) > pro (2) > fairness_pass (1) > free (0)
       const currentRank = (userProfile?.subscription_status === 'active' || userProfile?.subscription_status === 'trialing')
         ? (TIER_RANK[userProfile?.plan_tier || 'free'] || 0)
         : 0;
@@ -340,9 +351,10 @@ serve(async (req: Request) => {
           billing_interval: entitlement.interval,
           subscription_status: effectiveStatus,
           payment_provider: 'dodo',
-          dodo_subscription_id: subscriptionId,
+          dodo_subscription_id: effectiveSubId,
           dodo_customer_id: customerId,
-          provider_subscription_id: subscriptionId,
+          provider_subscription_id: effectiveSubId,
+          current_period_end: periodEnd,
           trial_consumed: true,
           updated_at: nowIso
         };

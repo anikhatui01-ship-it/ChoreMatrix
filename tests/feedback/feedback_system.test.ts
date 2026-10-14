@@ -201,7 +201,7 @@ describe('Phase 3: Early User Feedback System Tests', () => {
 
     it('restores preferred homepage headline on index.html', () => {
       assert.ok(
-        indexHtml.includes('Stop arguing over who does what.<br>Let our household workload optimizer calculate the plan.')
+        indexHtml.includes('Stop Arguing Over Who Does More. Prove It Mathematically in 60 Seconds.')
       );
     });
   });

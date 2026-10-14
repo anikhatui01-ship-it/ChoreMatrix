@@ -23,14 +23,16 @@ const TEST_PRODUCT_MAP: Record<string, string> = {
   'pro_monthly': 'pdt_0NozKZ3sZ6h0vplb451YK',
   'pro_annual': 'pdt_0NozL7OvhpMonCSMw99Ng',
   'plus_monthly': 'pdt_0NozLK4XCjDSCbkADEtQL',
-  'plus_annual': 'pdt_0NozLba96vBrtNtGdFONX'
+  'plus_annual': 'pdt_0NozLba96vBrtNtGdFONX',
+  'fairness_pass_one_time': 'pdt_0NozPassTestFallback'
 };
 
 const LIVE_PRODUCT_MAP: Record<string, string> = {
   'pro_monthly': 'pdt_0Np1eZsemtECph1HLoDb0',
   'pro_annual': 'pdt_0Np1ec3oUFACgeOKl4ktP',
   'plus_monthly': 'pdt_0Np1ean3rbxLUQs6d1QAb',
-  'plus_annual': 'pdt_0Np1ebMsCqGBWntrkX3fK'
+  'plus_annual': 'pdt_0Np1ebMsCqGBWntrkX3fK',
+  'fairness_pass_one_time': 'pdt_0NphhaL0NCaWmH3nA3FdK'
 };
 
 function isLiveEnvironment(baseUrl: string, envName?: string): boolean {
@@ -58,6 +60,27 @@ function isLiveEnvironment(baseUrl: string, envName?: string): boolean {
 }
 
 function resolveServerProductId(planKey: string, isLive: boolean): string | null {
+  if (planKey.startsWith('fairness_pass')) {
+    const onetimeOverride =
+      Deno.env.get('NEXT_PUBLIC_DODO_FAIRNESS_PASS_PRODUCT_ID') ||
+      Deno.env.get('DODO_FAIRNESS_PASS_PRODUCT_ID') ||
+      Deno.env.get('DODO_ONETIME_PASS_PRODUCT_ID') ||
+      Deno.env.get('VITE_DODO_ONETIME_PASS_PRODUCT_ID');
+    if (onetimeOverride && onetimeOverride.trim().startsWith('pdt_')) {
+      return onetimeOverride.trim();
+    }
+  }
+
+  if (planKey.startsWith('pro_monthly')) {
+    const proOverride =
+      Deno.env.get('NEXT_PUBLIC_DODO_PRO_MONTHLY_PRODUCT_ID') ||
+      Deno.env.get('DODO_PRO_MONTHLY_PRODUCT_ID') ||
+      Deno.env.get('VITE_DODO_PRO_MONTHLY_PRODUCT_ID');
+    if (proOverride && proOverride.trim().startsWith('pdt_')) {
+      return proOverride.trim();
+    }
+  }
+
   const overrideKey = `DODO_${planKey.toUpperCase()}_PRODUCT_ID`;
   const viteOverrideKey = `VITE_DODO_${planKey.toUpperCase()}_PRODUCT_ID`;
   const liveOverrideKey = `DODO_LIVE_${planKey.toUpperCase()}_PRODUCT_ID`;
@@ -79,15 +102,18 @@ function normalizePlan(plan: string | null | undefined): string {
   if (!plan) throw new Error('Missing plan parameter');
   const clean = plan.trim().toLowerCase();
   if (clean === 'pro' || clean === 'household_pro') return 'pro';
+  if (clean === 'fairness_pass' || clean === 'onetime_pass' || clean === 'pass') return 'fairness_pass';
   if (clean === 'plus' || clean === 'household_plus' || clean === 'family_plus') return 'plus';
   throw new Error(`Invalid plan "${plan}"`);
 }
 
-function normalizeInterval(interval: string | null | undefined): string {
+function normalizeInterval(interval: string | null | undefined, plan?: string): string {
+  if (!interval && plan === 'fairness_pass') return 'one_time';
   if (!interval) throw new Error('Missing interval parameter');
   const clean = interval.trim().toLowerCase();
   if (clean === 'monthly' || clean === 'month') return 'monthly';
   if (clean === 'annual' || clean === 'annually' || clean === 'yearly' || clean === 'year') return 'annual';
+  if (clean === 'one_time' || clean === 'onetime' || clean === 'once' || clean === 'single') return 'one_time';
   throw new Error(`Invalid interval "${interval}"`);
 }
 
@@ -150,7 +176,7 @@ serve(async (req: Request) => {
     const isLive = isLiveEnvironment(dodoBaseUrl, dodoEnv);
 
     const plan = normalizePlan(reqBody.plan);
-    const interval = normalizeInterval(reqBody.interval);
+    const interval = normalizeInterval(reqBody.interval, plan);
     const planKey = `${plan}_${interval}`;
     const productId = resolveServerProductId(planKey, isLive);
 
@@ -165,7 +191,7 @@ serve(async (req: Request) => {
       auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false }
     });
 
-    // Check user profile for trial status and active subscription
+    // Check user profile for active subscription
     const { data: profile } = await dbClient
       .from('profiles')
       .select('id, trial_consumed, plan_tier, subscription_status')
@@ -180,9 +206,6 @@ serve(async (req: Request) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
-
-    const isTrialConsumed = Boolean(profile?.trial_consumed);
-    const isTrialEligible = !isTrialConsumed;
 
     if (!dodoApiKey) {
       console.error('[dodo-create-checkout] DODO_API_KEY not configured.');
@@ -209,12 +232,6 @@ serve(async (req: Request) => {
       },
       return_url: reqBody.return_url || `${req.headers.get('origin') || 'https://chorematrix.online'}/account.html?payment_status=submitted`
     };
-
-    if (isTrialEligible) {
-      requestPayload.subscription_data = {
-        trial_period_days: 7
-      };
-    }
 
     const response = await fetch(checkoutEndpoint, {
       method: 'POST',

@@ -57,24 +57,24 @@
       "offers": [
         {
           "@type": "Offer",
-          "name": "Free Plan",
+          "name": "Free Audit",
           "price": "0",
           "priceCurrency": "USD",
-          "description": "1-week planning horizon, in-browser and cloud saving, standard optimization."
+          "description": "Full household capacity & effort calculator, live fairness score, days 1-3 preview."
         },
         {
           "@type": "Offer",
-          "name": "Pro Plan",
-          "price": "4.99",
+          "name": "One-Time Fairness Pass",
+          "price": "14.99",
           "priceCurrency": "USD",
-          "description": "4-week planning horizon, multi-week rotation ledger, ad-free workspace, PDF export."
+          "description": "Instant unlock of full 7-day & 4-week schedules, unlimited rebalancing, printable PDF exports."
         },
         {
           "@type": "Offer",
-          "name": "Plus Plan",
-          "price": "8.99",
+          "name": "Household Autopilot Pro",
+          "price": "5.99",
           "priceCurrency": "USD",
-          "description": "4-week planning horizon, priority support, independent preset snapshots, PDF export."
+          "description": "Ongoing automated peace, unlimited household profiles, shareable links, multi-month rotation memory."
         }
       ]
     }
@@ -380,7 +380,7 @@
   .member-check-label input { margin: 0; accent-color: var(--accent); }
   .score-badge { display: flex; align-items: baseline; gap: 6px; font-size: 28px; font-weight: 800; color: var(--accent); }
   .score-badge small { font-size: 12px; color: var(--muted); font-weight: 600; }
-  .metrics-strip { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0; }
+  .metrics-strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin: 14px 0; }
   .metric-card { background: var(--panel-subtle); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
   .metric-card label { font-size: 11px; color: var(--muted); font-weight: 700; text-transform: uppercase; }
   .metric-card div { font-size: 17px; font-weight: 800; margin-top: 2px; color: var(--ink); }
@@ -397,7 +397,35 @@
   .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; margin-top: 10px; }
   .cal-col { background: var(--cal-col-bg); border: 1px solid var(--line); border-radius: 8px; padding: 6px; min-height: 120px; }
   .cal-col-head { font-size: 11px; font-weight: 800; text-transform: uppercase; color: var(--muted); text-align: center; padding-bottom: 6px; border-bottom: 1px solid var(--line); margin-bottom: 6px; }
-  .cal-task-card { background: var(--cal-card-bg); border: 1px solid var(--cal-card-border); border-radius: 6px; padding: 5px 6px; margin-bottom: 5px; font-size: 11px; }
+  .cal-task-card { background: var(--cal-card-bg); border: 1px solid var(--cal-card-border); border-radius: 6px; padding: 5px 6px; margin-bottom: 5px; font-size: 11px; transition: transform 0.12s ease, border-color 0.12s ease; }
+  .cal-task-card:hover { border-color: var(--line-subtle); transform: translateY(-1px); }
+  .cal-task-card.is-dragging { opacity: 0.45; cursor: grabbing; border: 1px dashed var(--accent); }
+  .cal-task-card.is-edited { border-color: var(--accent) !important; background: var(--panel-subtle); }
+  .cal-task-card.has-conflict { border-color: #f59e0b !important; }
+  .cal-col.drag-over { background: rgba(16, 185, 129, 0.12) !important; border: 2px dashed var(--accent) !important; }
+  .btn-cal-shift { background: none; border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; font-size: 11px; line-height: 1.2; cursor: pointer; color: var(--muted); }
+  .btn-cal-shift:hover { background: var(--panel-subtle); color: var(--ink); }
+  .scheduler-action-bar {
+    position: sticky;
+    bottom: 14px;
+    z-index: 50;
+    background: var(--panel);
+    border: 1px solid var(--primary);
+    border-radius: 12px;
+    padding: 10px 14px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.22);
+    display: none;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-top: 12px;
+    flex-wrap: wrap;
+    animation: cmSlideUp 0.2s ease-out;
+  }
+  @keyframes cmSlideUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
   .cal-task-name { font-weight: 700; color: var(--ink); line-height: 1.2; margin-bottom: 2px; }
   .cal-task-owner { color: var(--accent); font-weight: 700; font-size: 10px; }
   .cal-task-time { color: var(--muted); font-size: 10px; }
@@ -407,10 +435,127 @@
   td { color: var(--ink); }
   .btn.active-view { background: var(--btn-dark-bg); border-color: var(--btn-dark-bg); color: var(--btn-dark-text); }
   .differentiator-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-  @media (max-width: 1024px) { .grid { grid-template-columns: 1fr; } .calendar-grid { grid-template-columns: repeat(4, 1fr); } }
+
+  /* Locked Days 4-7 Styles */
+  .cal-locked-container {
+    grid-column: 4 / -1;
+    position: relative;
+    min-height: 140px;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 6px;
+  }
+  .cal-locked-blur {
+    filter: blur(6px);
+    -webkit-filter: blur(6px);
+    pointer-events: none;
+    user-select: none;
+    opacity: 0.45;
+  }
+  .schedule-unlock-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    padding: 12px;
+    background: rgba(17, 26, 21, 0.45);
+    border-radius: 8px;
+    pointer-events: auto;
+  }
+  .schedule-unlock-card {
+    background: var(--panel);
+    border: 1px solid var(--primary);
+    border-radius: 14px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25);
+    padding: 20px 18px;
+    text-align: center;
+    max-width: 330px;
+    width: 100%;
+    margin: 0 auto;
+    pointer-events: auto;
+    box-sizing: border-box;
+  }
+  .schedule-unlock-card h4 {
+    margin: 0 0 6px;
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--ink);
+  }
+  .schedule-unlock-card p {
+    margin: 0 0 14px;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.45;
+  }
+
+  /* Modals */
+  .cm-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.72);
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+    z-index: 2000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    overflow-y: auto;
+    box-sizing: border-box;
+  }
+  .cm-modal-backdrop.open { display: flex; }
+  .cm-modal {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    max-width: 480px;
+    width: 100%;
+    box-shadow: var(--shadow-lg);
+    position: relative;
+    box-sizing: border-box;
+    padding: 24px;
+    animation: cmModalFade 0.2s ease-out;
+  }
+  @keyframes cmModalFade {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .cm-modal-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    background: none;
+    border: none;
+    color: var(--muted);
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    padding: 4px;
+    border-radius: 4px;
+  }
+  .cm-modal-close:hover { color: var(--bad); }
+
+  @media (max-width: 1024px) {
+    .grid { grid-template-columns: 1fr; }
+    .calendar-grid { grid-template-columns: repeat(4, 1fr); }
+    .cal-locked-container {
+      grid-column: 1 / -1;
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
   @media (max-width: 900px) { .differentiator-grid { grid-template-columns: 1fr; } }
-  @media (max-width: 640px) { .calendar-grid { grid-template-columns: 1fr 1fr; } .metrics-strip { grid-template-columns: 1fr; } .form-row { grid-template-columns: 1fr; } }
-  @media (max-width: 380px) { .calendar-grid { grid-template-columns: 1fr; } }
+  @media (max-width: 640px) {
+    .calendar-grid { grid-template-columns: 1fr 1fr; }
+    .cal-locked-container { grid-template-columns: 1fr; }
+    .metrics-strip { grid-template-columns: 1fr 1fr; }
+    .form-row { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 380px) {
+    .calendar-grid { grid-template-columns: 1fr; }
+    .metrics-strip { grid-template-columns: 1fr; }
+  }
 </style>
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6399557140317733"
      crossorigin="anonymous"></script>
@@ -465,9 +610,9 @@
     <!-- Public Hero -->
     <div style="text-align:center; padding:20px 0 32px; max-width:840px; margin:0 auto;">
       <span class="badge teal" style="margin-bottom:10px;">First-Use Planning Aid · No Account Required</span>
-      <h1 style="font-size:34px; font-weight:800; margin:0 0 10px; color:var(--ink); line-height:1.2; letter-spacing:-0.02em;">Stop arguing over who does what.<br>Let our household workload optimizer calculate the plan.</h1>
+      <h1 style="font-size:34px; font-weight:800; margin:0 0 10px; color:var(--ink); line-height:1.2; letter-spacing:-0.02em;">Stop Arguing Over Who Does More. Prove It Mathematically in 60 Seconds.</h1>
       <p style="font-size:16px; color:var(--muted); margin:0 0 20px; line-height:1.55;">
-        Turn your chores, household members, available time, and task effort into a practical household workload plan. Powered by a capacity-aware optimizer, ChoreMatrix replaces guesswork and daily negotiations with transparent, fair schedules.
+        ChoreMatrix balances household chores using real daily time capacity and effort weights—so neither partner nor roommate carries an unfair mental load.
       </p>
       <div style="display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-bottom:12px;">
         <a href="#calculatorArea" class="btn primary" id="btnHeroCta" style="font-weight:700; padding:10px 22px; font-size:14px;">Build your household plan</a>
@@ -623,17 +768,23 @@
 
           <!-- Summary & Diagnostics -->
           <div class="panel">
-            <div class="panel-head">
+            <div class="panel-head" style="align-items:center; flex-wrap:wrap; gap:10px;">
               <div>
                 <h2>Optimizer Results & Diagnostics</h2>
                 <div class="sub">Evaluation metrics and fairness breakdown.</div>
               </div>
-              <div style="text-align:right;">
-                <div class="score-badge" id="balanceScoreVal">
-                  --<small>fairness index</small>
-                </div>
-                <div style="font-size:10px; color:var(--muted); margin-top:2px;">
-                  100 = balanced workload distribution
+              <div style="display:flex; align-items:center; gap:12px; flex-wrap:wrap;">
+                <button type="button" class="btn small" id="btnShareReceipt" style="font-weight:600; display:inline-flex; align-items:center; gap:6px;" title="Share Fairness Receipt">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" y1="2" x2="12" y2="15"/></svg>
+                  <span>Share Fairness Receipt</span>
+                </button>
+                <div style="text-align:right;">
+                  <div class="score-badge" id="balanceScoreVal">
+                    --<small>fairness index</small>
+                  </div>
+                  <div style="font-size:10px; color:var(--muted); margin-top:2px;">
+                    100 = balanced workload distribution
+                  </div>
                 </div>
               </div>
             </div>
@@ -657,6 +808,10 @@
               <div class="metric-card">
                 <label>Weighted Load</label>
                 <div id="metricWeightedWork">0 pts</div>
+              </div>
+              <div class="metric-card" id="metricDisparityCard">
+                <label>Load Disparity</label>
+                <div id="metricDisparityVal">0 pts</div>
               </div>
             </div>
 
@@ -711,6 +866,19 @@
                 </thead>
                 <tbody id="tableBodyContainer"></tbody>
               </table>
+            </div>
+
+            <!-- Sticky Action Bar for Manual Edits -->
+            <div id="schedulerActionBar" class="scheduler-action-bar" style="display:none;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span class="badge" style="background:var(--accent-light, #e0e7ff); color:var(--accent); font-weight:700;">✏️ Unsaved Changes</span>
+                <span id="unsavedChangesLabel" style="font-size:12px; color:var(--ink); font-weight:600;">Manual changes pending</span>
+              </div>
+              <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                <button type="button" class="btn small" id="btnResetScheduleEdits" style="font-weight:600;">Reset</button>
+                <button type="button" class="btn small" id="btnPinAndRebalance" style="font-weight:600;" title="Pin your manual edits and rebalance remaining chores">Pin Edits & Auto-Rebalance Rest</button>
+                <button type="button" class="btn small primary" id="btnApplyScheduleEdits" style="font-weight:700;">Update Calculator</button>
+              </div>
             </div>
           </div>
         </div>
@@ -830,6 +998,120 @@
       <!-- Live Region Feedback for Copy / Share Status -->
       <div id="shareStatusFeedback" role="status" aria-live="polite" style="display:none; font-size:13px; font-weight:600; line-height:1.4; padding:8px 14px; border-radius:8px; max-width:540px; margin:0 auto;"></div>
     </section>
+
+    <!-- Upgrade Gate Modal (Task 1) -->
+    <div id="upgradeGateModal" class="cm-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="upgradeGateTitle" style="display:none;">
+      <div class="cm-modal" style="max-width: 500px;">
+        <button type="button" class="cm-modal-close" id="btnCloseUpgradeGate" aria-label="Close modal">✕</button>
+        <div style="text-align:center; margin-bottom:18px;">
+          <div style="width:48px; height:48px; border-radius:12px; background:var(--primary-soft); color:var(--primary); font-size:24px; display:grid; place-items:center; margin:0 auto 12px;">🔒</div>
+          <h2 id="upgradeGateTitle" style="font-size:20px; font-weight:800; margin:0 0 6px; color:var(--ink);">Unlock Full 7-Day Schedule & Exports</h2>
+          <p id="upgradeGateSubtitle" style="font-size:13px; color:var(--muted); margin:0; line-height:1.5;">
+            Auto-rebalancing swaps and printable household PDFs are included in the One-Time Fairness Pass and Household Autopilot Pro.
+          </p>
+        </div>
+
+        <div style="display:grid; gap:12px; margin-bottom:20px;">
+          <!-- Option 1: One-Time Pass -->
+          <div style="border:2px solid var(--accent); border-radius:12px; padding:16px; background:var(--panel-subtle); position:relative;">
+            <span class="badge teal" style="position:absolute; top:-10px; right:12px; font-size:10px; font-weight:700;">MOST POPULAR</span>
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px;">
+              <strong style="font-size:15px; color:var(--ink);">One-Time Fairness Pass</strong>
+              <span style="font-size:18px; font-weight:800; color:var(--accent);">$14.99 <span style="font-size:11px; font-weight:600; color:var(--muted);">one-time</span></span>
+            </div>
+            <p style="font-size:12px; color:var(--muted); margin:0 0 10px; line-height:1.4;">
+              End the argument tonight. 1-Year household access. Zero recurring monthly fees.
+            </p>
+            <ul style="font-size:12px; color:var(--text-secondary); margin:0 0 14px; padding-left:18px; line-height:1.45;">
+              <li>Instant unlock of full 7-day & 4-week rotational schedules</li>
+              <li>Unlimited 1-click Rebalance swaps & 2-opt fairness tuning</li>
+              <li>Printable fridge-ready PDF schedules</li>
+            </ul>
+            <a href="/pricing#unlock" class="btn primary small" style="width:100%; text-align:center; font-weight:700; display:block; box-sizing:border-box; text-decoration:none;">Get Instant Access — $14.99 →</a>
+          </div>
+
+          <!-- Option 2: Pro -->
+          <div style="border:1px solid var(--line); border-radius:12px; padding:14px 16px; background:var(--panel);">
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px;">
+              <strong style="font-size:14px; color:var(--ink);">Household Autopilot Pro</strong>
+              <span style="font-size:15px; font-weight:800; color:var(--ink);">$5.99 <span style="font-size:11px; font-weight:600; color:var(--muted);">/ mo</span></span>
+            </div>
+            <p style="font-size:12px; color:var(--muted); margin:0 0 10px; line-height:1.4;">
+              Everything in Fairness Pass plus multi-month rotation memory and multi-device sync.
+            </p>
+            <a href="/pricing" class="btn small" style="width:100%; text-align:center; font-weight:600; display:block; box-sizing:border-box; text-decoration:none;">Start 7-Day Free Trial →</a>
+          </div>
+        </div>
+
+        <div style="text-align:center;">
+          <a href="/pricing" style="font-size:12px; color:var(--muted); text-decoration:underline;">Compare all plan features & terms</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Fairness Receipt Modal (Task 3) -->
+    <div id="fairnessReceiptModal" class="cm-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="receiptModalTitle" style="display:none;">
+      <div class="cm-modal" style="max-width: 440px; padding: 20px;">
+        <button type="button" class="cm-modal-close" id="btnCloseReceiptModal" aria-label="Close modal">✕</button>
+        <div style="text-align:center; margin-bottom:14px;">
+          <h2 id="receiptModalTitle" style="font-size:17px; font-weight:800; margin:0 0 4px; color:var(--ink);">Household Fairness Receipt</h2>
+          <p style="font-size:12px; color:var(--muted); margin:0;">Shareable 9:16 vertical audit card for WhatsApp, iMessage, or Discord.</p>
+        </div>
+
+        <!-- 9:16 Vertical Receipt Card Container -->
+        <div class="receipt-card-container" id="receiptCardContainer" style="background: #0B120F; color: #F2F7F4; border: 1px solid #26362D; border-radius: 16px; padding: 22px 18px; margin: 0 auto; box-shadow: 0 14px 34px rgba(0,0,0,0.5);">
+          <!-- Receipt Header -->
+          <div style="text-align:center; border-bottom:1px dashed #26362D; padding-bottom:12px; margin-bottom:12px;">
+            <div style="display:inline-flex; align-items:center; gap:6px; margin-bottom:4px;">
+              <span style="display:inline-block; width:18px; height:18px; border-radius:4px; background:#4FAF8F; color:#0B120F; font-size:10px; font-weight:900; line-height:18px; text-align:center;">CM</span>
+              <span style="font-size:11px; font-weight:800; letter-spacing:0.12em; color:#69D0A8; text-transform:uppercase;">ChoreMatrix.online</span>
+            </div>
+            <div style="font-size:15px; font-weight:900; letter-spacing:0.08em; text-transform:uppercase; color:#FFFFFF;">HOUSEHOLD FAIRNESS AUDIT</div>
+            <div id="receiptHouseholdMeta" style="font-size:11px; color:#9EABA4; margin-top:2px;">Household Evaluation · Weekly Horizon</div>
+          </div>
+
+          <!-- Score & Verdict Badge -->
+          <div style="text-align:center; padding:10px 0; background:#111A15; border-radius:10px; border:1px solid #1E2E25; margin-bottom:14px;">
+            <div style="font-size:10px; font-weight:700; color:#9EABA4; text-transform:uppercase; letter-spacing:0.06em;">Fairness Index Score</div>
+            <div id="receiptScoreVal" style="font-size:38px; font-weight:900; color:#69D0A8; line-height:1.1; margin:4px 0;">--%</div>
+            <div style="display:inline-block; margin-top:4px;">
+              <span id="receiptVerdictBadge" style="display:inline-block; padding:4px 10px; border-radius:99px; font-size:11px; font-weight:800; letter-spacing:0.04em; text-transform:uppercase; background:rgba(99,200,148,0.2); color:#63C894; border:1px solid #63C894;">
+                MATHEMATICALLY BALANCED
+              </span>
+            </div>
+            <div id="receiptDisparitySummary" style="font-size:11px; color:#B0BCB5; margin-top:6px; font-weight:600;">
+              Total Weighted Disparity: 0 pts
+            </div>
+          </div>
+
+          <!-- Members Breakdown -->
+          <div style="margin-bottom:14px;">
+            <div style="font-size:10px; font-weight:800; color:#9EABA4; text-transform:uppercase; letter-spacing:0.06em; margin-bottom:8px;">
+              Workload vs Capacity Breakdown
+            </div>
+            <div id="receiptMembersList" style="display:grid; gap:8px;"></div>
+          </div>
+
+          <!-- Watermark Footer -->
+          <div style="text-align:center; padding-top:12px; border-top:1px dashed #26362D;">
+            <div style="font-size:10px; font-weight:800; letter-spacing:0.08em; text-transform:uppercase; color:#69D0A8;">
+              Calculated objectively at ChoreMatrix.online
+            </div>
+            <div style="font-size:9px; color:#6E7B74; margin-top:2px;">Deterministic capacity & effort workload optimizer</div>
+          </div>
+        </div>
+
+        <!-- Receipt Controls -->
+        <div style="margin-top:14px; display:flex; flex-direction:column; gap:8px;">
+          <button type="button" class="btn primary small" id="btnCopyReceiptText" style="width:100%; font-weight:700; padding:9px;">
+            📋 Copy Summary Text
+          </button>
+          <div id="receiptCopyFeedback" style="display:none; font-size:12px; color:var(--good); font-weight:600; text-align:center;">
+            ✓ Receipt summary copied to clipboard!
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </main>
 
@@ -998,6 +1280,28 @@ let currentRequest = {
 let currentResult = null;
 let activeWeek = 0;
 let activeView = 'calendar';
+let lastCleanAssignments = null;
+let hasUnsavedChanges = false;
+let freeCalculatorUpdatesUsed = 0;
+let draggedTaskData = null;
+
+function showToast(msg) {
+  let toast = document.getElementById('cmToastNotification');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.id = 'cmToastNotification';
+    toast.style.cssText = 'position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--ink); color:var(--panel); padding:10px 18px; border-radius:9999px; font-size:12px; font-weight:600; z-index:9999; box-shadow:0 4px 14px rgba(0,0,0,0.25); transition:opacity 0.2s ease, transform 0.2s ease; opacity:0; pointer-events:none;';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.style.opacity = '1';
+  toast.style.transform = 'translateX(-50%) translateY(0)';
+  clearTimeout(toast._timeout);
+  toast._timeout = setTimeout(() => {
+    toast.style.opacity = '0';
+    toast.style.transform = 'translateX(-50%) translateY(8px)';
+  }, 3200);
+}
 
 const $ = s => document.querySelector(s);
 
@@ -1750,6 +2054,22 @@ function renderResults() {
   $('#metricTotalWork').textContent = workLabel;
   $('#metricWeightedWork').textContent = `${Math.round(diag.totalHouseholdWeightedWork)} pts`;
 
+  // Total Weighted Load Disparity Calculation
+  const summaries = currentResult.memberSummaries || [];
+  let disparityText = '0 pts';
+  if (summaries.length > 1) {
+    const loads = summaries.map(m => m.assignedWeightedLoad || 0);
+    const maxLoad = Math.max(...loads);
+    const minLoad = Math.min(...loads);
+    const spread = Math.round(maxLoad - minLoad);
+    const highestMember = summaries.reduce((prev, curr) => (curr.assignedWeightedLoad > prev.assignedWeightedLoad ? curr : prev), summaries[0]);
+    disparityText = spread === 0 ? '0 pts (Balanced)' : `${spread} pts (${highestMember.memberName} leads)`;
+  } else if (summaries.length === 1) {
+    disparityText = '0 pts (1 member)';
+  }
+  const dispEl = $('#metricDisparityVal');
+  if (dispEl) dispEl.textContent = disparityText;
+
   const diffBox = $('#diffBannerContainer');
   if (currentResult.diffSummary && currentResult.diffSummary.length) {
     diffBox.style.display = 'block';
@@ -1775,12 +2095,16 @@ function renderResults() {
   }
 
   const barsContainer = $('#memberBarsContainer');
+  const totalWeightedWork = diag.totalHouseholdWeightedWork || 1;
+  const totalHouseholdCap = diag.totalHouseholdCapacityMinutes || 1;
   barsContainer.innerHTML = currentResult.memberSummaries.map(m => {
     const pct = Math.round(m.utilizationRatio * 100);
     const barWidth = Math.min(100, Math.max(2, pct));
+    const loadSharePct = Math.round(((m.assignedWeightedLoad || 0) / totalWeightedWork) * 100);
+    const capSharePct = Math.round(((m.weeklyCapacityMinutes || 1) / totalHouseholdCap) * 100);
     const capLabel = isSingleDay
       ? `${m.assignedMinutes} min · ${pct}% daily cap`
-      : `${m.assignedMinutes} min · ${pct}% capacity`;
+      : `${m.assignedMinutes} min (${m.assignedWeightedLoad || 0} pts · ${loadSharePct}% load share vs ${capSharePct}% cap)`;
     return `
       <div class="member-bar-row">
         <div class="member-bar-meta">
@@ -1826,9 +2150,51 @@ function renderResults() {
   updateControlsState();
 }
 
+function renderTaskCardHtml(a, isInteractive = true) {
+  const isEdited = Boolean(a.isEdited);
+  const conflictBadge = a.hasConflict ? `<span class="badge" style="background:#fef3c7; color:#92400e; font-size:9px; padding:1px 4px; margin-top:3px; display:inline-block; border:1px solid #fde68a;">⚠️ Unavailable Day Conflict</span>` : '';
+  const editedBadge = isEdited ? `<span class="badge" style="background:var(--accent-light, #e0e7ff); color:var(--accent); font-size:9px; padding:1px 4px; margin-top:3px; display:inline-block;">📌 Edited</span>` : '';
+  const reasonBadge = a.reasonCodes && a.reasonCodes.length ? `<span class="badge" style="font-size:9px; padding:1px 4px; margin-top:3px;">${a.reasonCodes[0].replace(/_/g, ' ')}</span>` : '';
+
+  return `
+    <div class="cal-task-card ${isEdited ? 'is-edited' : ''} ${a.hasConflict ? 'has-conflict' : ''}"
+         ${isInteractive ? 'draggable="true"' : ''}
+         data-task-id="${escapeHtml(a.taskId)}"
+         data-occurrence-id="${escapeHtml(a.occurrenceId || a.taskId + '-' + a.dayOfWeek)}"
+         data-day="${a.dayOfWeek}"
+         data-member-id="${escapeHtml(a.memberId)}"
+         style="cursor: ${isInteractive ? 'grab' : 'default'}; user-select: none; position: relative;">
+      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:4px;">
+        <div class="cal-task-name" style="flex:1;">
+          ${isInteractive ? '<span class="cal-card-handle" title="Drag to move day" style="cursor:grab; margin-right:3px; color:var(--muted); font-size:12px;">⋮⋮</span>' : ''}
+          ${escapeHtml(a.taskName)}
+        </div>
+        ${isInteractive ? `
+          <div class="cal-mobile-shifts" style="display:flex; gap:2px;">
+            <button type="button" class="btn-cal-shift btn-cal-shift-prev" data-shift="-1" data-task-id="${escapeHtml(a.taskId)}" data-day="${a.dayOfWeek}" title="Move left" aria-label="Move chore to previous day">‹</button>
+            <button type="button" class="btn-cal-shift btn-cal-shift-next" data-shift="1" data-task-id="${escapeHtml(a.taskId)}" data-day="${a.dayOfWeek}" title="Move right" aria-label="Move chore to next day">›</button>
+          </div>
+        ` : ''}
+      </div>
+      <div style="margin-top:2px;">
+        <span class="cal-task-owner-badge" ${isInteractive ? 'data-action="swap-member"' : ''} data-task-id="${escapeHtml(a.taskId)}" data-day="${a.dayOfWeek}" title="${isInteractive ? 'Click to cycle assigned member' : ''}" style="${isInteractive ? 'cursor:pointer;' : ''} display:inline-flex; align-items:center; gap:3px; font-weight:700; color:var(--primary); background:var(--panel-subtle); padding:1px 5px; border-radius:4px; border:1px solid var(--line); font-size:10px;">
+          👤 ${escapeHtml(a.memberName)} ${isInteractive ? '<span style="font-size:8px; opacity:0.7;">⇄</span>' : ''}
+        </span>
+      </div>
+      <div class="cal-task-time" style="margin-top:2px;">⏱️ ${a.durationMinutes}m (E${a.effortLevel})</div>
+      <div style="display:flex; flex-wrap:wrap; gap:3px;">
+        ${reasonBadge}
+        ${editedBadge}
+        ${conflictBadge}
+      </div>
+    </div>
+  `;
+}
+
 function renderSchedule() {
   if (!currentResult) return;
   const isSingleDay = currentResult.planningMode === 'single_day';
+  const isPaidUser = Boolean(currentEntitlement && currentEntitlement.isPaid);
   const weekAssignments = isSingleDay
     ? currentResult.assignments
     : currentResult.assignments.filter(a => a.weekIndex === activeWeek);
@@ -1858,59 +2224,550 @@ function renderSchedule() {
               </div>
             </div>
           ` : ''}
-          ${dayTasks.map(a => `
-            <div class="cal-task-card" style="margin: 8px 12px;">
-              <div class="cal-task-name">${escapeHtml(a.taskName)}</div>
-              <div class="cal-task-owner">👤 ${escapeHtml(a.memberName)}</div>
-              <div class="cal-task-time">⏱️ ${a.durationMinutes}m (E${a.effortLevel})</div>
-              ${a.reasonCodes && a.reasonCodes.length ? `<span class="badge" style="font-size:9px; padding:1px 4px; margin-top:3px;">${a.reasonCodes[0].replace(/_/g, ' ')}</span>` : ''}
-            </div>
-          `).join('')}
+          ${dayTasks.map(a => renderTaskCardHtml(a, true)).join('')}
         </div>
       `;
     } else {
       calGrid.style.display = 'grid';
-      calGrid.innerHTML = DAYS_OF_WEEK.map(d => {
-        const dayTasks = weekAssignments.filter(a => a.dayOfWeek === d);
-        return `
-          <div class="cal-col">
+      if (isPaidUser) {
+        calGrid.innerHTML = DAYS_OF_WEEK.map(d => {
+          const dayTasks = weekAssignments.filter(a => a.dayOfWeek === d);
+          return `
+            <div class="cal-col" data-day="${d}">
+              <div class="cal-col-head">${d.toUpperCase()}</div>
+              ${dayTasks.length === 0 ? `<div style="text-align:center; padding:18px 4px; color:var(--muted); font-size:11px; font-style:italic;">No tasks</div>` : ''}
+              ${dayTasks.map(a => renderTaskCardHtml(a, true)).join('')}
+            </div>
+          `;
+        }).join('');
+      } else {
+        // Free tier: Days 1-3 fully interactive, Days 4-7 locked placeholders (never send hidden assignments to DOM)
+        const openDays = DAYS_OF_WEEK.slice(0, 3);
+        const lockedDays = DAYS_OF_WEEK.slice(3);
+
+        const openColsHtml = openDays.map(d => {
+          const dayTasks = weekAssignments.filter(a => a.dayOfWeek === d);
+          return `
+            <div class="cal-col" data-day="${d}">
+              <div class="cal-col-head">${d.toUpperCase()}</div>
+              ${dayTasks.length === 0 ? `<div style="text-align:center; padding:18px 4px; color:var(--muted); font-size:11px; font-style:italic;">No tasks</div>` : ''}
+              ${dayTasks.map(a => renderTaskCardHtml(a, true)).join('')}
+            </div>
+          `;
+        }).join('');
+
+        const lockedColsHtml = lockedDays.map(d => `
+          <div class="cal-col" data-day="${d}">
             <div class="cal-col-head">${d.toUpperCase()}</div>
-            ${dayTasks.length === 0 ? `<div style="text-align:center; padding:18px 4px; color:var(--muted); font-size:11px; font-style:italic;">No tasks</div>` : ''}
-            ${dayTasks.map(a => `
-              <div class="cal-task-card">
-                <div class="cal-task-name">${escapeHtml(a.taskName)}</div>
-                <div class="cal-task-owner">👤 ${escapeHtml(a.memberName)}</div>
-                <div class="cal-task-time">⏱️ ${a.durationMinutes}m (E${a.effortLevel})</div>
-                ${a.reasonCodes && a.reasonCodes.length ? `<span class="badge" style="font-size:9px; padding:1px 4px; margin-top:3px;">${a.reasonCodes[0].replace(/_/g, ' ')}</span>` : ''}
+            <div class="cal-task-card cal-task-card-placeholder" aria-hidden="true" style="opacity: 0.35; user-select: none; pointer-events: none;">
+              <div class="cal-task-name" style="background:var(--line); color:transparent; border-radius:4px; display:inline-block; width:75%;">&nbsp;</div>
+              <div class="cal-task-owner" style="background:var(--line); color:transparent; border-radius:4px; display:inline-block; width:50%; margin-top:4px;">&nbsp;</div>
+              <div class="cal-task-time" style="background:var(--line); color:transparent; border-radius:4px; display:inline-block; width:40%; margin-top:4px;">&nbsp;</div>
+            </div>
+            <div class="cal-task-card cal-task-card-placeholder" aria-hidden="true" style="opacity: 0.25; user-select: none; pointer-events: none;">
+              <div class="cal-task-name" style="background:var(--line); color:transparent; border-radius:4px; display:inline-block; width:65%;">&nbsp;</div>
+              <div class="cal-task-owner" style="background:var(--line); color:transparent; border-radius:4px; display:inline-block; width:45%; margin-top:4px;">&nbsp;</div>
+            </div>
+          </div>
+        `).join('');
+
+        const lockedGroupHtml = `
+          <div class="cal-locked-container">
+            <div class="cal-locked-blur" style="display:contents;">
+              ${lockedColsHtml}
+            </div>
+            <div class="schedule-unlock-overlay">
+              <div class="schedule-unlock-card">
+                <div style="font-size:24px; margin-bottom:6px;">🔒</div>
+                <h3 style="font-size:15px; font-weight:800; margin:0 0 6px; color:var(--ink);">Unlock Your Full 7-Day & 4-Week Schedule</h3>
+                <p style="font-size:12px; color:var(--muted); margin:0 0 14px; line-height:1.45;">
+                  Days 4–7 schedules, auto-rebalancing, and printable PDFs are unlocked with the 1-Year Fairness Pass.
+                </p>
+                <a href="/upgrade.html?plan=fairness_pass" class="btn primary small" style="font-weight:700; width:100%; box-sizing:border-box; text-decoration:none; display:block; text-align:center; margin-bottom:8px;">
+                  Unlock Full Year for $14.99 (One-Time) →
+                </a>
+                <a href="/upgrade.html?plan=pro" style="font-size:12px; color:var(--accent); text-decoration:underline; font-weight:600; display:block; text-align:center;">
+                  Or subscribe monthly for $5.99/mo
+                </a>
               </div>
-            `).join('')}
+            </div>
           </div>
         `;
-      }).join('');
+
+        calGrid.innerHTML = openColsHtml + lockedGroupHtml;
+      }
     }
   } else {
     $('#calendarView').style.display = 'none';
     $('#tableView').style.display = 'block';
 
     const tBody = $('#tableBodyContainer');
-    tBody.innerHTML = weekAssignments.length ? weekAssignments.map(a => `
-      <tr>
-        <td><strong>${a.dayOfWeek.toUpperCase()}</strong></td>
-        <td>${escapeHtml(a.taskName)} <span class="badge">${escapeHtml(a.category)}</span></td>
-        <td style="font-weight:700; color:var(--accent);">${escapeHtml(a.memberName)}</td>
-        <td>${a.durationMinutes} min</td>
-        <td>Level ${a.effortLevel}</td>
-        <td>${(a.reasonCodes || []).map(r => `<span class="badge" style="margin-right:2px;">${r.replace(/_/g, ' ')}</span>`).join('')}</td>
-      </tr>
-    `).join('') : `
-      <tr>
-        <td colspan="6" style="text-align:center; padding:24px; color:var(--muted); font-style:italic;">No chore assignments for this ${isSingleDay ? 'day' : 'week'}.</td>
-      </tr>
-    `;
+    if (isPaidUser || isSingleDay) {
+      tBody.innerHTML = weekAssignments.length ? weekAssignments.map(a => `
+        <tr>
+          <td><strong>${a.dayOfWeek.toUpperCase()}</strong></td>
+          <td>${escapeHtml(a.taskName)} <span class="badge">${escapeHtml(a.category)}</span></td>
+          <td style="font-weight:700; color:var(--accent);">${escapeHtml(a.memberName)}</td>
+          <td>${a.durationMinutes} min</td>
+          <td>Level ${a.effortLevel}</td>
+          <td>${(a.reasonCodes || []).map(r => `<span class="badge" style="margin-right:2px;">${r.replace(/_/g, ' ')}</span>`).join('')}</td>
+        </tr>
+      `).join('') : `
+        <tr>
+          <td colspan="6" style="text-align:center; padding:24px; color:var(--muted); font-style:italic;">No chore assignments for this ${isSingleDay ? 'day' : 'week'}.</td>
+        </tr>
+      `;
+    } else {
+      const openDaysSet = new Set(['mon', 'tue', 'wed']);
+      const visibleTableTasks = weekAssignments.filter(a => openDaysSet.has(a.dayOfWeek));
+      const lockedRowsHtml = ['thu', 'fri', 'sat', 'sun'].map(d => `
+        <tr class="cal-locked-row" style="opacity:0.35; user-select:none; pointer-events:none;">
+          <td><strong>${d.toUpperCase()}</strong></td>
+          <td><span style="background:var(--line); color:transparent; border-radius:4px; display:inline-block; width:120px;">&nbsp;</span></td>
+          <td><span style="background:var(--line); color:transparent; border-radius:4px; display:inline-block; width:80px;">&nbsp;</span></td>
+          <td><span style="background:var(--line); color:transparent; border-radius:4px; display:inline-block; width:40px;">&nbsp;</span></td>
+          <td><span style="background:var(--line); color:transparent; border-radius:4px; display:inline-block; width:50px;">&nbsp;</span></td>
+          <td><span class="badge" style="opacity:0.6;">locked</span></td>
+        </tr>
+      `).join('');
+
+      tBody.innerHTML = (visibleTableTasks.length ? visibleTableTasks.map(a => `
+        <tr>
+          <td><strong>${a.dayOfWeek.toUpperCase()}</strong></td>
+          <td>${escapeHtml(a.taskName)} <span class="badge">${escapeHtml(a.category)}</span></td>
+          <td style="font-weight:700; color:var(--accent);">${escapeHtml(a.memberName)}</td>
+          <td>${a.durationMinutes} min</td>
+          <td>Level ${a.effortLevel}</td>
+          <td>${(a.reasonCodes || []).map(r => `<span class="badge" style="margin-right:2px;">${r.replace(/_/g, ' ')}</span>`).join('')}</td>
+        </tr>
+      `).join('') : `
+        <tr>
+          <td colspan="6" style="text-align:center; padding:18px; color:var(--muted); font-style:italic;">No chore assignments scheduled for Mon–Wed.</td>
+        </tr>
+      `) + lockedRowsHtml + `
+        <tr>
+          <td colspan="6" style="padding:16px; text-align:center; background:var(--panel-subtle);">
+            <div class="schedule-unlock-card" style="margin:0 auto; box-shadow:none;">
+              <div style="font-size:20px; margin-bottom:4px;">🔒</div>
+              <h3 style="font-size:15px; font-weight:800; margin:0 0 6px; color:var(--ink);">Unlock Your Full 7-Day & 4-Week Schedule</h3>
+              <p style="font-size:12px; color:var(--muted); margin:0 0 10px; line-height:1.45;">Get the rest of the week, instant 1-click Rebalance swaps, and printable household PDFs.</p>
+              <a href="/upgrade.html?plan=fairness_pass" class="btn primary small" style="font-weight:700; width:100%; box-sizing:border-box; text-decoration:none; display:block; text-align:center; margin-bottom:6px;">Unlock Full Year for $14.99 (One-Time) →</a>
+              <a href="/upgrade.html?plan=pro" style="font-size:12px; color:var(--accent); text-decoration:underline; font-weight:600; display:block; text-align:center;">Or subscribe monthly for $5.99/mo</a>
+            </div>
+          </td>
+        </tr>
+      `;
+    }
+  }
+}
+
+function moveTaskOccurrence(taskId, fromDay, toDay) {
+  if (!currentResult || !currentResult.assignments) return;
+  if (fromDay === toDay) return;
+
+  const a = currentResult.assignments.find(x =>
+    x.taskId === taskId &&
+    x.dayOfWeek === fromDay &&
+    (currentResult.planningMode === 'single_day' || x.weekIndex === activeWeek)
+  );
+  if (!a) return;
+
+  if (!hasUnsavedChanges) {
+    lastCleanAssignments = JSON.parse(JSON.stringify(currentResult.assignments));
+  }
+
+  // Unavailable Day Hard-Limit Conflict Detection
+  const currentMember = currentRequest.members.find(m => m.id === a.memberId);
+  const isUnavailable = Boolean(currentMember?.unavailableDays?.includes(toDay));
+
+  if (isUnavailable) {
+    const taskDef = currentRequest.tasks.find(t => t.id === taskId);
+    const eligibleIds = (taskDef?.eligibleMemberIds && taskDef.eligibleMemberIds.length)
+      ? taskDef.eligibleMemberIds
+      : currentRequest.members.map(m => m.id);
+
+    const altMember = currentRequest.members.find(m =>
+      eligibleIds.includes(m.id) &&
+      m.id !== a.memberId &&
+      !m.unavailableDays?.includes(toDay)
+    );
+
+    if (altMember) {
+      const prevName = a.memberName;
+      a.memberId = altMember.id;
+      a.memberName = altMember.name;
+      a.reasonCodes = ['switched_hard_limit'];
+      a.hasConflict = false;
+      showToast(`Switched to ${altMember.name} (Hard limit for ${prevName} on ${toDay.toUpperCase()})`);
+    } else {
+      a.hasConflict = true;
+      showToast(`⚠️ Unavailable Day Conflict: ${currentMember?.name || 'Member'} is unavailable on ${toDay.toUpperCase()}`);
+    }
+  } else {
+    a.hasConflict = false;
+  }
+
+  a.dayOfWeek = toDay;
+  a.isEdited = true;
+  a.isPinned = true;
+  hasUnsavedChanges = true;
+
+  const bar = $('#schedulerActionBar');
+  if (bar) bar.style.display = 'flex';
+
+  renderSchedule();
+}
+
+function cycleTaskAssignee(taskId, dayOfWeek) {
+  if (!currentResult || !currentResult.assignments) return;
+  const a = currentResult.assignments.find(x =>
+    x.taskId === taskId &&
+    x.dayOfWeek === dayOfWeek &&
+    (currentResult.planningMode === 'single_day' || x.weekIndex === activeWeek)
+  );
+  if (!a) return;
+
+  const taskDef = currentRequest.tasks.find(t => t.id === taskId);
+  const eligibleIds = (taskDef?.eligibleMemberIds && taskDef.eligibleMemberIds.length)
+    ? taskDef.eligibleMemberIds
+    : currentRequest.members.map(m => m.id);
+
+  if (eligibleIds.length <= 1) {
+    showToast('No other eligible household members configured for this chore.');
+    return;
+  }
+
+  if (!hasUnsavedChanges) {
+    lastCleanAssignments = JSON.parse(JSON.stringify(currentResult.assignments));
+  }
+
+  const currIdx = eligibleIds.indexOf(a.memberId);
+  const nextId = eligibleIds[(currIdx + 1) % eligibleIds.length];
+  const nextMember = currentRequest.members.find(m => m.id === nextId);
+  if (!nextMember) return;
+
+  a.memberId = nextMember.id;
+  a.memberName = nextMember.name;
+  a.hasConflict = Boolean(nextMember.unavailableDays?.includes(dayOfWeek));
+  if (a.hasConflict) {
+    showToast(`⚠️ ${nextMember.name} has a hard limit on ${dayOfWeek.toUpperCase()}`);
+  }
+  a.isEdited = true;
+  a.isPinned = true;
+  hasUnsavedChanges = true;
+
+  const bar = $('#schedulerActionBar');
+  if (bar) bar.style.display = 'flex';
+
+  renderSchedule();
+}
+
+function recalculateManualDiagnostics() {
+  if (!currentResult || !currentRequest || !currentRequest.members) return;
+
+  const assignments = currentResult.assignments || [];
+  let totalWorkMinutes = 0;
+  let totalWeightedWork = 0;
+
+  const memberStats = new Map();
+  for (const m of currentRequest.members) {
+    memberStats.set(m.id, {
+      memberId: m.id,
+      memberName: m.name,
+      role: m.role,
+      weeklyCapacityMinutes: m.weeklyCapacityMinutes,
+      assignedMinutes: 0,
+      assignedWeightedLoad: 0,
+      utilizationRatio: 0,
+      taskCount: 0
+    });
+  }
+
+  for (const a of assignments) {
+    totalWorkMinutes += (a.durationMinutes || 0);
+    const weighted = Math.round((a.durationMinutes || 0) * (a.effortLevel || 1) * 100) / 100;
+    totalWeightedWork += weighted;
+    const stat = memberStats.get(a.memberId);
+    if (stat) {
+      stat.assignedMinutes += (a.durationMinutes || 0);
+      stat.assignedWeightedLoad += weighted;
+      stat.taskCount += 1;
+    }
+  }
+
+  const summaries = Array.from(memberStats.values()).map(s => {
+    const cap = s.weeklyCapacityMinutes || 1;
+    s.utilizationRatio = Math.round((s.assignedMinutes / cap) * 1000) / 1000;
+    return s;
+  });
+
+  let totalSpread = 0;
+  if (summaries.length > 1) {
+    const ratios = summaries.map(s => s.assignedWeightedLoad / (s.weeklyCapacityMinutes || 1));
+    totalSpread = Math.max(...ratios) - Math.min(...ratios);
+  }
+  const balanceScore = Math.max(10, Math.min(100, Math.round((1 - Math.min(1, totalSpread)) * 100)));
+
+  currentResult.memberSummaries = summaries;
+  if (currentResult.diagnostics) {
+    currentResult.diagnostics.totalHouseholdWorkMinutes = totalWorkMinutes;
+    currentResult.diagnostics.totalHouseholdWeightedWork = totalWeightedWork;
+    currentResult.diagnostics.balanceScore = balanceScore;
+  }
+}
+
+function applyScheduleEdits() {
+  if (!currentResult || !hasUnsavedChanges) return;
+
+  const isPaidUser = Boolean(currentEntitlement && currentEntitlement.isPaid);
+  if (!isPaidUser) {
+    if (freeCalculatorUpdatesUsed >= 1) {
+      openUpgradeGateModal('rebalance');
+      return;
+    }
+    freeCalculatorUpdatesUsed++;
+  }
+
+  currentResult.assignments.forEach(a => {
+    if (a.isEdited) {
+      a.reasonCodes = ['manual_override'];
+      a.isEdited = false;
+    }
+  });
+
+  recalculateManualDiagnostics();
+  hasUnsavedChanges = false;
+  const bar = $('#schedulerActionBar');
+  if (bar) bar.style.display = 'none';
+
+  renderDiagnostics();
+  renderSchedule();
+  showToast('Calculator updated with manual overrides.');
+}
+
+function pinEditsAndRebalance() {
+  const isPaidUser = Boolean(currentEntitlement && currentEntitlement.isPaid);
+  if (!isPaidUser) {
+    openUpgradeGateModal('rebalance');
+    return;
+  }
+
+  if (!currentResult || !currentResult.assignments) return;
+
+  try {
+    const pinned = currentResult.assignments.map(a => ({
+      ...a,
+      isPinned: Boolean(a.isPinned || a.isEdited)
+    }));
+    currentResult = rebalanceHousehold(currentRequest, pinned, currentEntitlement);
+    hasUnsavedChanges = false;
+    const bar = $('#schedulerActionBar');
+    if (bar) bar.style.display = 'none';
+
+    renderDiagnostics();
+    renderSchedule();
+    showToast('Schedule rebalanced around pinned chores.');
+  } catch (err) {
+    console.error('Rebalance error:', err);
+    showToast('Could not rebalance schedule: ' + (err.message || String(err)));
+  }
+}
+
+function resetScheduleEdits() {
+  if (lastCleanAssignments) {
+    currentResult.assignments = JSON.parse(JSON.stringify(lastCleanAssignments));
+    recalculateManualDiagnostics();
+  }
+  hasUnsavedChanges = false;
+  const bar = $('#schedulerActionBar');
+  if (bar) bar.style.display = 'none';
+
+  renderDiagnostics();
+  renderSchedule();
+  showToast('Manual changes reverted.');
+}
+
+function openUpgradeGateModal(triggerReason = 'general') {
+  const modal = $('#upgradeGateModal');
+  if (!modal) return;
+  const title = $('#upgradeGateTitle');
+  const sub = $('#upgradeGateSubtitle');
+  if (triggerReason === 'rebalance') {
+    if (title) title.textContent = 'Unlock 1-Click Auto-Rebalancing';
+    if (sub) sub.textContent = 'Instant 2-opt fairness rebalancing is included in the One-Time Fairness Pass and Household Autopilot Pro.';
+  } else if (triggerReason === 'pdf') {
+    if (title) title.textContent = 'Unlock Printable Fridge PDFs';
+    if (sub) sub.textContent = 'High-resolution printable PDF schedule exports are included in the One-Time Fairness Pass and Household Autopilot Pro.';
+  } else {
+    if (title) title.textContent = 'Unlock Full 7-Day & 4-Week Schedule';
+    if (sub) sub.textContent = 'Access the rest of the week, auto-rebalancing swaps, and printable PDFs with the One-Time Fairness Pass or Pro.';
+  }
+  modal.style.display = 'flex';
+  modal.classList.add('open');
+}
+
+function closeUpgradeGateModal() {
+  const modal = $('#upgradeGateModal');
+  if (modal) {
+    modal.style.display = 'none';
+    modal.classList.remove('open');
+  }
+}
+
+function openFairnessReceiptModal() {
+  if (!currentResult || !currentResult.diagnostics) {
+    alert('Calculate a household plan first to generate your Fairness Receipt.');
+    return;
+  }
+  const modal = $('#fairnessReceiptModal');
+  if (!modal) return;
+
+  const diag = currentResult.diagnostics;
+  const summaries = currentResult.memberSummaries || [];
+  const totalWeighted = diag.totalHouseholdWeightedWork || 1;
+  const totalCap = diag.totalHouseholdCapacityMinutes || 1;
+
+  // Score
+  const scoreVal = $('#receiptScoreVal');
+  if (scoreVal) scoreVal.textContent = `${diag.balanceScore}%`;
+
+  // Verdict badge
+  const isBalanced = (diag.balanceScore || 0) >= 80;
+  const badge = $('#receiptVerdictBadge');
+  if (badge) {
+    if (isBalanced) {
+      badge.textContent = 'MATHEMATICALLY BALANCED';
+      badge.style.background = 'rgba(99,200,148,0.2)';
+      badge.style.color = '#63C894';
+      badge.style.borderColor = '#63C894';
+    } else {
+      badge.textContent = 'IMBALANCE DETECTED';
+      badge.style.background = 'rgba(240,120,120,0.2)';
+      badge.style.color = '#F07878';
+      badge.style.borderColor = '#F07878';
+    }
+  }
+
+  // Disparity
+  let disparityText = '0 pts';
+  if (summaries.length > 1) {
+    const loads = summaries.map(m => m.assignedWeightedLoad || 0);
+    const spread = Math.round(Math.max(...loads) - Math.min(...loads));
+    const highestMember = summaries.reduce((prev, curr) => (curr.assignedWeightedLoad > prev.assignedWeightedLoad ? curr : prev), summaries[0]);
+    disparityText = spread === 0 ? '0 pts (Balanced workload)' : `${spread} pts (${highestMember.memberName} carries more)`;
+  }
+  const dispSum = $('#receiptDisparitySummary');
+  if (dispSum) dispSum.textContent = `Total Weighted Disparity: ${disparityText}`;
+
+  // Household Meta
+  const hhMeta = $('#receiptHouseholdMeta');
+  if (hhMeta) {
+    const hhName = currentRequest.household.name || 'Household';
+    const horizonLabel = currentResult.planningMode === 'single_day' ? 'Single Day' : 'Weekly Schedule';
+    hhMeta.textContent = `${hhName} · ${horizonLabel}`;
+  }
+
+  // Members list
+  const listEl = $('#receiptMembersList');
+  if (listEl) {
+    listEl.innerHTML = summaries.map(m => {
+      const loadSharePct = Math.round(((m.assignedWeightedLoad || 0) / totalWeighted) * 100);
+      const capSharePct = Math.round(((m.weeklyCapacityMinutes || 1) / totalCap) * 100);
+      const diff = loadSharePct - capSharePct;
+      const diffLabel = diff > 0 ? `+${diff}% burden` : diff < 0 ? `${diff}% load` : 'Balanced';
+      const diffColor = diff > 5 ? '#F07878' : diff < -5 ? '#69D0A8' : '#B0BCB5';
+      return `
+        <div style="background:#111A15; border:1px solid #1E2E25; border-radius:8px; padding:8px 10px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; font-weight:700;">
+            <span style="color:#FFFFFF;">${escapeHtml(m.memberName)} (${m.role})</span>
+            <span style="color:${diffColor}; font-size:11px;">${diffLabel}</span>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:10px; color:#9EABA4; margin-top:3px;">
+            <span>Effort Share: <strong style="color:#F2F7F4;">${loadSharePct}%</strong> (${m.assignedWeightedLoad || 0} pts)</span>
+            <span>Capacity: <strong style="color:#F2F7F4;">${capSharePct}%</strong> (${m.weeklyCapacityMinutes}m)</span>
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  modal.style.display = 'flex';
+  modal.classList.add('open');
+}
+
+function closeFairnessReceiptModal() {
+  const modal = $('#fairnessReceiptModal');
+  if (modal) {
+    modal.style.display = 'none';
+    modal.classList.remove('open');
+  }
+}
+
+async function copyReceiptSummaryText() {
+  if (!currentResult || !currentResult.diagnostics) return;
+  const diag = currentResult.diagnostics;
+  const summaries = currentResult.memberSummaries || [];
+  const totalWeighted = diag.totalHouseholdWeightedWork || 1;
+  const totalCap = diag.totalHouseholdCapacityMinutes || 1;
+  const isBalanced = (diag.balanceScore || 0) >= 80;
+  const verdict = isBalanced ? 'MATHEMATICALLY BALANCED' : 'IMBALANCE DETECTED';
+
+  const memberLines = summaries.map(m => {
+    const loadShare = Math.round(((m.assignedWeightedLoad || 0) / totalWeighted) * 100);
+    const capShare = Math.round(((m.weeklyCapacityMinutes || 1) / totalCap) * 100);
+    return `• ${m.memberName}: ${loadShare}% effort load (${capShare}% available capacity, ${m.assignedMinutes} min)`;
+  }).join('\n');
+
+  let disparityText = '0 pts';
+  if (summaries.length > 1) {
+    const loads = summaries.map(m => m.assignedWeightedLoad || 0);
+    const spread = Math.round(Math.max(...loads) - Math.min(...loads));
+    disparityText = `${spread} pts`;
+  }
+
+  const receiptText = `📊 Household Chore Audit (via ChoreMatrix.online)
+Verdict: ${verdict}
+Fairness Score: ${diag.balanceScore}/100
+Total Weighted Load Disparity: ${disparityText}
+
+Workload Breakdown:
+${memberLines}
+
+Audit your own household workload objectively at https://chorematrix.online`;
+
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      await navigator.clipboard.writeText(receiptText);
+    } else {
+      const ta = document.createElement('textarea');
+      ta.value = receiptText;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    }
+    const feedback = $('#receiptCopyFeedback');
+    if (feedback) {
+      feedback.style.display = 'block';
+      setTimeout(() => { feedback.style.display = 'none'; }, 3500);
+    }
+  } catch (err) {
+    console.error('Failed to copy receipt text:', err);
   }
 }
 
 function attachListeners() {
+  $('#btnCloseUpgradeGate')?.addEventListener('click', (e) => { e.preventDefault(); closeUpgradeGateModal(); });
+  $('#upgradeGateModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'upgradeGateModal') closeUpgradeGateModal();
+  });
+  $('#btnShareReceipt')?.addEventListener('click', (e) => { e.preventDefault(); openFairnessReceiptModal(); });
+  $('#btnCloseReceiptModal')?.addEventListener('click', (e) => { e.preventDefault(); closeFairnessReceiptModal(); });
+  $('#fairnessReceiptModal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'fairnessReceiptModal') closeFairnessReceiptModal();
+  });
+  $('#btnCopyReceiptText')?.addEventListener('click', (e) => { e.preventDefault(); copyReceiptSummaryText(); });
+
   $('#btnPresetFamily')?.addEventListener('click', (e) => { e.preventDefault(); safeLoadPreset('family'); });
   $('#btnPresetCouple')?.addEventListener('click', (e) => { e.preventDefault(); safeLoadPreset('couple'); });
   $('#btnPresetRoommates')?.addEventListener('click', (e) => { e.preventDefault(); safeLoadPreset('roommates'); });
@@ -2000,6 +2857,10 @@ function attachListeners() {
 
   $('#btnRebalance')?.addEventListener('click', (e) => {
     e.preventDefault();
+    if (!currentEntitlement || !currentEntitlement.isPaid) {
+      openUpgradeGateModal('rebalance');
+      return;
+    }
     executeRebalance();
   });
 
@@ -2094,6 +2955,125 @@ function attachListeners() {
     $('#btnViewCalendar').classList.remove('active-view');
     renderSchedule();
   });
+
+  // Scheduler Action Bar Listeners
+  $('#btnApplyScheduleEdits')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    applyScheduleEdits();
+  });
+
+  $('#btnPinAndRebalance')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    pinEditsAndRebalance();
+  });
+
+  $('#btnResetScheduleEdits')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    resetScheduleEdits();
+  });
+
+  // Calendar Drag-and-Drop and Click Delegations
+  const calGridEl = $('#calendarGridContainer');
+  if (calGridEl) {
+    calGridEl.addEventListener('dragstart', (e) => {
+      const card = e.target.closest('.cal-task-card');
+      if (!card || card.classList.contains('cal-task-card-placeholder')) return;
+      draggedTaskData = {
+        taskId: card.dataset.taskId,
+        occurrenceId: card.dataset.occurrenceId,
+        sourceDay: card.dataset.day,
+        memberId: card.dataset.memberId
+      };
+      card.classList.add('is-dragging');
+      if (e.dataTransfer) {
+        e.dataTransfer.setData('text/plain', JSON.stringify(draggedTaskData));
+        e.dataTransfer.effectAllowed = 'move';
+      }
+    });
+
+    calGridEl.addEventListener('dragend', (e) => {
+      const card = e.target.closest('.cal-task-card');
+      if (card) card.classList.remove('is-dragging');
+      document.querySelectorAll('.cal-col').forEach(c => c.classList.remove('drag-over'));
+      draggedTaskData = null;
+    });
+
+    calGridEl.addEventListener('dragover', (e) => {
+      const col = e.target.closest('.cal-col');
+      if (col) {
+        e.preventDefault();
+        if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+        col.classList.add('drag-over');
+      }
+    });
+
+    calGridEl.addEventListener('dragleave', (e) => {
+      const col = e.target.closest('.cal-col');
+      if (col && !col.contains(e.relatedTarget)) {
+        col.classList.remove('drag-over');
+      }
+    });
+
+    calGridEl.addEventListener('drop', (e) => {
+      e.preventDefault();
+      const col = e.target.closest('.cal-col');
+      if (!col) return;
+      col.classList.remove('drag-over');
+
+      let taskData = draggedTaskData;
+      if (!taskData && e.dataTransfer) {
+        try {
+          const raw = e.dataTransfer.getData('text/plain');
+          if (raw) taskData = JSON.parse(raw);
+        } catch (_) {}
+      }
+      if (!taskData) return;
+
+      const targetDay = col.dataset.day;
+      if (!targetDay) return;
+
+      const isPaidUser = Boolean(currentEntitlement && currentEntitlement.isPaid);
+      if (!isPaidUser && ['thu', 'fri', 'sat', 'sun'].includes(targetDay)) {
+        openUpgradeGateModal('general');
+        return;
+      }
+
+      moveTaskOccurrence(taskData.taskId, taskData.sourceDay, targetDay);
+    });
+
+    calGridEl.addEventListener('click', (e) => {
+      const swapBtn = e.target.closest('[data-action="swap-member"]');
+      if (swapBtn) {
+        e.preventDefault();
+        const taskId = swapBtn.dataset.taskId;
+        const day = swapBtn.dataset.day;
+        if (taskId && day) cycleTaskAssignee(taskId, day);
+        return;
+      }
+
+      const shiftBtn = e.target.closest('.btn-cal-shift');
+      if (shiftBtn) {
+        e.preventDefault();
+        const taskId = shiftBtn.dataset.taskId;
+        const currentDay = shiftBtn.dataset.day;
+        const shiftDir = Number(shiftBtn.dataset.shift) || 0;
+        const dayIdx = DAYS_OF_WEEK.indexOf(currentDay);
+        if (dayIdx >= 0 && taskId) {
+          const isPaidUser = Boolean(currentEntitlement && currentEntitlement.isPaid);
+          const maxIdx = isPaidUser ? 6 : 2;
+          const nextIdx = dayIdx + shiftDir;
+          if (nextIdx < 0 || nextIdx > maxIdx) {
+            if (!isPaidUser && nextIdx > 2) {
+              openUpgradeGateModal('general');
+            }
+            return;
+          }
+          const targetDay = DAYS_OF_WEEK[nextIdx];
+          moveTaskOccurrence(taskId, currentDay, targetDay);
+        }
+      }
+    });
+  }
 
   document.addEventListener('input', e => {
     lastCalculatedHash = '';

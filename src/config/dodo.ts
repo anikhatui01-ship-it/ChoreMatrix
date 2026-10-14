@@ -15,8 +15,8 @@
 import { getEnvVar } from './supabase.ts';
 
 export type DodoEnvironment = 'test_mode' | 'live_mode';
-export type PlanTier = 'pro' | 'plus';
-export type BillingInterval = 'monthly' | 'annual';
+export type PlanTier = 'pro' | 'plus' | 'fairness_pass';
+export type BillingInterval = 'monthly' | 'annual' | 'one_time';
 
 export interface CanonicalDodoPlanDefinition {
   tier: PlanTier;
@@ -52,21 +52,23 @@ export const DODO_TEST_PRODUCTS = {
   pro_monthly: 'pdt_0NozKZ3sZ6h0vplb451YK',
   pro_annual: 'pdt_0NozL7OvhpMonCSMw99Ng',
   plus_monthly: 'pdt_0NozLK4XCjDSCbkADEtQL',
-  plus_annual: 'pdt_0NozLba96vBrtNtGdFONX'
+  plus_annual: 'pdt_0NozLba96vBrtNtGdFONX',
+  fairness_pass: 'pdt_0NozPassTestFallback'
 } as const;
 
 export const DODO_LIVE_PRODUCTS = {
   pro_monthly: 'pdt_0Np1eZsemtECph1HLoDb0',
   pro_annual: 'pdt_0Np1ec3oUFACgeOKl4ktP',
   plus_monthly: 'pdt_0Np1ean3rbxLUQs6d1QAb',
-  plus_annual: 'pdt_0Np1ebMsCqGBWntrkX3fK'
+  plus_annual: 'pdt_0Np1ebMsCqGBWntrkX3fK',
+  fairness_pass: 'pdt_0NphhaL0NCaWmH3nA3FdK'
 } as const;
 
 /**
- * 1. Canonical Plan Matrix for all 4 subscription tiers and intervals.
- * Uses exact Dodo Test Mode catalog IDs with environment variable overrides.
+ * 1. Canonical Plan Matrix for all subscription tiers and intervals.
+ * Uses exact Dodo catalog IDs with environment variable overrides.
  */
-export const CANONICAL_DODO_PLAN_MATRIX: Record<`${PlanTier}_${BillingInterval}`, CanonicalDodoPlanDefinition> = {
+export const CANONICAL_DODO_PLAN_MATRIX: Record<string, CanonicalDodoPlanDefinition> = {
   pro_monthly: {
     tier: 'pro',
     interval: 'monthly',
@@ -94,6 +96,13 @@ export const CANONICAL_DODO_PLAN_MATRIX: Record<`${PlanTier}_${BillingInterval}`
     displayAmount: 99.99,
     productId: getEnvVar('VITE_DODO_PLUS_ANNUAL_PRODUCT_ID') || DODO_TEST_PRODUCTS.plus_annual,
     trialDurationDays: 7
+  },
+  fairness_pass_one_time: {
+    tier: 'fairness_pass',
+    interval: 'one_time',
+    displayAmount: 14.99,
+    productId: getEnvVar('VITE_DODO_ONETIME_PASS_PRODUCT_ID') || getEnvVar('DODO_ONETIME_PASS_PRODUCT_ID') || DODO_TEST_PRODUCTS.fairness_pass,
+    trialDurationDays: 0
   }
 } as const;
 
@@ -191,34 +200,72 @@ export const DODO_PRODUCTS: Record<string, DodoProductDefinition> = {
     amount: 99.99,
     amountInCents: 9999,
     trialDays: 7
+  },
+  [DODO_TEST_PRODUCTS.fairness_pass]: {
+    productId: DODO_TEST_PRODUCTS.fairness_pass,
+    planName: 'ChoreMatrix One-Time Fairness Pass (Test)',
+    tier: 'fairness_pass',
+    interval: 'one_time',
+    currency: 'USD',
+    amount: 14.99,
+    amountInCents: 1499,
+    trialDays: 0
+  },
+  [DODO_LIVE_PRODUCTS.fairness_pass]: {
+    productId: DODO_LIVE_PRODUCTS.fairness_pass,
+    planName: 'ChoreMatrix One-Time Fairness Pass',
+    tier: 'fairness_pass',
+    interval: 'one_time',
+    currency: 'USD',
+    amount: 14.99,
+    amountInCents: 1499,
+    trialDays: 0
   }
 };
 
+// If a custom One-Time Pass product ID was provided via environment variables, allowlist it in DODO_PRODUCTS
+const customOnetimeId = getEnvVar('VITE_DODO_ONETIME_PASS_PRODUCT_ID') || getEnvVar('DODO_ONETIME_PASS_PRODUCT_ID');
+if (customOnetimeId && customOnetimeId.startsWith('pdt_')) {
+  DODO_PRODUCTS[customOnetimeId] = {
+    productId: customOnetimeId,
+    planName: 'ChoreMatrix One-Time Fairness Pass',
+    tier: 'fairness_pass',
+    interval: 'one_time',
+    currency: 'USD',
+    amount: 14.99,
+    amountInCents: 1499,
+    trialDays: 0
+  };
+}
+
 /**
- * Normalizes input plan string to canonical PlanTier ('pro' | 'plus').
+ * Normalizes input plan string to canonical PlanTier ('pro' | 'plus' | 'fairness_pass').
  * Throws explicit Error on missing or invalid input.
  */
 export function normalizePlanTier(plan: string | null | undefined): PlanTier {
   if (!plan || typeof plan !== 'string') {
-    throw new Error('Missing plan parameter: plan must be "pro" or "plus".');
+    throw new Error('Missing plan parameter: plan must be "pro", "plus", or "fairness_pass".');
   }
   const clean = plan.trim().toLowerCase();
-  if (clean === 'pro' || clean === 'household_pro') {
+  if (clean === 'pro' || clean === 'household_pro' || clean === 'autopilot_pro') {
     return 'pro';
+  }
+  if (clean === 'fairness_pass' || clean === 'onetime_pass' || clean === 'pass' || clean === 'one_time_pass') {
+    return 'fairness_pass';
   }
   if (clean === 'plus' || clean === 'household_plus' || clean === 'family_plus') {
     return 'plus';
   }
-  throw new Error(`Invalid plan "${plan}": supported plans are "pro" and "plus".`);
+  throw new Error(`Invalid plan "${plan}": supported plans are "pro", "fairness_pass", and "plus".`);
 }
 
 /**
- * Normalizes input interval string to canonical BillingInterval ('monthly' | 'annual').
+ * Normalizes input interval string to canonical BillingInterval ('monthly' | 'annual' | 'one_time').
  * Throws explicit Error on missing or invalid input.
  */
 export function normalizeBillingInterval(interval: string | null | undefined): BillingInterval {
   if (!interval || typeof interval !== 'string') {
-    throw new Error('Missing interval parameter: interval must be "monthly" or "annual".');
+    throw new Error('Missing interval parameter: interval must be "monthly", "annual", or "one_time".');
   }
   const clean = interval.trim().toLowerCase();
   if (clean === 'monthly' || clean === 'month') {
@@ -227,7 +274,10 @@ export function normalizeBillingInterval(interval: string | null | undefined): B
   if (clean === 'annual' || clean === 'annually' || clean === 'yearly' || clean === 'year') {
     return 'annual';
   }
-  throw new Error(`Invalid interval "${interval}": supported intervals are "monthly" and "annual".`);
+  if (clean === 'one_time' || clean === 'onetime' || clean === 'once' || clean === 'single') {
+    return 'one_time';
+  }
+  throw new Error(`Invalid interval "${interval}": supported intervals are "monthly", "annual", and "one_time".`);
 }
 
 /**
@@ -238,15 +288,34 @@ export function normalizeBillingInterval(interval: string | null | undefined): B
  */
 export function getDodoProductId(
   plan: string,
-  interval: string,
+  interval?: string,
   environment?: DodoEnvironment
 ): string {
   const normPlan = normalizePlanTier(plan);
-  const normInterval = normalizeBillingInterval(interval);
+  const normInterval = normPlan === 'fairness_pass' && !interval
+    ? 'one_time'
+    : normalizeBillingInterval(interval);
   const key = `${normPlan}_${normInterval}` as const;
 
   const env = environment || DODO_CONFIG.environment;
+  if (normPlan === 'fairness_pass') {
+    const override = getEnvVar('NEXT_PUBLIC_DODO_FAIRNESS_PASS_PRODUCT_ID') || getEnvVar('DODO_FAIRNESS_PASS_PRODUCT_ID') || getEnvVar('VITE_DODO_ONETIME_PASS_PRODUCT_ID') || getEnvVar('DODO_ONETIME_PASS_PRODUCT_ID');
+    if (override && override.startsWith('pdt_')) {
+      return override;
+    }
+    return env === 'live_mode'
+      ? DODO_LIVE_PRODUCTS.fairness_pass
+      : DODO_TEST_PRODUCTS.fairness_pass;
+  }
+
   if (env === 'live_mode') {
+    if (key === 'pro_monthly') {
+      const proOverride = getEnvVar('NEXT_PUBLIC_DODO_PRO_MONTHLY_PRODUCT_ID') || getEnvVar('DODO_PRO_MONTHLY_PRODUCT_ID') || getEnvVar('VITE_DODO_PRO_MONTHLY_PRODUCT_ID');
+      if (proOverride && proOverride.startsWith('pdt_')) {
+        return proOverride;
+      }
+      return DODO_LIVE_PRODUCTS.pro_monthly;
+    }
     const override = getEnvVar(`VITE_DODO_${key.toUpperCase()}_PRODUCT_ID`);
     if (override && override.startsWith('pdt_')) {
       return override;

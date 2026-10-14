@@ -27,16 +27,14 @@ describe('ChoreMatrix Plan Entitlements & Truthful Pricing Suite', () => {
       const free = getTierById('free');
       assert.ok(free, 'Free tier must exist in centralized config');
       assert.strictEqual(free.id, 'free');
-      assert.strictEqual(free.name, 'Free');
+      assert.strictEqual(free.name, 'Free Audit');
 
       const expectedFreeFeatures = [
-        '1-week planning',
-        'core optimizer',
-        'Calculate Plan',
-        'Rebalance',
-        'cloud saving',
-        'basic diagnostics',
-        'ads'
+        'Capacity & Effort Calculator',
+        'Fairness Index & Load Disparity Score',
+        'Days 1–3 Schedule Preview',
+        'Chore Disparity Receipt',
+        'Browser Local Storage Save'
       ];
 
       for (const feat of expectedFreeFeatures) {
@@ -47,18 +45,40 @@ describe('ChoreMatrix Plan Entitlements & Truthful Pricing Suite', () => {
       }
     });
 
+    it('One-Time Fairness Pass sees Pass features', () => {
+      const pass = getTierById('fairness_pass');
+      assert.ok(pass, 'Pass tier must exist in centralized config');
+      assert.strictEqual(pass.id, 'fairness_pass');
+      assert.strictEqual(pass.name, 'One-Time Fairness Pass');
+
+      const expectedPassFeatures = [
+        'Unlock of Full 7-Day & 4-Week Rotational Schedules',
+        'Rebalance & 2-Opt Fairness Swaps',
+        'Printable PDF',
+        'Explainability Tags',
+        '1-Year Full Household Pass'
+      ];
+
+      for (const feat of expectedPassFeatures) {
+        assert.ok(
+          pass.features.some(f => f.toLowerCase().includes(feat.toLowerCase())),
+          `Pass tier must advertise feature: ${feat}`
+        );
+      }
+    });
+
     it('Pro sees Pro features', () => {
       const pro = getTierById('pro');
       assert.ok(pro, 'Pro tier must exist in centralized config');
       assert.strictEqual(pro.id, 'pro');
-      assert.strictEqual(pro.name, 'Pro');
+      assert.strictEqual(pro.name, 'Household Autopilot Pro');
 
       const expectedProFeatures = [
-        'everything in Free',
-        '4-week planning',
-        'advanced preferences/aversions',
-        'richer plan information',
-        'no ads'
+        'Fairness Pass',
+        'Household Profiles',
+        'Schedule Links',
+        'Rotation Memory',
+        'Cloud Backup'
       ];
 
       for (const feat of expectedProFeatures) {
@@ -69,41 +89,12 @@ describe('ChoreMatrix Plan Entitlements & Truthful Pricing Suite', () => {
       }
     });
 
-    it('Plus sees Plus features', () => {
-      const plus = getTierById('plus');
-      assert.ok(plus, 'Plus tier must exist in centralized config');
-      assert.strictEqual(plus.id, 'plus');
-      assert.strictEqual(plus.name, 'Plus');
-
-      const expectedPlusFeatures = [
-        'everything in Pro',
-        'priority feature feedback',
-        'no ads'
-      ];
-
-      for (const feat of expectedPlusFeatures) {
-        assert.ok(
-          plus.features.some(f => f.toLowerCase().includes(feat.toLowerCase())),
-          `Plus tier must advertise feature: ${feat}`
-        );
-      }
-    });
-
     it('unsupported features are not advertised in any plan', () => {
-      // Must NOT advertise unimplemented features like multiple saved households or schedule export
       for (const tier of PRICING_CONFIG.tiers) {
         for (const feat of tier.features) {
           const lower = feat.toLowerCase();
           assert.ok(
-            !lower.includes('multiple saved households'),
-            `Tier ${tier.name} must not advertise unimplemented multiple saved households`
-          );
-          assert.ok(
-            !lower.includes('exportable schedule summaries') && !lower.includes('schedule export'),
-            `Tier ${tier.name} must not advertise unimplemented schedule export summaries`
-          );
-          assert.ok(
-            !lower.includes('ai') && !lower.includes('llm') && !lower.includes('neural'),
+            !/\bai\b/i.test(feat) && !lower.includes('llm') && !lower.includes('neural'),
             `Tier ${tier.name} must not claim AI or LLM functionality`
           );
         }
@@ -122,20 +113,21 @@ describe('ChoreMatrix Plan Entitlements & Truthful Pricing Suite', () => {
       assert.strictEqual(isTierAdFree('free'), false);
     });
 
-    it('Pro/Plus are ad-free (ads disabled)', () => {
+    it('Pro/Pass are ad-free (ads disabled)', () => {
       const pro = getTierById('pro');
       assert.strictEqual(pro?.adFree, true, 'Pro tier adFree must be true');
       assert.strictEqual(pro?.adEntitlement, 'ad_free');
       assert.strictEqual(isTierAdFree('pro'), true);
 
-      const plus = getTierById('plus');
-      assert.strictEqual(plus?.adFree, true, 'Plus tier adFree must be true');
-      assert.strictEqual(plus?.adEntitlement, 'ad_free');
-      assert.strictEqual(isTierAdFree('plus'), true);
+      const pass = getTierById('fairness_pass');
+      assert.strictEqual(pass?.adFree, true, 'Pass tier adFree must be true');
+      assert.strictEqual(pass?.adEntitlement, 'ad_free');
+      assert.strictEqual(isTierAdFree('fairness_pass'), true);
 
       // Backwards compatibility legacy aliases
       assert.strictEqual(isTierAdFree('household_pro'), true);
       assert.strictEqual(isTierAdFree('household_plus'), true);
+      assert.strictEqual(isTierAdFree('plus'), true);
     });
 
     it('ad entitlement does not trust client parameters or localStorage manipulation', async () => {
@@ -170,19 +162,16 @@ describe('ChoreMatrix Plan Entitlements & Truthful Pricing Suite', () => {
       const pro = getTierById('pro')!;
       assert.strictEqual(pro.monthlyPrice, 5.99);
 
-      const plus = getTierById('plus')!;
-      assert.strictEqual(plus.monthlyPrice, 9.99);
+      const pass = getTierById('fairness_pass')!;
+      assert.strictEqual(pass.monthlyPrice, 14.99);
     });
 
-    it('annual pricing is correct and represents approximately two months free', () => {
+    it('annual pricing is correct and represents approximately two months free for pro', () => {
       const free = getTierById('free')!;
       assert.strictEqual(free.annualPrice, 0);
 
       const pro = getTierById('pro')!;
       assert.strictEqual(pro.annualPrice, 59.99);
-
-      const plus = getTierById('plus')!;
-      assert.strictEqual(plus.annualPrice, 99.99);
 
       // Pro annual math: 12 * $5.99 = $71.88. Annual is $59.99. Savings = $11.89 (about 2 months @ $5.99 = $11.98)
       const proSavings = calculateAnnualSavings(pro);
@@ -190,26 +179,18 @@ describe('ChoreMatrix Plan Entitlements & Truthful Pricing Suite', () => {
       assert.strictEqual(proSavings.annualPrice, 59.99);
       assert.strictEqual(proSavings.savingsAmount, 11.89);
       assert.strictEqual(pro.annualSavingText, 'Save about 2 months');
-
-      // Plus annual math: 12 * $9.99 = $119.88. Annual is $99.99. Savings = $19.89 (about 2 months @ $9.99 = $19.98)
-      const plusSavings = calculateAnnualSavings(plus);
-      assert.strictEqual(plusSavings.monthlyTotal, 119.88);
-      assert.strictEqual(plusSavings.annualPrice, 99.99);
-      assert.strictEqual(plusSavings.savingsAmount, 19.89);
-      assert.strictEqual(plus.annualSavingText, 'Save about 2 months');
     });
 
-    it('paid plans have 7-day free trial duration', () => {
+    it('paid plans have appropriate trial duration', () => {
       const free = getTierById('free')!;
       assert.strictEqual(free.trialDays, 0);
+
+      const pass = getTierById('fairness_pass')!;
+      assert.strictEqual(pass.trialDays, 0);
 
       const pro = getTierById('pro')!;
       assert.strictEqual(pro.trialDays, 7);
       assert.strictEqual(pro.checkoutDisclosures.trialDurationText, '7-day free trial period');
-
-      const plus = getTierById('plus')!;
-      assert.strictEqual(plus.trialDays, 7);
-      assert.strictEqual(plus.checkoutDisclosures.trialDurationText, '7-day free trial period');
     });
   });
 

@@ -35,6 +35,7 @@ export interface PricingTier {
   cancellationMethod: string;
   isProvisional: boolean;
   popular?: boolean;
+  isOneTime?: boolean;
   features: string[];
   limitations: string[];
   ctaText: string;
@@ -55,13 +56,13 @@ export interface PricingConfig {
 export const PRICING_CONFIG: PricingConfig = {
   isBusinessFinalized: true,
   provisionalNotice: '',
-  defaultTrialDays: 7,
-  autoRenewalPolicyNotice: 'Automatic Renewal & Merchant of Record Disclosure: Paid subscriptions automatically renew at the applicable recurring rate ($5.99/mo or $59.99/yr for Pro; $9.99/mo or $99.99/yr for Plus) at the end of each billing cycle or promotional trial period until cancelled. Cancellations can be executed online anytime via Account Settings without phone or manual cancellation barriers. Orders are processed by Dodo Payments as Merchant of Record. Please review our Cancellation & Refund Policy for full terms on trial cancellation, statutory consumer rights, and refund requests.',
+  defaultTrialDays: 0,
+  autoRenewalPolicyNotice: 'Automatic Renewal & Merchant of Record Disclosure: Paid subscriptions for ChoreMatrix Pro Monthly automatically renew at $5.99/month at the end of each monthly billing cycle until cancelled. The One-Time Fairness Pass ($14.99) is a single payment for a 1-year household pass with zero automated recurring charges. Cancellations can be executed online anytime via Account Settings without phone or manual cancellation barriers. Orders are processed by Dodo Payments as Merchant of Record. Please review our Cancellation & Refund Policy for full terms on cancellation, statutory consumer rights, and refund requests.',
   tiers: [
     {
       id: 'free',
-      name: 'Free',
-      tagline: 'Essential workload optimization for your household.',
+      name: 'Free Audit',
+      tagline: 'Try ChoreMatrix — Build a household setup and see how a more balanced chore plan could look.',
       monthlyPrice: 0,
       annualPrice: 0,
       annualSavingText: 'Free forever',
@@ -73,19 +74,18 @@ export const PRICING_CONFIG: PricingConfig = {
       cancellationMethod: 'Not applicable (no recurring charges)',
       isProvisional: false,
       features: [
-        '1-week planning',
-        'core optimizer',
-        'Calculate Plan',
-        'Rebalance',
-        'cloud saving',
-        'basic diagnostics',
-        'ads'
+        'Full Household Capacity & Effort Calculator',
+        'Live Fairness Index & Load Disparity Score',
+        'Days 1–3 Schedule Preview',
+        'Shareable "Chore Disparity Receipt" Card',
+        'Browser Local Storage Save'
       ],
       limitations: [
-        '1-week planning horizon only',
-        'Ad-supported workspace'
+        'Days 4–7 schedule locked in preview',
+        'Rebalance & PDF export require pass or pro',
+        '1-week planning horizon only'
       ],
-      ctaText: 'Continue Free',
+      ctaText: 'Try Calculator Free',
       adFree: false,
       adEntitlement: 'ads_enabled',
       checkoutDisclosures: {
@@ -96,15 +96,63 @@ export const PRICING_CONFIG: PricingConfig = {
         recurringFrequency: 'monthly',
         renewalBehavior: 'Free forever without automated recurring charges.',
         cancellationMethod: 'Delete account at any time in Account Settings.',
-        materialLimitations: ['1-week planning only', 'Ad-supported workspace'],
+        materialLimitations: ['Days 4–7 schedule locked in preview', '1-week planning only'],
         taxesNotice: 'No tax applicable',
         jurisdictionNotice: 'Free tier requires no payment method.'
       }
     },
     {
+      id: 'fairness_pass',
+      name: 'One-Time Fairness Pass',
+      tagline: 'Get One Complete Plan — One payment for one complete four-week chore plan for your household.',
+      monthlyPrice: 14.99,
+      annualPrice: 14.99,
+      annualSavingText: 'Single payment · Zero recurring fees',
+      billingIntervals: ['month'],
+      trialDays: 0,
+      monthlyRenewalAmount: 0,
+      annualRenewalAmount: 0,
+      renewalInterval: 'monthly',
+      cancellationMethod: 'One-time payment (not a recurring subscription)',
+      isProvisional: false,
+      popular: true,
+      isOneTime: true,
+      features: [
+        'Instant Unlock of Full 7-Day & 4-Week Rotational Schedules',
+        'Unlimited Drag-and-Drop Edits, Rebalance & 2-Opt Fairness Swaps',
+        'Clean Printable PDF & Fridge-Ready Schedule Exports',
+        'Full Explainability Tags (capacity_relief, preference_bonus)',
+        '1-Year Full Household Pass (Single Payment, Zero Recurring Fees)'
+      ],
+      limitations: [
+        'Single household and single plan purchase',
+        'Manual edits to this plan are included',
+        'Generating newly optimized plans from changed inputs requires Pro',
+        'Unlimited new plans are not included'
+      ],
+      ctaText: 'Get My Complete Plan — $14.99',
+      adFree: true,
+      adEntitlement: 'ad_free',
+      checkoutDisclosures: {
+        chargedToday: 14.99,
+        trialDurationText: 'None (instant one-time purchase)',
+        chargedAfterTrialMonthly: 0,
+        chargedAfterTrialAnnual: 0,
+        recurringFrequency: 'monthly',
+        renewalBehavior: 'One-time payment of $14.99 for a 1-year household pass. Does not automatically renew.',
+        cancellationMethod: 'One-time charge; review our Cancellation & Refund Policy.',
+        materialLimitations: [
+          'Single household & single plan purchase',
+          'Newly optimized recalculation from changed inputs requires Pro'
+        ],
+        taxesNotice: 'Applicable state/local sales taxes calculated at checkout.',
+        jurisdictionNotice: 'Single charge processed by Dodo Payments as Merchant of Record.'
+      }
+    },
+    {
       id: 'pro',
-      name: 'Pro',
-      tagline: 'Multi-week rotational fairness, soft preferences, and no ads.',
+      name: 'Household Autopilot Pro',
+      tagline: 'Keep Your Plan Up to Date — For households whose chores, availability, and schedules keep changing.',
       monthlyPrice: 5.99,
       annualPrice: 59.99,
       annualSavingText: 'Save about 2 months',
@@ -115,80 +163,48 @@ export const PRICING_CONFIG: PricingConfig = {
       renewalInterval: 'monthly',
       cancellationMethod: 'Online cancellation via Account Settings prior to renewal date',
       isProvisional: false,
-      popular: true,
+      popular: false,
       features: [
-        'everything in Free',
-        '4-week planning',
-        'advanced preferences/aversions',
-        'richer plan information',
-        'no ads'
+        'Everything in the Fairness Pass',
+        'Unlimited Household Profiles & Custom Presets',
+        'Read-Only Shareable Roommate/Partner Schedule Links',
+        'Multi-Month Rotation Memory (never get stuck with the worst chore twice)',
+        'Priority Support & Cloud Backup Across Devices'
       ],
       limitations: [],
-      ctaText: 'Start 7-day free trial',
+      ctaText: 'Subscribe Monthly — $5.99/mo',
       adFree: true,
       adEntitlement: 'ad_free',
       checkoutDisclosures: {
-        chargedToday: 0,
+        chargedToday: 5.99,
         trialDurationText: '7-day free trial period',
         chargedAfterTrialMonthly: 5.99,
         chargedAfterTrialAnnual: 59.99,
         recurringFrequency: 'monthly',
-        renewalBehavior: 'Renews automatically each month ($5.99/mo) or year ($59.99/yr) until cancelled. Notice provided prior to renewal.',
-        cancellationMethod: 'Online via Account Settings before trial expires to prevent any charge.',
+        renewalBehavior: 'Renews automatically each month ($5.99/mo) until cancelled. Notice provided prior to renewal.',
+        cancellationMethod: 'Online via Account Settings before monthly renewal date to prevent future charge.',
         materialLimitations: [],
         taxesNotice: 'Applicable state/local sales taxes calculated at checkout.',
-        jurisdictionNotice: 'Complies with California ARL and statutory continuous service disclosure standards.'
-      }
-    },
-    {
-      id: 'plus',
-      name: 'Plus',
-      tagline: 'Comprehensive household planning with priority feedback and no ads.',
-      monthlyPrice: 9.99,
-      annualPrice: 99.99,
-      annualSavingText: 'Save about 2 months',
-      billingIntervals: ['month', 'year'],
-      trialDays: 7,
-      monthlyRenewalAmount: 9.99,
-      annualRenewalAmount: 99.99,
-      renewalInterval: 'monthly',
-      cancellationMethod: 'Online cancellation via Account Settings prior to renewal date',
-      isProvisional: false,
-      features: [
-        'everything in Pro',
-        'priority feature feedback',
-        'no ads'
-      ],
-      limitations: [],
-      ctaText: 'Start 7-day free trial',
-      adFree: true,
-      adEntitlement: 'ad_free',
-      checkoutDisclosures: {
-        chargedToday: 0,
-        trialDurationText: '7-day free trial period',
-        chargedAfterTrialMonthly: 9.99,
-        chargedAfterTrialAnnual: 99.99,
-        recurringFrequency: 'monthly',
-        renewalBehavior: 'Renews automatically each month ($9.99/mo) or year ($99.99/yr) until cancelled. Notice provided prior to renewal.',
-        cancellationMethod: 'Online via Account Settings before trial expires to prevent any charge.',
-        materialLimitations: [],
-        taxesNotice: 'Applicable state/local sales taxes calculated at checkout.',
-        jurisdictionNotice: 'Complies with California ARL and statutory continuous service disclosure standards.'
+        jurisdictionNotice: 'Complies with statutory continuous service disclosure standards.'
       }
     }
   ],
   faq: [
     {
       question: 'Is the core optimizer really free?',
-      answer: 'Yes. Generating an optimized household workload allocation, testing differential rebalancing, and saving your configuration is completely free.'
+      answer: 'Yes. Generating an initial household workload allocation, viewing your Fairness Index Score, seeing workload disparity, and previewing Days 1 to 3 is completely free with zero login barrier.'
     },
     {
-      question: 'How do free trials work?',
-      answer: 'Paid tiers include a 7-day free trial ($0 charged today). You can cancel online anytime before the trial ends in Account Settings to prevent any future recurring charges.'
+      question: 'What is the One-Time Fairness Pass?',
+      answer: 'The One-Time Fairness Pass is a single $14.99 payment that instantly unlocks full 7-day and 4-week rotational schedules, unlimited drag-and-drop edits, and fridge-ready printable PDFs for a full year (365 days)—with zero recurring subscription fees.'
     },
     {
-      question: 'How does subscription payment processing work?',
-      answer: 'Subscription payments and billing for ChoreMatrix are securely processed by our Merchant of Record, Dodo Payments. You can start with a 7-day free trial on Pro or Plus plans and manage or cancel your subscription online at any time in Account Settings.'
+      question: 'Is there a recurring fee with the Fairness Pass?',
+      answer: 'No. The Fairness Pass is a single $14.99 payment that grants 365 days of full schedule access for your household with zero automatic renewals. ChoreMatrix Pro Monthly is billed at $5.99/month with straightforward monthly flexibility and online cancellation anytime.'
+    },
+    {
+      question: 'How does payment processing work?',
+      answer: 'Payments and billing for ChoreMatrix are securely processed by our Merchant of Record, Dodo Payments. You can choose a one-time payment for the Fairness Pass or subscribe with monthly flexibility for Pro Monthly.'
     }
   ]
 };
@@ -199,14 +215,16 @@ export const PRICING_CONFIG: PricingConfig = {
 export function normalizeTierId(tierId: string | null | undefined): string {
   if (!tierId) return 'free';
   const clean = tierId.toLowerCase().trim();
-  if (clean === 'household_pro' || clean === 'pro') return 'pro';
-  if (clean === 'household_plus' || clean === 'family_plus' || clean === 'plus') return 'plus';
+  if (clean === 'household_pro' || clean === 'pro' || clean === 'autopilot_pro') return 'pro';
+  if (clean === 'fairness_pass' || clean === 'onetime_pass' || clean === 'pass' || clean === 'one_time_pass') return 'fairness_pass';
+  if (clean === 'household_plus' || clean === 'family_plus' || clean === 'plus') return 'fairness_pass';
+  if (clean === 'free_audit') return 'free';
   return clean;
 }
 
 /**
  * Returns a tier by ID from centralized pricing config.
- * Supports canonical IDs ('free', 'pro', 'plus') and legacy aliases ('household_pro', 'household_plus').
+ * Supports canonical IDs ('free', 'fairness_pass', 'pro') and legacy aliases ('plus', 'household_pro', 'household_plus').
  */
 export function getTierById(tierId: string | null | undefined): PricingTier | undefined {
   if (!tierId) return undefined;

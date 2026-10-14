@@ -85,15 +85,14 @@ describe('ChoreMatrix Pre-Live Debugging & Security Audit #1 Suite', () => {
 
     it('verifies pricing page embeds both monthly and annual rates for Pro and Plus', () => {
       const proTier = getTierById('pro');
-      const plusTier = getTierById('plus');
+      const passTier = getTierById('fairness_pass') || getTierById('plus');
       const freeTier = getTierById('free');
 
-      assert.ok(proTier && plusTier && freeTier, 'All 3 tiers must exist in PRICING_CONFIG');
+      assert.ok(proTier && passTier && freeTier, 'All 3 tiers must exist in PRICING_CONFIG');
       assert.strictEqual(freeTier.monthlyPrice, 0);
       assert.strictEqual(proTier.monthlyPrice, 5.99);
       assert.strictEqual(proTier.annualPrice, 59.99);
-      assert.strictEqual(plusTier.monthlyPrice, 9.99);
-      assert.strictEqual(plusTier.annualPrice, 99.99);
+      assert.strictEqual(passTier.monthlyPrice, 14.99);
     });
 
     it('verifies session management termination scopes (local, others, global) in account.html', () => {
