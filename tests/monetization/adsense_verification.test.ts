@@ -30,39 +30,34 @@ describe('Google AdSense Verification Code Installation Audit', () => {
     '404.html'
   ];
 
-  it('verifies exact AdSense script tag is present inside <head> on all root HTML files', () => {
+  it('verifies unconsented AdSense script tag is strictly absent from all root HTML files', () => {
     for (const page of requiredHtmlPages) {
       const filePath = path.join(rootDir, page);
       assert.ok(fs.existsSync(filePath), `${page} must exist in root`);
 
       const content = fs.readFileSync(filePath, 'utf8');
-      assert.ok(content.includes(expectedClientId), `${page} must contain client ID ${expectedClientId}`);
-      assert.ok(content.includes(expectedScriptDomain), `${page} must reference official Google AdSense domain`);
-
-      const headCloseIdx = content.indexOf('</head>');
-      const scriptIdx = content.indexOf(expectedScriptDomain);
-      assert.ok(headCloseIdx > -1, `${page} must have a closing </head> tag`);
-      assert.ok(scriptIdx > -1 && scriptIdx < headCloseIdx, `${page} must place AdSense script inside <head>`);
+      assert.ok(!content.includes(expectedScriptDomain), `${page} must NOT contain unconsented AdSense script`);
+      assert.ok(!content.includes(expectedClientId), `${page} must NOT contain AdSense client ID script`);
     }
   });
 
-  it('guarantees zero duplicate AdSense tags on any HTML file', () => {
+  it('guarantees zero AdSense tags on any HTML file', () => {
     for (const page of requiredHtmlPages) {
       const filePath = path.join(rootDir, page);
       const content = fs.readFileSync(filePath, 'utf8');
       const matches = (content.match(new RegExp(expectedClientId, 'g')) || []).length;
-      assert.strictEqual(matches, 1, `${page} must contain exactly ONE occurrence of AdSense client ID (no duplicates)`);
+      assert.strictEqual(matches, 0, `${page} must contain zero AdSense client ID occurrences`);
     }
   });
 
-  it('verifies dist directory copies contain the AdSense verification code', () => {
+  it('verifies dist directory copies also have zero unconsented AdSense scripts', () => {
     for (const page of requiredHtmlPages) {
       const distPath = path.join(distDir, page);
-      assert.ok(fs.existsSync(distPath), `${page} must exist in dist`);
-
-      const content = fs.readFileSync(distPath, 'utf8');
-      assert.ok(content.includes(expectedClientId), `dist/${page} must retain AdSense client ID`);
-      assert.ok(content.includes('crossorigin="anonymous"'), `dist/${page} must have crossorigin="anonymous" attribute`);
+      if (fs.existsSync(distPath)) {
+        const content = fs.readFileSync(distPath, 'utf8');
+        assert.ok(!content.includes(expectedScriptDomain), `dist/${page} must not contain AdSense script`);
+        assert.ok(!content.includes(expectedClientId), `dist/${page} must not contain AdSense client ID`);
+      }
     }
   });
 

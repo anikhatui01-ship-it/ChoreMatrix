@@ -21,7 +21,7 @@ describe('Legal, Privacy & Product-Security Hardening Suite', () => {
   // 1. AGE & CHILD ACCESS HARDENING
   // ========================================================
   describe('1. Age & Child Access Hardening', () => {
-    it('age gate rejects under 13 and blocks Supabase Auth user creation', async () => {
+    it('age gate rejects under 18 and blocks Supabase Auth user creation', async () => {
       let clientSignUpCalled = false;
       class MockAuthClient {
         auth = {
@@ -38,19 +38,19 @@ describe('Legal, Privacy & Product-Security Hardening Suite', () => {
         }
       })();
 
-      // Under 13 must be rejected
+      // Under 18 must be rejected
       await assert.rejects(
         async () => {
-          await authService.signUp('teen@example.com', 'password123', { isAtLeast13: false });
+          await authService.signUp('teen@example.com', 'password123', { isAtLeast18: false });
         },
-        /ChoreMatrix accounts are currently available only to users aged 13 and older/,
-        'Under-13 signup must throw an explicit age restriction error'
+        /ChoreMatrix accounts are currently available only to users aged 18 and older/,
+        'Under-18 signup must throw an explicit age restriction error'
       );
 
-      assert.strictEqual(clientSignUpCalled, false, 'Under-13 request must never call client auth.signUp');
+      assert.strictEqual(clientSignUpCalled, false, 'Under-18 request must never call client auth.signUp');
     });
 
-    it('age gate accepts 13+ users and proceeds with signup', async () => {
+    it('age gate accepts 18+ users and proceeds with signup', async () => {
       let clientSignUpCalled = false;
       class MockAuthClient {
         auth = {
@@ -67,17 +67,17 @@ describe('Legal, Privacy & Product-Security Hardening Suite', () => {
         }
       })();
 
-      const result = await authService.signUp('adult@example.com', 'password123', { isAtLeast13: true });
-      assert.strictEqual(clientSignUpCalled, true, '13+ signup must call client auth.signUp');
-      assert.ok(result.user, '13+ signup returns user object');
+      const result = await authService.signUp('adult@example.com', 'password123', { isAtLeast18: true });
+      assert.strictEqual(clientSignUpCalled, true, '18+ signup must call client auth.signUp');
+      assert.ok(result.user, '18+ signup returns user object');
     });
 
-    it('signup.html contains 13+ age gate checkbox and under-13 safe exit notice', () => {
+    it('signup.html contains 18+ age gate checkbox and under-18 safe exit notice', () => {
       const signupHtml = fs.readFileSync(path.join(rootDir, 'signup.html'), 'utf8');
-      assert.ok(signupHtml.includes('Are you at least 13 years old?'), 'signup.html must display age question');
+      assert.ok(signupHtml.includes('Are you at least 18 years old?'), 'signup.html must display age question');
       assert.ok(signupHtml.includes('id="chkAgeGate"'), 'signup.html must contain age gate checkbox');
-      assert.ok(signupHtml.includes('Yes, I am 13 or older.'), 'signup.html must have exact required checkbox label');
-      assert.ok(signupHtml.includes('under13Notice'), 'signup.html must contain under-13 notice container');
+      assert.ok(signupHtml.includes('Yes, I am 18 or older.'), 'signup.html must have exact required checkbox label');
+      assert.ok(signupHtml.includes('under18Notice'), 'signup.html must contain under-18 notice container');
       assert.ok(signupHtml.includes('Return to Home / Browser Planning'), 'signup.html must provide safe exit link');
     });
 
@@ -153,7 +153,7 @@ describe('Legal, Privacy & Product-Security Hardening Suite', () => {
       const appHtml = fs.readFileSync(path.join(rootDir, 'app.html'), 'utf8');
       const indexHtml = fs.readFileSync(path.join(rootDir, 'index.html'), 'utf8');
 
-      const expectedNotice = 'Children can be included as household members, but ChoreMatrix accounts are for users 13+. For privacy, consider using a nickname or household label instead of a child\'s full name.';
+      const expectedNotice = 'Children can be included as household members, but ChoreMatrix accounts are for users 18+. For privacy, consider using a nickname or household label instead of a child\'s full name.';
       assert.ok(appHtml.includes(expectedNotice), 'app.html must include child privacy guidance');
       assert.ok(indexHtml.includes(expectedNotice), 'index.html must include child privacy guidance');
     });

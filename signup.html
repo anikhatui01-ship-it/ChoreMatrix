@@ -96,8 +96,6 @@
     margin: 0;
   }
 </style>
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6399557140317733"
-     crossorigin="anonymous"></script>
 </head>
 <body>
 
@@ -136,11 +134,11 @@
 
           <div class="field" style="margin: 16px 0 12px; padding: 12px 14px; background: var(--panel-subtle); border: 1px solid var(--line); border-radius: 8px;">
             <div style="font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 6px;">
-              Are you at least 13 years old?
+              Are you at least 18 years old?
             </div>
             <label style="display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--ink); cursor: pointer;">
               <input type="checkbox" id="chkAgeGate" name="age_gate" required style="accent-color: var(--accent); width: 16px; height: 16px;" />
-              <span>Yes, I am 13 or older.</span>
+              <span>Yes, I am 18 or older.</span>
             </label>
           </div>
 
@@ -158,9 +156,9 @@
           </button>
         </form>
 
-        <div id="under13Notice" style="display:none; margin-top:20px; padding:16px; background:var(--panel-subtle); border:1px solid var(--line); border-radius:8px; text-align:center;">
+        <div id="under18Notice" style="display:none; margin-top:20px; padding:16px; background:var(--panel-subtle); border:1px solid var(--line); border-radius:8px; text-align:center;">
           <p style="font-size:13px; color:var(--ink); margin:0 0 12px; line-height:1.5;">
-            <strong>Age Requirement:</strong> ChoreMatrix accounts are currently available only to users aged 13 and older. You can still use the interactive workload calculator directly in your browser without an account.
+            <strong>Age Requirement:</strong> ChoreMatrix accounts are currently available only to users aged 18 and older. You can still use the interactive workload calculator directly in your browser without an account.
           </p>
           <a href="/index.html" class="btn small" style="margin:0 auto; display:inline-flex;">Return to Home / Browser Planning</a>
         </div>
@@ -195,21 +193,21 @@ const ageGateCheckbox = document.getElementById('chkAgeGate');
 const termsCheckbox = document.getElementById('chkTerms');
 const submitBtn = document.getElementById('btnSubmit');
 const alertBox = document.getElementById('authAlert');
-const under13Notice = document.getElementById('under13Notice');
+const under18Notice = document.getElementById('under18Notice');
 
 form?.addEventListener('submit', async (e) => {
   e.preventDefault();
   alertBox.style.display = 'none';
-  if (under13Notice) under13Notice.style.display = 'none';
+  if (under18Notice) under18Notice.style.display = 'none';
 
   const email = emailInput.value.trim();
   const password = passwordInput.value;
   const confirm = confirmInput.value;
-  const is13OrOlder = ageGateCheckbox ? ageGateCheckbox.checked : false;
+  const is18OrOlder = ageGateCheckbox ? ageGateCheckbox.checked : false;
 
-  if (!is13OrOlder) {
-    showError('ChoreMatrix accounts are currently available only to users aged 13 and older.');
-    if (under13Notice) under13Notice.style.display = 'block';
+  if (!is18OrOlder) {
+    showError('ChoreMatrix accounts are currently available only to users aged 18 and older.');
+    if (under18Notice) under18Notice.style.display = 'block';
     return;
   }
   if (!email || !email.includes('@')) {
@@ -236,7 +234,7 @@ form?.addEventListener('submit', async (e) => {
   }
 
   try {
-    const data = await authService.signUp(email, password, { isAtLeast13: is13OrOlder });
+    const data = await authService.signUp(email, password, { isAtLeast18: is18OrOlder, isAtLeast13: is18OrOlder });
     if (typeof trackEvent === 'function') {
       trackEvent('registration_completed', { status: 'success' });
     }

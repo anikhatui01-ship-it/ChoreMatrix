@@ -109,15 +109,17 @@ export class AuthService {
 
   /**
    * Email and password sign-up with environment-aware redirect URL and age gate enforcement.
+   * Under DPDP Act 2023 Section 2(f) & Section 9, individuals under 18 are children.
+   * Account registration is strictly restricted to adults aged 18 and older.
    */
   async signUp(
     email: string,
     password: string,
-    optionsOrRedirectTo?: string | { isAtLeast13?: boolean; redirectTo?: string }
+    optionsOrRedirectTo?: string | { isAtLeast18?: boolean; isAtLeast13?: boolean; redirectTo?: string }
   ) {
     const opts = typeof optionsOrRedirectTo === 'string' ? { redirectTo: optionsOrRedirectTo } : optionsOrRedirectTo;
-    if (opts?.isAtLeast13 === false) {
-      throw new Error('ChoreMatrix accounts are currently available only to users aged 13 and older.');
+    if (opts?.isAtLeast18 === false || opts?.isAtLeast13 === false) {
+      throw new Error('ChoreMatrix accounts are currently available only to users aged 18 and older.');
     }
     if (!this.client) {
       throw new Error('Cloud authentication is unconfigured. Please set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY.');
@@ -127,6 +129,9 @@ export class AuthService {
       email,
       password,
       options: {
+        data: {
+          isAtLeast18: true
+        },
         emailRedirectTo: targetUrl
       }
     });

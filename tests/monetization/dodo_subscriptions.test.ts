@@ -861,13 +861,14 @@ describe('Dodo Payments Subscriptions & Security Suite (Test Mode)', () => {
       }
     });
 
-    it('verifies supabase/functions contains ONLY Dodo edge functions', () => {
+    it('verifies supabase/functions contains valid edge functions and no legacy payment functions', () => {
       const functionsDir = path.resolve('supabase', 'functions');
       const dirs = fs.readdirSync(functionsDir, { withFileTypes: true })
         .filter(d => d.isDirectory())
         .map(d => d.name);
 
       assert.deepStrictEqual(dirs.sort(), [
+        'delete-account',
         'dodo-cancel-subscription',
         'dodo-create-checkout',
         'dodo-webhook'

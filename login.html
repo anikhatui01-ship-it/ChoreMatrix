@@ -116,8 +116,6 @@
     padding: 4px;
   }
 </style>
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6399557140317733"
-     crossorigin="anonymous"></script>
 </head>
 <body>
 
@@ -137,6 +135,7 @@
         </div>
 
         <div id="authAlert" class="alert-box" style="display:none;" role="alert"></div>
+        <div id="authNotice" class="notice-banner" style="display:none; margin-bottom:16px;"></div>
 
         <form id="loginForm" novalidate>
           <div class="field">
@@ -188,6 +187,15 @@ const passwordInput = document.getElementById('txtPassword');
 const toggleBtn = document.getElementById('btnTogglePassword');
 const submitBtn = document.getElementById('btnSubmit');
 const alertBox = document.getElementById('authAlert');
+const noticeBox = document.getElementById('authNotice');
+
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('deleted') === 'true') {
+  if (noticeBox) {
+    noticeBox.textContent = '✓ Your account and personal data have been permanently deleted.';
+    noticeBox.style.display = 'block';
+  }
+}
 
 toggleBtn?.addEventListener('click', () => {
   const isPass = passwordInput.type === 'password';

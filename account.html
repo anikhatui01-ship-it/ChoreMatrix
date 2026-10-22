@@ -41,8 +41,6 @@
     .account-grid { grid-template-columns: 1fr; }
   }
 </style>
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6399557140317733"
-     crossorigin="anonymous"></script>
 </head>
 <body>
 
@@ -149,6 +147,29 @@
             Permanently delete your account and all associated household configurations, member details, and plans.
           </p>
           <button type="button" class="btn danger small" id="btnDeleteAccount">Delete Account & Data</button>
+
+          <div id="deleteConfirmBox" style="display:none; margin-top:14px; padding:16px; border:1px solid var(--bad); border-radius:10px; background:var(--panel-subtle);" role="region" aria-label="Confirm Account Deletion">
+            <div style="font-weight:700; font-size:13px; color:var(--bad); margin-bottom:8px;">
+              ⚠️ Confirm Permanent Account Deletion
+            </div>
+            <ul style="margin:0 0 12px; padding-left:18px; font-size:12px; color:var(--ink); line-height:1.5;">
+              <li><strong>Cloud Data:</strong> All saved households, members, tasks, and plans are permanently deleted from ChoreMatrix servers.</li>
+              <li><strong>Local Drafts:</strong> Cached plans and local draft schedules on this browser will be cleared.</li>
+              <li><strong>Subscriptions:</strong> If you have an active trial or paid subscription, cancellation is required first to prevent recurring renewals.</li>
+              <li><strong>Legal Compliance:</strong> Statutory invoice and payment records are retained in de-identified form as required by tax and corporate regulations (DPDP Act Sec. 8(7)).</li>
+            </ul>
+            <div id="deleteSubWarning" style="display:none; margin-bottom:12px; padding:8px 12px; border-radius:6px; background:rgba(239,68,68,0.1); border:1px solid var(--bad); font-size:12px; color:var(--bad);">
+              You currently have an active subscription. Please cancel your subscription under Profile & Subscription above before deleting your account to ensure recurring charges are stopped.
+            </div>
+            <div style="font-size:12px; color:var(--muted); margin-bottom:8px;">
+              Type <strong>DELETE</strong> below to unlock confirmation:
+            </div>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <input type="text" id="txtDeleteConfirm" placeholder="DELETE" style="width:140px; text-transform:uppercase; font-weight:700; padding:6px 10px; font-size:13px;" />
+              <button type="button" class="btn danger small" id="btnConfirmDelete" disabled>Permanently Delete Account</button>
+              <button type="button" class="btn small" id="btnCancelDelete">Cancel</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -183,6 +204,7 @@ function formatPlanTier(tierId, interval, status) {
 }
 
 let authSubscription = null;
+let currentProfile = null;
 
 async function checkAccount() {
   if (alertBox) alertBox.style.display = 'none';
@@ -217,6 +239,7 @@ async function checkAccount() {
     // 3. Query user profile from public.profiles
     try {
       const profile = await persistenceAdapter.getProfile(user.id);
+      currentProfile = profile;
       if (profile && planField) {
         planField.value = formatPlanTier(profile.plan_tier, profile.billing_interval, profile.subscription_status);
         if (profile.email && emailField && !emailField.value) {
@@ -441,20 +464,84 @@ document.getElementById('btnCancelSub')?.addEventListener('click', async () => {
   }
 });
 
-// 5. Delete Account
-document.getElementById('btnDeleteAccount')?.addEventListener('click', async () => {
-  const promptText = prompt('WARNING: This permanently deletes your account, household members, tasks, and plans.\n\nType DELETE to confirm:');
-  if (promptText === 'DELETE') {
+// 5. Delete Account Flow
+const deleteBox = document.getElementById('deleteConfirmBox');
+const deleteTriggerBtn = document.getElementById('btnDeleteAccount');
+const deleteConfirmBtn = document.getElementById('btnConfirmDelete');
+const deleteCancelBtn = document.getElementById('btnCancelDelete');
+const deleteInput = document.getElementById('txtDeleteConfirm');
+const deleteSubWarning = document.getElementById('deleteSubWarning');
+
+deleteTriggerBtn?.addEventListener('click', () => {
+  if (deleteBox) deleteBox.style.display = 'block';
+  if (deleteTriggerBtn) deleteTriggerBtn.style.display = 'none';
+  if (deleteInput) {
+    deleteInput.value = '';
+    deleteInput.focus();
+  }
+  if (deleteConfirmBtn) deleteConfirmBtn.disabled = true;
+
+  const isSubActive = currentProfile && currentProfile.plan_tier !== 'free' &&
+    (currentProfile.subscription_status === 'active' || currentProfile.subscription_status === 'trialing');
+  if (deleteSubWarning) {
+    deleteSubWarning.style.display = isSubActive ? 'block' : 'none';
+  }
+});
+
+deleteCancelBtn?.addEventListener('click', () => {
+  if (deleteBox) deleteBox.style.display = 'none';
+  if (deleteTriggerBtn) deleteTriggerBtn.style.display = 'inline-block';
+  if (deleteInput) deleteInput.value = '';
+  if (deleteConfirmBtn) deleteConfirmBtn.disabled = true;
+});
+
+deleteInput?.addEventListener('input', () => {
+  if (deleteConfirmBtn && deleteInput) {
+    deleteConfirmBtn.disabled = (deleteInput.value.trim().toUpperCase() !== 'DELETE');
+  }
+});
+
+deleteConfirmBtn?.addEventListener('click', async () => {
+  if (deleteInput && deleteInput.value.trim().toUpperCase() !== 'DELETE') {
+    return;
+  }
+  if (deleteConfirmBtn) {
+    deleteConfirmBtn.disabled = true;
+    deleteConfirmBtn.textContent = 'Deleting account...';
+  }
+  if (deleteCancelBtn) deleteCancelBtn.disabled = true;
+
+  try {
+    const user = await authService.getUser();
+    if (user) {
+      await persistenceAdapter.deleteUserData(user.id);
+    }
+
+    // Clear local storage drafts, cached plans, and export cache
     try {
-      const user = await authService.getUser();
-      if (user) {
-        await persistenceAdapter.deleteUserData(user.id);
-      }
-      await authService.signOut('global');
-      alert('Your account and household data have been deleted.');
-      window.location.href = '/';
-    } catch (err) {
-      showError(err.message || 'Account deletion failed.');
+      localStorage.removeItem('chorematrix_saved_plan');
+      localStorage.removeItem('chorematrix_draft');
+      localStorage.removeItem('chorematrix_export');
+    } catch (storageErr) {
+      console.warn('[Account] Local storage cleanup warning:', storageErr);
+    }
+
+    await authService.signOut('global');
+    alert('Your account and household data have been permanently deleted.');
+    window.location.href = '/login.html?deleted=true';
+  } catch (err) {
+    console.error('[Account] Account deletion error:', err);
+    if (deleteConfirmBtn) {
+      deleteConfirmBtn.disabled = false;
+      deleteConfirmBtn.textContent = 'Permanently Delete Account';
+    }
+    if (deleteCancelBtn) deleteCancelBtn.disabled = false;
+
+    if (err.code === 'ACTIVE_SUBSCRIPTION_EXISTS' || (err.message && err.message.toLowerCase().includes('subscription'))) {
+      if (deleteSubWarning) deleteSubWarning.style.display = 'block';
+      showError('Account deletion blocked: You have an active subscription or trial. Please cancel your subscription under Profile & Subscription above before deleting your account to prevent recurring charges.');
+    } else {
+      showError(err.message || 'Account deletion failed. Please try again or contact support.');
     }
   }
 });
