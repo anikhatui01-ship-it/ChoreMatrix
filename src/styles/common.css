@@ -583,6 +583,177 @@ select option {
 .badge.amber { background: var(--badge-amber-bg); color: var(--badge-amber-text); }
 .badge.red { background: var(--badge-red-bg); color: var(--badge-red-text); }
 
+/* Household Member Color System */
+.member-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.35;
+  border-width: 1px;
+  border-style: solid;
+  transition: all 0.14s ease;
+  white-space: nowrap;
+}
+
+.member-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: currentColor;
+}
+
+/* 10 Member Palette Variations (Light Mode Defaults) */
+.member-color-0 {
+  --member-text: #0369a1;
+  --member-bg: rgba(2, 132, 199, 0.12);
+  --member-border: rgba(2, 132, 199, 0.40);
+  --member-accent: #0284c7;
+}
+.member-color-1 {
+  --member-text: #047857;
+  --member-bg: rgba(5, 150, 105, 0.12);
+  --member-border: rgba(5, 150, 105, 0.40);
+  --member-accent: #059669;
+}
+.member-color-2 {
+  --member-text: #7e22ce;
+  --member-bg: rgba(147, 51, 234, 0.12);
+  --member-border: rgba(147, 51, 234, 0.40);
+  --member-accent: #9333ea;
+}
+.member-color-3 {
+  --member-text: #c2410c;
+  --member-bg: rgba(234, 88, 12, 0.12);
+  --member-border: rgba(234, 88, 12, 0.40);
+  --member-accent: #ea580c;
+}
+.member-color-4 {
+  --member-text: #be185d;
+  --member-bg: rgba(219, 39, 119, 0.12);
+  --member-border: rgba(219, 39, 119, 0.40);
+  --member-accent: #db2777;
+}
+.member-color-5 {
+  --member-text: #0f766e;
+  --member-bg: rgba(13, 148, 136, 0.12);
+  --member-border: rgba(13, 148, 136, 0.40);
+  --member-accent: #0d9488;
+}
+.member-color-6 {
+  --member-text: #4338ca;
+  --member-bg: rgba(79, 70, 229, 0.12);
+  --member-border: rgba(79, 70, 229, 0.40);
+  --member-accent: #4f46e5;
+}
+.member-color-7 {
+  --member-text: #a16207;
+  --member-bg: rgba(202, 138, 4, 0.12);
+  --member-border: rgba(202, 138, 4, 0.40);
+  --member-accent: #ca8a04;
+}
+.member-color-8 {
+  --member-text: #1d4ed8;
+  --member-bg: rgba(37, 99, 235, 0.12);
+  --member-border: rgba(37, 99, 235, 0.40);
+  --member-accent: #2563eb;
+}
+.member-color-9 {
+  --member-text: #4d7c0f;
+  --member-bg: rgba(101, 163, 13, 0.12);
+  --member-border: rgba(101, 163, 13, 0.40);
+  --member-accent: #65a30d;
+}
+
+/* Dark Theme Overrides */
+html[data-theme="dark"] .member-color-0,
+:root:not([data-theme="light"]) .member-color-0 {
+  --member-text: #38bdf8;
+  --member-bg: rgba(56, 189, 248, 0.16);
+  --member-border: rgba(56, 189, 248, 0.45);
+  --member-accent: #38bdf8;
+}
+html[data-theme="dark"] .member-color-1,
+:root:not([data-theme="light"]) .member-color-1 {
+  --member-text: #34d399;
+  --member-bg: rgba(52, 211, 153, 0.16);
+  --member-border: rgba(52, 211, 153, 0.45);
+  --member-accent: #34d399;
+}
+html[data-theme="dark"] .member-color-2,
+:root:not([data-theme="light"]) .member-color-2 {
+  --member-text: #c084fc;
+  --member-bg: rgba(192, 132, 252, 0.16);
+  --member-border: rgba(192, 132, 252, 0.45);
+  --member-accent: #c084fc;
+}
+html[data-theme="dark"] .member-color-3,
+:root:not([data-theme="light"]) .member-color-3 {
+  --member-text: #fb923c;
+  --member-bg: rgba(251, 146, 60, 0.16);
+  --member-border: rgba(251, 146, 60, 0.45);
+  --member-accent: #fb923c;
+}
+html[data-theme="dark"] .member-color-4,
+:root:not([data-theme="light"]) .member-color-4 {
+  --member-text: #f472b6;
+  --member-bg: rgba(244, 114, 182, 0.16);
+  --member-border: rgba(244, 114, 182, 0.45);
+  --member-accent: #f472b6;
+}
+html[data-theme="dark"] .member-color-5,
+:root:not([data-theme="light"]) .member-color-5 {
+  --member-text: #2dd4bf;
+  --member-bg: rgba(45, 212, 191, 0.16);
+  --member-border: rgba(45, 212, 191, 0.45);
+  --member-accent: #2dd4bf;
+}
+html[data-theme="dark"] .member-color-6,
+:root:not([data-theme="light"]) .member-color-6 {
+  --member-text: #a5b4fc;
+  --member-bg: rgba(165, 180, 252, 0.16);
+  --member-border: rgba(165, 180, 252, 0.45);
+  --member-accent: #818cf8;
+}
+html[data-theme="dark"] .member-color-7,
+:root:not([data-theme="light"]) .member-color-7 {
+  --member-text: #fde047;
+  --member-bg: rgba(253, 224, 71, 0.16);
+  --member-border: rgba(253, 224, 71, 0.45);
+  --member-accent: #eab308;
+}
+html[data-theme="dark"] .member-color-8,
+:root:not([data-theme="light"]) .member-color-8 {
+  --member-text: #60a5fa;
+  --member-bg: rgba(96, 165, 250, 0.16);
+  --member-border: rgba(96, 165, 250, 0.45);
+  --member-accent: #3b82f6;
+}
+html[data-theme="dark"] .member-color-9,
+:root:not([data-theme="light"]) .member-color-9 {
+  --member-text: #a3e635;
+  --member-bg: rgba(163, 230, 53, 0.16);
+  --member-border: rgba(163, 230, 53, 0.45);
+  --member-accent: #84cc16;
+}
+
+/* Application to Member Owner Badges & Chips */
+.cal-task-owner-badge.has-member-color,
+.member-chip.has-member-color {
+  color: var(--member-text) !important;
+  background: var(--member-bg) !important;
+  border-color: var(--member-border) !important;
+}
+
+.cal-task-owner-badge.has-member-color:hover {
+  filter: brightness(1.12);
+}
+
 /* Notice & Alert Boxes */
 .alert-box {
   background: var(--alert-bg);

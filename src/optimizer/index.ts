@@ -6,3 +6,4 @@ export * from './scheduler.ts';
 export * from './rotation.ts';
 export * from './engine.ts';
 export * from './rebalancer.ts';
+export * from './memberColors.ts';

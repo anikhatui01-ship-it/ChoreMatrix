@@ -835,10 +835,11 @@
               <button type="button" class="tab-btn" data-week="3">Week 4</button>
             </div>
 
-            <!-- Schedule View Toggle -->
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-              <span style="font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase;">View Layout</span>
-              <div style="display:flex; gap:6px;">
+            <!-- Schedule View Toggle & Member Color Legend -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; flex-wrap:wrap; gap:8px;">
+              <div id="scheduleMemberLegend" style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;"></div>
+              <div style="display:flex; gap:6px; align-items:center;">
+                <span style="font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase;">View Layout</span>
                 <button type="button" class="btn small active-view" id="btnViewCalendar">Calendar</button>
                 <button type="button" class="btn small" id="btnViewTable">Table</button>
               </div>
@@ -1116,7 +1117,13 @@
 <div id="globalFooter"></div>
 
 <script type="module">
-import { runOptimization, rebalanceHousehold, DAYS_OF_WEEK } from './optimizer.bundle.js';
+import {
+  runOptimization,
+  rebalanceHousehold,
+  DAYS_OF_WEEK,
+  getMemberColor,
+  getNextAvailableMemberColorIndex
+} from './optimizer.bundle.js';
 import {
   renderFooter,
   initCookieBanner,
@@ -1134,6 +1141,24 @@ import {
   clearDevicePlan,
   hasDevicePlan
 } from './src/client.bundle.js';
+
+function getMemberColorForCurrentHousehold(memberId, memberName) {
+  const isDark = document.documentElement.getAttribute('data-theme') !== 'light';
+  const members = (currentRequest && currentRequest.members && currentRequest.members.length)
+    ? currentRequest.members
+    : (currentResult && currentResult.memberSummaries && currentResult.memberSummaries.length)
+    ? currentResult.memberSummaries
+    : [];
+  if (typeof getMemberColor === 'function') {
+    return getMemberColor(memberId, memberName, members, isDark);
+  }
+  return {
+    index: 0,
+    className: 'member-color-0',
+    cssVars: '',
+    current: { text: 'var(--primary)', bg: 'var(--panel-subtle)', border: 'var(--line)', accent: 'var(--primary)' }
+  };
+}
 
 renderFooter();
 initCookieBanner();
@@ -1225,10 +1250,10 @@ const PRESETS = {
   family: {
     household: { id: 'h_fam', name: 'Family Home', type: 'family', mode: 'capacity_aware', planningHorizonWeeks: 1 },
     members: [
-      { id: 'm1', name: 'Maya', role: 'Adult', weeklyCapacityMinutes: 300, unavailableDays: [], preferredTaskIds: ['t_cook'], avoidedTaskIds: [] },
-      { id: 'm2', name: 'Arjun', role: 'Adult', weeklyCapacityMinutes: 240, unavailableDays: ['thu'], preferredTaskIds: [], avoidedTaskIds: ['t_dishes'] },
-      { id: 'm3', name: 'Riya', role: 'Teen', weeklyCapacityMinutes: 120, unavailableDays: [], preferredTaskIds: ['t_vacuum'], avoidedTaskIds: [] },
-      { id: 'm4', name: 'Kabir', role: 'Child', weeklyCapacityMinutes: 60, unavailableDays: [], preferredTaskIds: [], avoidedTaskIds: [] }
+      { id: 'm1', name: 'Maya', role: 'Adult', weeklyCapacityMinutes: 300, unavailableDays: [], preferredTaskIds: ['t_cook'], avoidedTaskIds: [], colorIndex: 0 },
+      { id: 'm2', name: 'Arjun', role: 'Adult', weeklyCapacityMinutes: 240, unavailableDays: ['thu'], preferredTaskIds: [], avoidedTaskIds: ['t_dishes'], colorIndex: 1 },
+      { id: 'm3', name: 'Riya', role: 'Teen', weeklyCapacityMinutes: 120, unavailableDays: [], preferredTaskIds: ['t_vacuum'], avoidedTaskIds: [], colorIndex: 2 },
+      { id: 'm4', name: 'Kabir', role: 'Child', weeklyCapacityMinutes: 60, unavailableDays: [], preferredTaskIds: [], avoidedTaskIds: [], colorIndex: 3 }
     ],
     tasks: [
       { id: 't_cook', name: 'Dinner Cooking', category: 'Food', frequencyPerWeek: 7, durationMinutes: 30, effortLevel: 3, eligibleMemberIds: ['m1', 'm2'] },
@@ -1242,8 +1267,8 @@ const PRESETS = {
   couple: {
     household: { id: 'h_cpl', name: 'Couple Apartment', type: 'couple', mode: 'capacity_aware', planningHorizonWeeks: 1 },
     members: [
-      { id: 'm1', name: 'Alex', role: 'Adult', weeklyCapacityMinutes: 240, unavailableDays: ['wed'], preferredTaskIds: ['t_cook'], avoidedTaskIds: ['t_bath'] },
-      { id: 'm2', name: 'Sam', role: 'Adult', weeklyCapacityMinutes: 240, unavailableDays: [], preferredTaskIds: ['t_dishes'], avoidedTaskIds: [] }
+      { id: 'm1', name: 'Alex', role: 'Adult', weeklyCapacityMinutes: 240, unavailableDays: ['wed'], preferredTaskIds: ['t_cook'], avoidedTaskIds: ['t_bath'], colorIndex: 0 },
+      { id: 'm2', name: 'Sam', role: 'Adult', weeklyCapacityMinutes: 240, unavailableDays: [], preferredTaskIds: ['t_dishes'], avoidedTaskIds: [], colorIndex: 1 }
     ],
     tasks: [
       { id: 't_cook', name: 'Dinner Cooking', category: 'Food', frequencyPerWeek: 7, durationMinutes: 30, effortLevel: 3, eligibleMemberIds: ['m1', 'm2'] },
@@ -1256,9 +1281,9 @@ const PRESETS = {
   roommates: {
     household: { id: 'h_rm', name: 'Shared House', type: 'roommates', mode: 'balanced', planningHorizonWeeks: 1 },
     members: [
-      { id: 'm1', name: 'Ari', role: 'Roommate', weeklyCapacityMinutes: 180, unavailableDays: [], preferredTaskIds: [], avoidedTaskIds: [] },
-      { id: 'm2', name: 'Noah', role: 'Roommate', weeklyCapacityMinutes: 180, unavailableDays: [], preferredTaskIds: [], avoidedTaskIds: [] },
-      { id: 'm3', name: 'Jo', role: 'Roommate', weeklyCapacityMinutes: 180, unavailableDays: ['fri', 'sat'], preferredTaskIds: [], avoidedTaskIds: [] }
+      { id: 'm1', name: 'Ari', role: 'Roommate', weeklyCapacityMinutes: 180, unavailableDays: [], preferredTaskIds: [], avoidedTaskIds: [], colorIndex: 0 },
+      { id: 'm2', name: 'Noah', role: 'Roommate', weeklyCapacityMinutes: 180, unavailableDays: [], preferredTaskIds: [], avoidedTaskIds: [], colorIndex: 1 },
+      { id: 'm3', name: 'Jo', role: 'Roommate', weeklyCapacityMinutes: 180, unavailableDays: ['fri', 'sat'], preferredTaskIds: [], avoidedTaskIds: [], colorIndex: 2 }
     ],
     tasks: [
       { id: 't_kitchen', name: 'Kitchen Common Reset', category: 'Kitchen', frequencyPerWeek: 7, durationMinutes: 15, effortLevel: 2, eligibleMemberIds: ['m1', 'm2', 'm3'] },
@@ -1746,12 +1771,14 @@ function renderMembers() {
 
   container.innerHTML = currentRequest.members.map((m, i) => {
     const unavSet = new Set(m.unavailableDays || []);
+    const mColor = getMemberColorForCurrentHousehold(m.id, m.name);
     return `
       <div class="item-card">
         <div class="item-card-head">
           <div class="item-title">
+            <span class="member-dot" style="display:inline-block; width:9px; height:9px; border-radius:50%; background:${mColor.current.accent}; flex-shrink:0;" title="Member color"></span>
             <input style="font-weight:700; width:120px; padding:3px 6px;" value="${escapeHtml(m.name)}" data-member-idx="${i}" data-field="name">
-            <span class="badge teal">${escapeHtml(m.role)}</span>
+            <span class="badge ${mColor.className} has-member-color" style="color:${mColor.current.text}; background:${mColor.current.bg}; border:1px solid ${mColor.current.border};">${escapeHtml(m.role)}</span>
           </div>
           <button type="button" class="del-btn" data-del-member="${i}" title="Remove member">✕</button>
         </div>
@@ -2100,17 +2127,22 @@ function renderResults() {
     const barWidth = Math.min(100, Math.max(2, pct));
     const loadSharePct = Math.round(((m.assignedWeightedLoad || 0) / totalWeightedWork) * 100);
     const capSharePct = Math.round(((m.weeklyCapacityMinutes || 1) / totalHouseholdCap) * 100);
+    const mColor = getMemberColorForCurrentHousehold(m.memberId, m.memberName);
     const capLabel = isSingleDay
       ? `${m.assignedMinutes} min · ${pct}% daily cap`
       : `${m.assignedMinutes} min (${m.assignedWeightedLoad || 0} pts · ${loadSharePct}% load share vs ${capSharePct}% cap)`;
     return `
       <div class="member-bar-row">
         <div class="member-bar-meta">
-          <span>${escapeHtml(m.memberName)} (${m.role})</span>
+          <span style="display:inline-flex; align-items:center; gap:6px;">
+            <span class="member-dot" style="display:inline-block; width:8px; height:8px; border-radius:50%; background:${mColor.current.accent}; flex-shrink:0;"></span>
+            <strong style="color:${mColor.current.text}; font-weight:700;">${escapeHtml(m.memberName)}</strong>
+            <span style="color:var(--muted); font-size:11px;">(${m.role})</span>
+          </span>
           <span>${capLabel}</span>
         </div>
         <div class="bar-track">
-          <div class="bar-fill" style="width: ${barWidth}%;"></div>
+          <div class="bar-fill" style="width: ${barWidth}%; background:${mColor.current.accent};"></div>
         </div>
       </div>
     `;
@@ -2153,6 +2185,7 @@ function renderTaskCardHtml(a, isInteractive = true) {
   const conflictBadge = a.hasConflict ? `<span class="badge" style="background:#fef3c7; color:#92400e; font-size:9px; padding:1px 4px; margin-top:3px; display:inline-block; border:1px solid #fde68a;">⚠️ Unavailable Day Conflict</span>` : '';
   const editedBadge = isEdited ? `<span class="badge" style="background:var(--accent-light, #e0e7ff); color:var(--accent); font-size:9px; padding:1px 4px; margin-top:3px; display:inline-block;">📌 Edited</span>` : '';
   const reasonBadge = a.reasonCodes && a.reasonCodes.length ? `<span class="badge" style="font-size:9px; padding:1px 4px; margin-top:3px;">${a.reasonCodes[0].replace(/_/g, ' ')}</span>` : '';
+  const mColor = getMemberColorForCurrentHousehold(a.memberId, a.memberName);
 
   return `
     <div class="cal-task-card ${isEdited ? 'is-edited' : ''} ${a.hasConflict ? 'has-conflict' : ''}"
@@ -2175,8 +2208,16 @@ function renderTaskCardHtml(a, isInteractive = true) {
         ` : ''}
       </div>
       <div style="margin-top:2px;">
-        <span class="cal-task-owner-badge" ${isInteractive ? 'data-action="swap-member"' : ''} data-task-id="${escapeHtml(a.taskId)}" data-day="${a.dayOfWeek}" title="${isInteractive ? 'Click to cycle assigned member' : ''}" style="${isInteractive ? 'cursor:pointer;' : ''} display:inline-flex; align-items:center; gap:3px; font-weight:700; color:var(--primary); background:var(--panel-subtle); padding:1px 5px; border-radius:4px; border:1px solid var(--line); font-size:10px;">
-          👤 ${escapeHtml(a.memberName)} ${isInteractive ? '<span style="font-size:8px; opacity:0.7;">⇄</span>' : ''}
+        <span class="cal-task-owner-badge ${mColor.className} has-member-color"
+              ${isInteractive ? 'data-action="swap-member"' : ''}
+              data-task-id="${escapeHtml(a.taskId)}"
+              data-day="${a.dayOfWeek}"
+              data-member-id="${escapeHtml(a.memberId)}"
+              title="${isInteractive ? 'Click to cycle assigned member' : ''}"
+              style="${isInteractive ? 'cursor:pointer;' : ''} display:inline-flex; align-items:center; gap:4px; font-weight:700; color:${mColor.current.text}; background:${mColor.current.bg}; border:1px solid ${mColor.current.border}; padding:1px 6px; border-radius:4px; font-size:10px; ${mColor.cssVars}">
+          <span class="member-dot" style="display:inline-block; width:6px; height:6px; border-radius:50%; background:${mColor.current.accent}; flex-shrink:0;"></span>
+          <span>${escapeHtml(a.memberName)}</span>
+          ${isInteractive ? '<span style="font-size:8px; opacity:0.7;">⇄</span>' : ''}
         </span>
       </div>
       <div class="cal-task-time" style="margin-top:2px;">⏱️ ${a.durationMinutes}m (E${a.effortLevel})</div>
@@ -2196,6 +2237,27 @@ function renderSchedule() {
   const weekAssignments = isSingleDay
     ? currentResult.assignments
     : currentResult.assignments.filter(a => a.weekIndex === activeWeek);
+
+  const legendEl = $('#scheduleMemberLegend');
+  if (legendEl) {
+    const members = (currentRequest && currentRequest.members && currentRequest.members.length)
+      ? currentRequest.members
+      : (currentResult && currentResult.memberSummaries && currentResult.memberSummaries.length)
+      ? currentResult.memberSummaries
+      : [];
+    legendEl.innerHTML = members.length ? `
+      <span style="font-size:11px; font-weight:700; color:var(--muted); text-transform:uppercase;">Members:</span>
+      ${members.map(m => {
+        const mc = getMemberColorForCurrentHousehold(m.id || m.memberId, m.name || m.memberName);
+        return `
+          <span class="member-chip ${mc.className} has-member-color" style="color:${mc.current.text}; background:${mc.current.bg}; border:1px solid ${mc.current.border}; font-size:10px; padding:1px 6px; ${mc.cssVars}">
+            <span class="member-dot" style="background:${mc.current.accent}; width:5px; height:5px;"></span>
+            ${escapeHtml(m.name || m.memberName)}
+          </span>
+        `;
+      }).join('')}
+    ` : '';
+  }
 
   if (activeView === 'calendar') {
     $('#calendarView').style.display = 'block';
@@ -2300,24 +2362,33 @@ function renderSchedule() {
     $('#tableView').style.display = 'block';
 
     const tBody = $('#tableBodyContainer');
+    const tableAssignments = isSingleDay ? currentResult.assignments : weekAssignments;
     if (isPaidUser || isSingleDay) {
-      tBody.innerHTML = weekAssignments.length ? weekAssignments.map(a => `
-        <tr>
-          <td><strong>${a.dayOfWeek.toUpperCase()}</strong></td>
-          <td>${escapeHtml(a.taskName)} <span class="badge">${escapeHtml(a.category)}</span></td>
-          <td style="font-weight:700; color:var(--accent);">${escapeHtml(a.memberName)}</td>
-          <td>${a.durationMinutes} min</td>
-          <td>Level ${a.effortLevel}</td>
-          <td>${(a.reasonCodes || []).map(r => `<span class="badge" style="margin-right:2px;">${r.replace(/_/g, ' ')}</span>`).join('')}</td>
-        </tr>
-      `).join('') : `
+      tBody.innerHTML = tableAssignments.length ? tableAssignments.map(a => {
+        const mColor = getMemberColorForCurrentHousehold(a.memberId, a.memberName);
+        return `
+          <tr>
+            <td><strong>${a.dayOfWeek.toUpperCase()}</strong></td>
+            <td>${escapeHtml(a.taskName)} <span class="badge">${escapeHtml(a.category)}</span></td>
+            <td>
+              <span class="member-chip ${mColor.className} has-member-color" style="color:${mColor.current.text}; background:${mColor.current.bg}; border:1px solid ${mColor.current.border}; ${mColor.cssVars}">
+                <span class="member-dot" style="background:${mColor.current.accent};"></span>
+                ${escapeHtml(a.memberName)}
+              </span>
+            </td>
+            <td>${a.durationMinutes} min</td>
+            <td>Level ${a.effortLevel}</td>
+            <td>${(a.reasonCodes || []).map(r => `<span class="badge" style="margin-right:2px;">${r.replace(/_/g, ' ')}</span>`).join('')}</td>
+          </tr>
+        `;
+      }).join('') : `
         <tr>
           <td colspan="6" style="text-align:center; padding:24px; color:var(--muted); font-style:italic;">No chore assignments for this ${isSingleDay ? 'day' : 'week'}.</td>
         </tr>
       `;
     } else {
       const openDaysSet = new Set(['mon', 'tue', 'wed']);
-      const visibleTableTasks = weekAssignments.filter(a => openDaysSet.has(a.dayOfWeek));
+      const visibleTableTasks = tableAssignments.filter(a => openDaysSet.has(a.dayOfWeek));
       const lockedRowsHtml = ['thu', 'fri', 'sat', 'sun'].map(d => `
         <tr class="cal-locked-row" style="opacity:0.35; user-select:none; pointer-events:none;">
           <td><strong>${d.toUpperCase()}</strong></td>
@@ -2329,16 +2400,24 @@ function renderSchedule() {
         </tr>
       `).join('');
 
-      tBody.innerHTML = (visibleTableTasks.length ? visibleTableTasks.map(a => `
-        <tr>
-          <td><strong>${a.dayOfWeek.toUpperCase()}</strong></td>
-          <td>${escapeHtml(a.taskName)} <span class="badge">${escapeHtml(a.category)}</span></td>
-          <td style="font-weight:700; color:var(--accent);">${escapeHtml(a.memberName)}</td>
-          <td>${a.durationMinutes} min</td>
-          <td>Level ${a.effortLevel}</td>
-          <td>${(a.reasonCodes || []).map(r => `<span class="badge" style="margin-right:2px;">${r.replace(/_/g, ' ')}</span>`).join('')}</td>
-        </tr>
-      `).join('') : `
+      tBody.innerHTML = (visibleTableTasks.length ? visibleTableTasks.map(a => {
+        const mColor = getMemberColorForCurrentHousehold(a.memberId, a.memberName);
+        return `
+          <tr>
+            <td><strong>${a.dayOfWeek.toUpperCase()}</strong></td>
+            <td>${escapeHtml(a.taskName)} <span class="badge">${escapeHtml(a.category)}</span></td>
+            <td>
+              <span class="member-chip ${mColor.className} has-member-color" style="color:${mColor.current.text}; background:${mColor.current.bg}; border:1px solid ${mColor.current.border}; ${mColor.cssVars}">
+                <span class="member-dot" style="background:${mColor.current.accent};"></span>
+                ${escapeHtml(a.memberName)}
+              </span>
+            </td>
+            <td>${a.durationMinutes} min</td>
+            <td>Level ${a.effortLevel}</td>
+            <td>${(a.reasonCodes || []).map(r => `<span class="badge" style="margin-right:2px;">${r.replace(/_/g, ' ')}</span>`).join('')}</td>
+          </tr>
+        `;
+      }).join('') : `
         <tr>
           <td colspan="6" style="text-align:center; padding:18px; color:var(--muted); font-style:italic;">No chore assignments scheduled for Mon–Wed.</td>
         </tr>
@@ -2891,6 +2970,9 @@ function attachListeners() {
     notifyCalculatorStarted();
     syncDOMToState();
     const newId = `m_${Date.now()}`;
+    const nextColorIdx = typeof getNextAvailableMemberColorIndex === 'function'
+      ? getNextAvailableMemberColorIndex(currentRequest.members)
+      : currentRequest.members.length;
     currentRequest.members.push({
       id: newId,
       name: `Person ${currentRequest.members.length + 1}`,
@@ -2898,7 +2980,8 @@ function attachListeners() {
       weeklyCapacityMinutes: 180,
       unavailableDays: [],
       preferredTaskIds: [],
-      avoidedTaskIds: []
+      avoidedTaskIds: [],
+      colorIndex: nextColorIdx
     });
     currentRequest.tasks.forEach(t => {
       if (!t.eligibleMemberIds.includes(newId)) {
