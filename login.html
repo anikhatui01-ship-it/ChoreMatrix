@@ -170,7 +170,14 @@
 <div id="globalFooter"></div>
 
 <script type="module">
-import { authService, isSupabaseConfigured, renderNavbar, renderFooter, initCookieBanner } from './src/client.bundle.js';
+import {
+  authService,
+  sanitizeRedirectUrl,
+  isSupabaseConfigured,
+  renderNavbar,
+  renderFooter,
+  initCookieBanner
+} from './src/client.bundle.js';
 
 renderNavbar('login');
 renderFooter();
@@ -193,6 +200,16 @@ const urlParams = new URLSearchParams(window.location.search);
 if (urlParams.get('deleted') === 'true') {
   if (noticeBox) {
     noticeBox.textContent = '✓ Your account and personal data have been permanently deleted.';
+    noticeBox.style.display = 'block';
+  }
+} else if (urlParams.get('reason') === 'inactivity') {
+  if (noticeBox) {
+    noticeBox.textContent = 'Notice: Your session was terminated due to inactivity for your security. Please sign in again.';
+    noticeBox.style.display = 'block';
+  }
+} else if (urlParams.get('reason') === 'expired') {
+  if (noticeBox) {
+    noticeBox.textContent = 'Notice: Your session has expired. Please sign in again.';
     noticeBox.style.display = 'block';
   }
 }
@@ -225,7 +242,7 @@ form?.addEventListener('submit', async (e) => {
   try {
     await authService.signIn(email, password);
     const params = new URLSearchParams(window.location.search);
-    const redirect = params.get('redirect') || '/app.html';
+    const redirect = sanitizeRedirectUrl(params.get('redirect'), '/app.html');
     window.location.href = redirect;
   } catch (err) {
     showError(err.message || 'Unable to sign in. Please check your credentials.');

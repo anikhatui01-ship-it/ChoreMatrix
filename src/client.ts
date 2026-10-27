@@ -8,6 +8,7 @@ export * from './config/pricing.ts';
 export * from './config/dodo.ts';
 export * from './config/email.ts';
 export * from './auth/session.ts';
+export * from './auth/inactivity.ts';
 export * from './persistence/supabaseAdapter.ts';
 export * from './persistence/localDraft.ts';
 export * from './persistence/types.ts';

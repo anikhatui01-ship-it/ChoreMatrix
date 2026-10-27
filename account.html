@@ -6,6 +6,8 @@
 <title>Account & Security — ChoreMatrix</title>
 <meta name="description" content="Manage your ChoreMatrix profile, subscription plan, active sessions, and security settings." />
 <meta name="robots" content="noindex, nofollow" />
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <link rel="alternate icon" href="/favicon.ico" />
 <script>
@@ -179,7 +181,18 @@
 <div id="globalFooter"></div>
 
 <script type="module">
-import { authService, persistenceAdapter, isSupabaseConfigured, getTierById, renderNavbar, renderFooter, initCookieBanner, supabase, getEnvVar } from './src/client.bundle.js';
+import {
+  authService,
+  inactivityService,
+  persistenceAdapter,
+  isSupabaseConfigured,
+  getTierById,
+  renderNavbar,
+  renderFooter,
+  initCookieBanner,
+  supabase,
+  getEnvVar
+} from './src/client.bundle.js';
 
 renderNavbar('account');
 renderFooter();
@@ -231,10 +244,11 @@ async function checkAccount() {
       return;
     }
 
-    // 2. Verified user authenticated: immediately display user email
+    // 2. Verified user authenticated: immediately display user email and start inactivity tracker
     if (emailField) {
       emailField.value = user.email || 'No email associated';
     }
+    inactivityService.start();
 
     // 3. Query user profile from public.profiles
     try {
@@ -327,6 +341,13 @@ try {
 window.addEventListener('unload', () => {
   if (authSubscription?.unsubscribe) {
     authSubscription.unsubscribe();
+  }
+  inactivityService.stop();
+});
+
+window.addEventListener('pageshow', (event) => {
+  if (event.persisted) {
+    checkAccount();
   }
 });
 

@@ -6,6 +6,8 @@
 <title>ChoreMatrix — Household Workload Optimizer Workspace</title>
 <meta name="description" content="Interactive household workload optimization workspace. Calculate fair chore schedules, set constraints, and rebalance allocations." />
 <meta name="robots" content="noindex, nofollow" />
+<meta http-equiv="Cache-Control" content="no-store, no-cache, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
 <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
 <link rel="alternate icon" href="/favicon.ico" />
 <script>
@@ -693,6 +695,7 @@ import {
 } from './optimizer.bundle.js';
 import {
   authService,
+  inactivityService,
   persistenceAdapter,
   isSupabaseConfigured,
   renderNavbar,
@@ -1194,14 +1197,20 @@ async function init() {
     authService.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_OUT' || !session || !session.user) {
         currentUser = null;
+        inactivityService.stop();
         currentEntitlement = getPlanningEntitlement(null);
         renderPlanningHorizonOptions(currentEntitlement, 1);
-        currentRequest.household.planningHorizonWeeks = 1;
-        if (currentRequest.members.length > 0 && currentRequest.tasks.length > 0) {
-          executeOptimization(true);
-        }
+        currentRequest = JSON.parse(JSON.stringify(PRESETS.family));
+        currentResult = null;
+        lastSavedSnapshot = null;
+        savedWeeks = new Set([0]);
+        hasUnsavedChanges = false;
+        setCloudSaveState('unauthenticated');
+        renderInputs();
+        renderResults();
       } else if (event === 'SIGNED_IN' && session?.user) {
         currentUser = session.user;
+        inactivityService.start();
         try {
           const profile = await persistenceAdapter.getProfile(currentUser.id);
           currentEntitlement = getPlanningEntitlement(profile);
@@ -1216,6 +1225,7 @@ async function init() {
     });
 
     if (currentUser) {
+      inactivityService.start();
       $('#cloudStatus').innerHTML = `Cloud Sync: <strong>${escapeHtml(currentUser.email)}</strong>`;
 
       // Authoritative profile resolution
@@ -3280,6 +3290,16 @@ function attachListeners() {
       e.preventDefault();
       e.returnValue = '';
     }
+  });
+
+  window.addEventListener('pageshow', (e) => {
+    if (e.persisted) {
+      init();
+    }
+  });
+
+  window.addEventListener('unload', () => {
+    inactivityService.stop();
   });
 }
 

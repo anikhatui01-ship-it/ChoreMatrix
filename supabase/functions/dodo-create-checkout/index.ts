@@ -254,7 +254,19 @@ serve(async (req: Request) => {
         interval,
         source_product_id: plan === 'fairness_pass' ? 'pdt_0NphhVTxhO0pNjHindcHi' : undefined
       },
-      return_url: reqBody.return_url || `${req.headers.get('origin') || 'https://chorematrix.online'}/account.html?payment_status=submitted`
+      return_url: (() => {
+        const fallback = 'https://chorematrix.online/account.html?payment_status=submitted';
+        const candidate = reqBody.return_url || (req.headers.get('origin') ? `${req.headers.get('origin')}/account.html?payment_status=submitted` : '');
+        if (!candidate) return fallback;
+        try {
+          const parsed = new URL(candidate, 'https://chorematrix.online');
+          const allowedHosts = ['chorematrix.online', 'www.chorematrix.online', 'chorematrix.vercel.app', 'localhost', '127.0.0.1'];
+          if (allowedHosts.includes(parsed.hostname)) {
+            return parsed.toString();
+          }
+        } catch (_) {}
+        return fallback;
+      })()
     };
 
     if (isTrialEligible) {

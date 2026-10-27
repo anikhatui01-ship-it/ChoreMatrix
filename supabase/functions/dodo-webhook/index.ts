@@ -58,10 +58,22 @@ function parseSignatures(header: string | null): string[] {
 function verifyStandardWebhook(
   headers: { id: string | null; timestamp: string | null; signature: string | null },
   rawBody: string,
-  secret: string
+  secret: string,
+  toleranceSeconds = 300 // Standard 5-minute replay tolerance
 ): boolean {
   if (!headers.id || !headers.timestamp || !headers.signature || !rawBody || !secret) {
     return false;
+  }
+  // Replay attack prevention check
+  if (toleranceSeconds > 0) {
+    const timestampNum = parseInt(headers.timestamp, 10);
+    if (isNaN(timestampNum)) return false;
+    const nowSeconds = Math.floor(Date.now() / 1000);
+    const normalizedTs = timestampNum > 1e11 ? Math.floor(timestampNum / 1000) : timestampNum;
+    if (Math.abs(nowSeconds - normalizedTs) > toleranceSeconds) {
+      console.warn(`[Dodo Webhook Security] Timestamp outside tolerance window: delta=${Math.abs(nowSeconds - normalizedTs)}s`);
+      return false;
+    }
   }
   try {
     let secretBuffer: Buffer;

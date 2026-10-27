@@ -40,6 +40,29 @@ export function getAuthRedirectUrl(pathname: string): string {
   const cleanPath = pathname.startsWith('/') ? pathname : `/${pathname}`;
   return `${base}${cleanPath}`;
 }
+/**
+ * Sanitizes redirect URLs to strictly prevent Open Redirect vulnerabilities.
+ * Allows only relative paths starting with a single '/' and rejects
+ * protocol-relative URLs (//evil.com), backslashes (/\\), data:, javascript:, and full URLs.
+ */
+export function sanitizeRedirectUrl(url: string | null | undefined, fallback = '/app.html'): string {
+  if (!url || typeof url !== 'string') return fallback;
+  const trimmed = url.trim();
+  // Reject protocol-relative URLs (//example.com), backslashes (/\\), and URL schemes (http:, javascript:, etc.)
+  if (
+    trimmed.startsWith('//') ||
+    trimmed.startsWith('/\\') ||
+    trimmed.includes('\\') ||
+    /^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)
+  ) {
+    return fallback;
+  }
+  // Must be a clean relative path starting with /
+  if (trimmed.startsWith('/')) {
+    return trimmed;
+  }
+  return fallback;
+}
 
 export class AuthService {
   protected get client() {
@@ -161,14 +184,40 @@ export class AuthService {
    * - 'global': Terminates all devices everywhere
    */
   async signOut(scope: SignOutScope = 'local') {
-    if (!this.client) return;
+    if (!this.client) {
+      if (scope === 'local' || scope === 'global') {
+        try {
+          if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem('chorematrix_auth_token');
+            localStorage.removeItem('chorematrix_last_activity');
+            localStorage.removeItem('chorematrix_session_start');
+            localStorage.setItem('chorematrix_session_status', 'expired');
+          }
+          if (typeof sessionStorage !== 'undefined') {
+            sessionStorage.clear();
+          }
+        } catch (_) {}
+      }
+      return;
+    }
+
     const { error } = await this.client.auth.signOut({ scope });
-    if (error) throw error;
+    if (error) {
+      console.warn('[ChoreMatrix Auth] Supabase signOut error:', error.message);
+      throw error;
+    }
 
     if (scope === 'local' || scope === 'global') {
       try {
-        localStorage.removeItem('chorematrix_auth_token');
-        sessionStorage.clear();
+        if (typeof localStorage !== 'undefined') {
+          localStorage.removeItem('chorematrix_auth_token');
+          localStorage.removeItem('chorematrix_last_activity');
+          localStorage.removeItem('chorematrix_session_start');
+          localStorage.setItem('chorematrix_session_status', 'expired');
+        }
+        if (typeof sessionStorage !== 'undefined') {
+          sessionStorage.clear();
+        }
       } catch (e) {}
     }
   }
